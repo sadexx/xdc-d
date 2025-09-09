@@ -1,0 +1,257 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  lfh:
+    container_name: lfh
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    restart: unless-stopped
+    develop:
+      watch:
+        - action: sync
+          path: ./src
+          target: /usr/src/app/src
+          ignore:
+            - node_modules/
+        - action: rebuild
+          path: package.json
+        - action: rebuild
+          path: .env
+    env_file:
+      - .env
+    ports:
+      - ${APP_PORT}:${APP_PORT}
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      default:
+        aliases:
+          - lfh
+      lfh-network:
+        aliases:
+          - lfh
+    logging: *default-logging
+
+  postgres:
+    container_name: postgres-lfh
+    image: postgres:17.6-alpine3.22
+    restart: unless-stopped
+    env_file:
+      - path: ./env/postgres.env
+        required: true
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    networks:
+      default:
+        aliases:
+          - postgres
+    logging: *default-logging
+
+  redis:
+    container_name: redis-lfh
+    image: redis:8.2-alpine3.22
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    ports:
+      - 6379:6379
+    networks:
+      default:
+        aliases:
+          - redis
+    logging: *default-logging
+
+  pgadmin:
+    container_name: pgadmin-lfh
+    image: dpage/pgadmin4:9.7
+    restart: unless-stopped
+    env_file:
+      - path: ./env/pgadmin.env
+        required: true
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    ports:
+      - 5050:80
+    networks:
+      default:
+        aliases:
+          - pgadmin
+    logging: *default-logging
+
+  redis-insight:
+    container_name: redis-insight-lfh
+    image: redis/redisinsight:2.70
+    restart: unless-stopped
+    env_file:
+      - path: ./env/redis-insight.env
+        required: true
+    user: root
+    volumes:
+      - redis-insight-data:/data
+    ports:
+      - 5540:5540
+    networks:
+      default:
+        aliases:
+          - redis-insight
+    logging: *default-logging
+
+  grafana:
+    container_name: grafana-lfh
+    image: grafana/grafana-enterprise:12.1.0
+    restart: unless-stopped
+    env_file:
+      - path: ./env/grafana.env
+        required: true
+    user: "0"
+    volumes:
+      - "$PWD/data:/var/lib/grafana"
+    ports:
+      - 3450:3450
+    networks:
+      default:
+        aliases:
+          - grafana
+    logging: *default-logging
+
+  prometheus:
+    container_name: prometheus-lfh
+    image: prom/prometheus:v3.5.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --web.external-url=http://localhost/prometheus-app
+      - --web.route-prefix=/
+    restart: unless-stopped
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - 9090:9090
+    networks:
+      default:
+        aliases:
+          - prometheus
+      lfh-network:
+        aliases:
+          - prometheus
+    logging: *default-logging
+
+  loki:
+    container_name: loki-lfh
+    image: grafana/loki:3.5
+    command: -config.file=/etc/loki/local-config.yml
+    restart: unless-stopped
+    volumes:
+      - ./loki-config.yml:/etc/loki/local-config.yml:ro
+      - loki-data:/loki
+    ports:
+      - 3100:3100
+    networks:
+      default:
+        aliases:
+          - loki
+      lfh-network:
+        aliases:
+          - loki
+    logging: *default-logging
+
+  node-exporter:
+    container_name: node-exporter-lfh
+    image: prom/node-exporter:v1.9.1
+    command:
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --collector.filesystem.ignored-mount-points
+      - ^/(sys|proc|dev|host|etc)($|/)
+    restart: unless-stopped
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    ports:
+      - 9100:9100
+    networks:
+      default:
+        aliases:
+          - node-exporter
+    logging: *default-logging
+
+  postgres-exporter:
+    container_name: postgres-exporter-lfh
+    image: prometheuscommunity/postgres-exporter:v0.17.1
+    restart: unless-stopped
+    env_file:
+      - path: ./env/postgres-exporter.env
+        required: true
+    ports:
+      - 9187:9187
+    depends_on:
+      - postgres
+    networks:
+      default:
+        aliases:
+          - postgres-exporter
+    logging: *default-logging
+
+  redis-exporter:
+    container_name: redis-exporter-lfh
+    image: oliver006/redis_exporter:v1.76.0-alpine
+    command:
+      - --redis.addr=redis-lfh:6379
+    restart: on-failure
+    ports:
+      - 9121:9121
+    depends_on:
+      - redis
+    networks:
+      default:
+        aliases:
+          - redis-exporter
+    logging: *default-logging
+
+  nginx:
+    container_name: nginx-lfh
+    image: nginx:1.29-alpine3.22
+    restart: unless-stopped
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - 80:80
+    depends_on:
+      - lfh
+    networks:
+      default:
+        aliases:
+          - nginx
+    logging: *default-logging
+
+networks:
+  default:
+  lfh-network:
+    name: lfh-network
+    driver: bridge
+
+volumes:
+  postgres-data:
+    driver: local
+  pgadmin-data:
+    driver: local
+  redis-data:
+    driver: local
+  redis-insight-data:
+    driver: local
+  grafana-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  loki-data:
+    driver: local

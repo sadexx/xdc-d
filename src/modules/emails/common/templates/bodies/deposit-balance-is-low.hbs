@@ -1,0 +1,15 @@
+<div style="padding: 20px">
+  <p style="font-weight: bold; margin-bottom: 20px">Dear {{adminName}},</p>
+  <p style="color: #333; margin-bottom: 10px">I hope this message finds you well. Your account ID {{platformId}} balance with LFH is currently low. Please top up your account as soon as possible to ensure uninterrupted access to our services.</p>
+  {{#if currentBalance}}
+    <p style="color: #333; margin-bottom: 10px">Current Balance: {{currentBalance}}</p>
+  {{/if}}
+  {{#if minimumRequiredBalance}}
+    <p style="color: #333; margin-bottom: 10px">Minimum Required Balance: {{minimumRequiredBalance}}</p>
+  {{/if}}
+  <p style="color: #333; margin-bottom: 10px">If you've recently made a payment, please disregard this email.</p>
+  <p style="color: #333; margin-bottom: 10px">If you have any questions or need assistance with the top-up process, feel free to contact us at support@linguafrancahub.com.</p>
+  <p style="color: #333; margin-bottom: 10px">Thank you for your prompt attention to this matter, and we appreciate your continued trust in LFH.</p>
+  <p style="color: #333; margin-bottom: 10px">Kind Regards,</p>
+  <p style="color: #333; margin-bottom: 10px">LFH Support Team</p>
+</div>

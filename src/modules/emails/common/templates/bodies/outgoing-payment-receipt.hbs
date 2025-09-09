@@ -1,0 +1,341 @@
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr>
+    <td>
+      <table
+        width="600"
+        cellpadding="0"
+        cellspacing="0"
+        border="0"
+        align="center"
+        style="background-color: #ffffff"
+      >
+        <tr>
+          <td>
+            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td colspan="2" style="padding-top: 40px"></td>
+              </tr>
+              <tr>
+                <td style="width: 140px; text-align: left" valign="top">
+                  <img
+                    src="https://{{mediaBucket}}.s3.ap-southeast-2.amazonaws.com/email-templates/logo-with-name.png"
+                    alt="Labeled Logo"
+                    style="width: 140px"
+                  />
+                </td>
+                <td style="text-align: right">
+                  <div style="text-align: right">
+                    <p style="font-size: 30px; margin: 0">REMITTANCE ADVICE</p>
+                    <p style="font-size: 14px; margin: 0"><b>Invoice # </b>{{receiptNumber}}</p>
+                    <p style="font-size: 16px; margin: 0">
+                      <b>From: Lingua Franca Hub PTY LTD</b>
+                    </p>
+                    <p style="font-size: 16px; margin: 0">ABN 42 661 208 635</p>
+                    <p style="font-size: 16px; margin: 0">
+                      36/1 Thread Lane, Waterloo, NSW, 2017, Australia
+                    </p>
+                    <p style="font-size: 16px; margin: 0">
+                      <b>To: {{userName}}</b>
+                    </p>
+                    <p style="font-size: 16px; margin: 0">(Interpreter ID {{interpreterId}})</p>
+                  </div>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td
+            style="
+              font-family: Arial, sans-serif;
+              color: #333;
+              line-height: 1;
+              padding-top: 30px;
+              font-size: 14px;
+            "
+          >
+            <p style="margin-bottom: 10px"><br />Hi, {{firstName}},</p>
+            <p style="margin-bottom: 10px">
+              I am attaching your remittance advice for payment.<br />
+              If you have any questions or need further assistance, feel free to reach out to us
+              at<br />
+              interpreters@linguafrancahub.com<br />
+              Best regards, <br />
+              LFH Customer Support Team<br /><br /><br />
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <table
+              width="100%"
+              cellpadding="0"
+              cellspacing="0"
+              border="1"
+              style="border-collapse: collapse; margin: 20px 0"
+            >
+              <thead>
+                <tr>
+                  <th
+                    style="
+                      padding-top: 8px;
+                      padding-bottom: 8px;
+                      padding-left: 2px;
+                      padding-right: 2px;
+                      text-align: center;
+                      font-size: 14px;
+                    "
+                  >
+                    Payment Date
+                  </th>
+                  <th
+                    style="
+                      padding-top: 8px;
+                      padding-bottom: 8px;
+                      padding-left: 2px;
+                      padding-right: 2px;
+                      text-align: center;
+                      font-size: 14px;
+                    "
+                  >
+                    Booking ID
+                  </th>
+                  <th
+                    style="
+                      padding-top: 8px;
+                      padding-bottom: 8px;
+                      padding-left: 2px;
+                      padding-right: 2px;
+                      text-align: center;
+                      font-size: 14px;
+                    "
+                  >
+                    Booking Type
+                  </th>
+                  <th
+                    style="
+                      padding-top: 8px;
+                      padding-bottom: 8px;
+                      padding-left: 2px;
+                      padding-right: 2px;
+                      text-align: center;
+                      font-size: 14px;
+                    "
+                  >
+                    Chargeable mins
+                  </th>
+                  <th
+                    style="
+                      padding-top: 8px;
+                      padding-bottom: 8px;
+                      padding-left: 2px;
+                      padding-right: 2px;
+                      text-align: center;
+                      font-size: 14px;
+                    "
+                  >
+                    Total Amount Paid
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td
+                    style="
+                      padding-top: 8px;
+                      padding-bottom: 8px;
+                      padding-left: 2px;
+                      padding-right: 2px;
+                      text-align: center;
+                      font-size: 14px;
+                    "
+                  >
+                    {{paymentDate}}
+                  </td>
+                  <td
+                    style="
+                      padding-top: 8px;
+                      padding-bottom: 8px;
+                      padding-left: 2px;
+                      padding-right: 2px;
+                      text-align: center;
+                      font-size: 14px;
+                    "
+                  >
+                    {{bookingId}}
+                  </td>
+                  <td
+                    style="
+                      padding-top: 8px;
+                      padding-bottom: 8px;
+                      padding-left: 2px;
+                      padding-right: 2px;
+                      text-align: center;
+                      font-size: 14px;
+                    "
+                  >
+                    {{service}}
+                  </td>
+                  <td
+                    style="
+                      padding-top: 8px;
+                      padding-bottom: 8px;
+                      padding-left: 2px;
+                      padding-right: 2px;
+                      text-align: center;
+                      font-size: 14px;
+                    "
+                  >
+                    {{duration}}
+                  </td>
+                  <td
+                    style="
+                      padding-top: 8px;
+                      padding-bottom: 8px;
+                      padding-left: 2px;
+                      padding-right: 2px;
+                      text-align: center;
+                      font-size: 14px;
+                    "
+                  >
+                    {{currency}} {{fullAmount}}
+                  </td>
+                </tr>
+                <tr>
+                  <td
+                    style="
+                      padding-top: 8px;
+                      padding-bottom: 8px;
+                      padding-left: 2px;
+                      padding-right: 2px;
+                      text-align: center;
+                      font-size: 14px;
+                      font-weight: bold;
+                    "
+                  >
+                    Invoice Date
+                  </td>
+                  <td
+                    style="
+                      padding-top: 8px;
+                      padding-bottom: 8px;
+                      padding-left: 2px;
+                      padding-right: 2px;
+                      text-align: center;
+                      font-size: 14px;
+                      font-weight: bold;
+                    "
+                  >
+                    Booking Date & Time
+                  </td>
+                  <td
+                    style="
+                      padding-top: 8px;
+                      padding-bottom: 8px;
+                      padding-left: 2px;
+                      padding-right: 2px;
+                      text-align: center;
+                      font-size: 14px;
+                      font-weight: bold;
+                    "
+                  >
+                    Booking Topic
+                  </td>
+                  <td
+                    style="
+                      padding-top: 8px;
+                      padding-bottom: 8px;
+                      padding-left: 2px;
+                      padding-right: 2px;
+                      text-align: center;
+                      font-size: 14px;
+                      font-weight: bold;
+                    "
+                  >
+                    Invoice Total Excl GST
+                  </td>
+                  <td
+                    style="
+                      padding-top: 8px;
+                      padding-bottom: 8px;
+                      padding-left: 2px;
+                      padding-right: 2px;
+                      text-align: center;
+                      font-size: 14px;
+                      font-weight: bold;
+                    "
+                  >
+                    GST Charged
+                  </td>
+                </tr>
+                <tr>
+                  <td
+                    style="
+                      padding-top: 8px;
+                      padding-bottom: 8px;
+                      padding-left: 2px;
+                      padding-right: 2px;
+                      text-align: center;
+                      font-size: 14px;
+                    "
+                  >
+                    {{paymentDate}}
+                  </td>
+                  <td
+                    style="
+                      padding-top: 8px;
+                      padding-bottom: 8px;
+                      padding-left: 2px;
+                      padding-right: 2px;
+                      text-align: center;
+                      font-size: 14px;
+                    "
+                  >
+                    {{serviceDate}}
+                  </td>
+                  <td
+                    style="
+                      padding-top: 8px;
+                      padding-bottom: 8px;
+                      padding-left: 2px;
+                      padding-right: 2px;
+                      text-align: center;
+                      font-size: 14px;
+                    "
+                  >
+                    {{topic}}
+                  </td>
+                  <td
+                    style="
+                      padding-top: 8px;
+                      padding-bottom: 8px;
+                      padding-left: 2px;
+                      padding-right: 2px;
+                      text-align: center;
+                      font-size: 14px;
+                    "
+                  >
+                    {{currency}} {{amount}}
+                  </td>
+                  <td
+                    style="
+                      padding-top: 8px;
+                      padding-bottom: 8px;
+                      padding-left: 2px;
+                      padding-right: 2px;
+                      text-align: center;
+                      font-size: 14px;
+                    "
+                  >
+                    {{currency}} {{gstAmount}}
+                  </td>
+                  <br /><br /><br /><br /><br />
+                </tr>
+              </tbody>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>

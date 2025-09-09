@@ -1,0 +1,41 @@
+name: Build and Deploy App to AWS-ECR (Prod)
+
+on:
+  push:
+    branches:
+      - release-production
+
+jobs:
+  code-check:
+    name: Run code-check-prod
+    uses: ./.github/workflows/code-check.yml
+
+  build-and-deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+    environment: prod
+    needs: [code-check]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, Tag, and Push Docker Image
+        run: |
+          docker compose -f ${{ vars.DOCKER_COMPOSE_FILE }} build --no-cache
+          docker tag lfh-deploy:latest ${{ vars.ECR_DNS }}/${{ vars.ECR_REPOSITORY }}:${{ vars.IMAGE_TAG }}
+          docker push ${{ vars.ECR_DNS }}/${{ vars.ECR_REPOSITORY }}:${{ vars.IMAGE_TAG }}

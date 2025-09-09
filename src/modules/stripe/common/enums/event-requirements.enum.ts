@@ -1,0 +1,17 @@
+export const enum EExtEventRequirements {
+  URL = "business_profile.url",
+  EXTERNAL_ACCOUNT = "external_account",
+  ADDRESS_CITY = "individual.address.city",
+  ADDRESS_LINE1 = "individual.address.line1",
+  ADDRESS_POSTAL_CODE = "individual.address.postal_code",
+  ADDRESS_STATE = "individual.address.state",
+  DOB_DAY = "individual.dob.day",
+  DOB_MONTH = "individual.dob.month",
+  DOB_YEAR = "individual.dob.year",
+  FIRST_NAME = "individual.first_name",
+  LAST_NAME = "individual.last_name",
+  DOCUMENT = "individual.verification.document",
+  DOCUMENT_CLIPPED = ".verification.document",
+  TOS_DATE = "tos_acceptance.date",
+  TOS_IP = "tos_acceptance.ip",
+}

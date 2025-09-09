@@ -1,0 +1,1 @@
+export const BULLMQ_CONNECTION: string = "BULLMQ_CONNECTION";

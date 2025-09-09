@@ -1,0 +1,17 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [
+          "DK4XTYN77Y.com.linguafrancahub"
+        ],
+        "components": [
+          {
+            "/": "*",
+            "comment": "Matches any URLs"
+          }
+        ]
+      }
+    ]
+  }
+}

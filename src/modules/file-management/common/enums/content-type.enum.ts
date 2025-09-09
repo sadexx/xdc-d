@@ -1,0 +1,15 @@
+export const enum EContentType {
+  APPLICATION_PDF = "application/pdf",
+  APPLICATION_DOC = "application/msword",
+  APPLICATION_DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  APPLICATION_XLS = "application/vnd.ms-excel",
+  APPLICATION_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  APPLICATION_PPT = "application/vnd.ms-powerpoint",
+  APPLICATION_PPTX = "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  IMAGE_PNG = "image/png",
+  IMAGE_JPEG = "image/jpeg",
+  IMAGE_WEBP = "image/webp",
+  IMAGE_SVG = "image/svg+xml",
+  APPLICATION_JSON = "application/json",
+  TEXT_PLAIN = "text/plain",
+}

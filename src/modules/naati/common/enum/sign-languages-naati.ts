@@ -1,0 +1,15 @@
+import { EExtNaatiLanguages } from "src/modules/naati/common/enum";
+
+export const ESignLanguagesNaati: readonly EExtNaatiLanguages[] = [
+  EExtNaatiLanguages.DEAF_INTERPRETER,
+  EExtNaatiLanguages.ADAPTED_SIGN_LANGUAGE_AND_AUSLAN,
+  EExtNaatiLanguages.AMERICAN_SIGN_LANGUAGE_AND_AUSLAN,
+  EExtNaatiLanguages.BHUTAN_SIGN_LANGUAGE_AND_AUSLAN,
+  EExtNaatiLanguages.BRITISH_SIGN_LANGUAGE_AND_AUSLAN,
+  EExtNaatiLanguages.INTERNATIONAL_SIGN_LANGUAGE_AND_AUSLAN,
+  EExtNaatiLanguages.NEW_ZEALAND_SIGN_LANGUAGE_AND_AUSLAN,
+  EExtNaatiLanguages.NON_CONVENTIONAL_SIGN_LANGUAGE_AND_AUSLAN,
+  EExtNaatiLanguages.OTHER_CONVENTIONAL_SIGN_LANGUAGE_AND_AUSLAN,
+  EExtNaatiLanguages.WRITTEN_ENGLISH_AND_AUSLAN,
+  EExtNaatiLanguages.WRITTEN_ENGLISH_AND_NON_CONVENTIONAL_SIGN_LANGUAGE,
+];

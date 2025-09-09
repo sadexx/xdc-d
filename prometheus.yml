@@ -1,0 +1,30 @@
+# For local target use (host.docker.internal:port) in docker use (container_name:port)
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: "nodejs-fleet"
+    static_configs:
+      - targets: ["lfh:3000"]
+    metrics_path: "/v1/metrics"
+
+  - job_name: "nodejs-utility"
+    static_configs:
+      - targets: ["lfh-utility:7007"]
+    metrics_path: "/v1/metrics"
+
+  - job_name: "node-exporter"
+    static_configs:
+      - targets: ["node-exporter:9100"]
+
+  - job_name: "postgres-exporter"
+    static_configs:
+      - targets: ["postgres-exporter:9187"]
+
+  - job_name: "redis-exporter"
+    static_configs:
+      - targets: ["redis-exporter:9121"]
+
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["prometheus:9090"]

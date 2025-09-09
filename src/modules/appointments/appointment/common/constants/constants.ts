@@ -1,0 +1,3 @@
+export const FEEDBACK_REQUIRED_THRESHOLD: number = 3;
+export const MIN_APPOINTMENT_DURATION_MINUTES: number = 15;
+export const MAX_APPOINTMENT_DURATION_MINUTES: number = 480;

@@ -1,0 +1,39 @@
+export interface IAddTabsToEnvelopeInterface {
+  textTabs: {
+    isPaymentAmount: string;
+    shared: string;
+    requireInitialOnSharedChange: string;
+    requireAll: string;
+    value: string;
+    required: string;
+    locked: string;
+    concealValueOnDocument: string;
+    disableAutoSize: string;
+    maxLength: string;
+    tabLabel: string;
+    font: string;
+    bold: string;
+    italic: string;
+    underline: string;
+    fontColor: string;
+    fontSize: string;
+    localePolicy: object;
+    documentId: string;
+    recipientId: string;
+    pageNumber: string;
+    xPosition: string;
+    yPosition: string;
+    width: string;
+    height: string;
+    anchorString: string;
+    anchorXOffset: string;
+    anchorYOffset: string;
+    anchorUnits: string;
+    anchorCaseSensitive: string;
+    anchorMatchWholeWord: string;
+    anchorHorizontalAlignment: string;
+    anchorTabProcessorVersion: string;
+    tabId: string;
+    tabType: string;
+  }[];
+}

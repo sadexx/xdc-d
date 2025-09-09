@@ -1,0 +1,15 @@
+export const enum EFileExtension {
+  PDF = "pdf",
+  DOC = "doc",
+  DOCX = "docx",
+  XLS = "xls",
+  XLSX = "xlsx",
+  PPT = "ppt",
+  PPTX = "pptx",
+  PNG = "png",
+  JPEG = "jpeg",
+  WEBP = "webp",
+  SVG = "svg",
+  JSON = "json",
+  TEXT = "txt",
+}

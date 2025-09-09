@@ -1,0 +1,47 @@
+{
+  "compilerOptions": {
+    // Module Resolution
+    "module": "commonjs",
+    "baseUrl": "./",
+    "paths": {
+      "src/*": ["src/*"],
+      "typeorm.config": ["typeorm.config"]
+    },
+    "typeRoots": ["./node_modules/@types", "./custom-typings.d.ts"],
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+
+    // Output & Build Options
+    "outDir": "./dist",
+    "sourceMap": true,
+    "removeComments": true,
+    "declaration": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "incremental": true,
+    "noEmitOnError": true,
+
+    // ECMAScript Target
+    "target": "ES2024",
+
+    // Type Checking & Strictness
+    "strict": true,
+    "strictNullChecks": true,
+    "strictBindCallApply": true,
+    "strictFunctionTypes": true,
+    "strictPropertyInitialization": false,
+    "noImplicitAny": true,
+    "noImplicitThis": true,
+    "alwaysStrict": true,
+    "noImplicitOverride": true,
+
+    // Code Quality & Linting
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "skipLibCheck": true
+  },
+  "exclude": ["node_modules", "dist", "data", "jest-e2e-spec.config.ts", "jest-spec.config.ts"]
+}

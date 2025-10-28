@@ -29,7 +29,7 @@ import { OldICalculatePrice } from "src/modules/rates-old/common/interfaces";
 import { IDiscountRate } from "src/modules/discounts/common/interfaces";
 import { OldCalculatePriceDto } from "src/modules/rates-old/common/dto";
 import { HelperService } from "src/modules/helper/services";
-import { TLiveAppointmentCache } from "src/modules/appointments/appointment/common/types";
+import { TCalculateAppointmentPriceAppointment } from "src/modules/payments/common/types";
 
 @Injectable()
 export class OldPaymentsHelperService {
@@ -150,7 +150,7 @@ export class OldPaymentsHelperService {
 
   // TODO: Refactor O
   public async calculateAppointmentPrice(
-    appointment: Appointment | TLiveAppointmentCache,
+    appointment: TCalculateAppointmentPriceAppointment,
     date: Date,
     isCorporate: boolean,
     country: string,
@@ -262,7 +262,7 @@ export class OldPaymentsHelperService {
       discountByMembershipMinutes: amountAndAppliedDiscounts?.discountByMembershipMinutes || 0,
       discountByMembershipDiscount: amountAndAppliedDiscounts?.discountByMembershipDiscount || 0,
       discountByPromoCode: amountAndAppliedDiscounts?.discountByPromoCode || 0,
-      discounts,
+      discounts: discounts ?? null,
     };
   }
 
@@ -458,7 +458,7 @@ export class OldPaymentsHelperService {
     });
 
     if (
-      new Date(appointment.scheduledStartTime) >= addMinutes(new Date(), OLD_MINUTES_BEFORE_START_AS_REASON_TO_CANCEL)
+      new Date(appointment.scheduledStartTime) <= addMinutes(new Date(), OLD_MINUTES_BEFORE_START_AS_REASON_TO_CANCEL)
     ) {
       if (paymentWaitListRecord) {
         await this.incomingPaymentWaitListRepository.delete({ id: paymentWaitListRecord.id });

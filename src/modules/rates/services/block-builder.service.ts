@@ -8,7 +8,7 @@ import {
   TimeBoundaryResult,
 } from "src/modules/rates/common/interfaces";
 import { TRateCollection, TScenarioPeakNormal } from "src/modules/rates/common/types";
-import { ETimeCalculationMode } from "src/modules/rates/common/enums";
+import { ERatesErrorCodes, ETimeCalculationMode } from "src/modules/rates/common/enums";
 import { determineTimeCalculationMode } from "src/modules/rates/common/utils";
 
 @Injectable()
@@ -118,7 +118,7 @@ export class BlockBuilderService {
     }
 
     if (!additionalDuration) {
-      throw new BadRequestException("Additional prices and duration are required for extended duration");
+      throw new BadRequestException(ERatesErrorCodes.ADDITIONAL_PRICES_REQUIRED);
     }
 
     const extraMinutes = duration - baseDuration;
@@ -156,7 +156,7 @@ export class BlockBuilderService {
     const peakDurations = this.selectDurations(rates, true);
 
     if (!standardDurations.additionalDuration || !peakDurations.additionalDuration) {
-      throw new BadRequestException("Additional prices and duration are required for cross-boundary scenarios");
+      throw new BadRequestException(ERatesErrorCodes.CROSS_BOUNDARY_ADDITIONAL_PRICES_REQUIRED);
     }
 
     const priceBlocks: PriceBlock[] = [];

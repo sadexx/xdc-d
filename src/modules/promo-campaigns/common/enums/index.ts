@@ -3,3 +3,4 @@ export * from "src/modules/promo-campaigns/common/enums/promo-campaign-status.en
 export * from "src/modules/promo-campaigns/common/enums/promo-campaign-duration.enum";
 export * from "src/modules/promo-campaigns/common/enums/promo-campaign-application.enum";
 export * from "src/modules/promo-campaigns/common/enums/promo-campaign-banner-type.enum";
+export * from "src/modules/promo-campaigns/common/enums/promo-campaigns-error-codes.enum";

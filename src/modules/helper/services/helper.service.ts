@@ -11,6 +11,7 @@ import { EExtCountry } from "src/modules/addresses/common/enums";
 import { EGstPayer } from "src/modules/abn/common/enums";
 import { OldIIsGstPayers } from "src/modules/payments/common/interfaces";
 import { TGetUserRoleByName } from "src/modules/helper/common/types";
+import { EHelperErrorCodes } from "src/modules/helper/common/enums";
 
 @Injectable()
 export class HelperService {
@@ -43,7 +44,7 @@ export class HelperService {
 
     if (superAdmins.length === 0) {
       this.lokiLogger.error("No Super Admins found in the system");
-      throw new BadRequestException("No Super Admins found in the system");
+      throw new BadRequestException(EHelperErrorCodes.NO_SUPER_ADMINS_FOUND);
     }
 
     await this.redisService.setJson(CACHE_KEY, superAdmins, NUMBER_OF_SECONDS_IN_HOUR);
@@ -84,7 +85,7 @@ export class HelperService {
 
     if (lfhAdmins.length === 0) {
       this.lokiLogger.error("No Admins found in Lfh Company");
-      throw new BadRequestException("No Admins found in Lfh Company");
+      throw new BadRequestException(EHelperErrorCodes.NO_LFH_ADMINS_FOUND);
     }
 
     await this.redisService.setJson(CACHE_KEY, lfhAdmins, NUMBER_OF_SECONDS_IN_HOUR);
@@ -101,11 +102,11 @@ export class HelperService {
     roleName: EUserRoleName | readonly EUserRoleName[],
   ): Promise<TReturnType> {
     if (!user) {
-      throw new BadRequestException(`User does not exist.`);
+      throw new BadRequestException(EHelperErrorCodes.USER_DOES_NOT_EXIST);
     }
 
     if (!user.userRoles) {
-      throw new BadRequestException(`User does not have any roles assigned.`);
+      throw new BadRequestException(EHelperErrorCodes.USER_NO_ROLES_ASSIGNED);
     }
 
     const userRole = user.userRoles.find((userRole) =>
@@ -113,7 +114,7 @@ export class HelperService {
     );
 
     if (!userRole) {
-      throw new NotFoundException(`The specified role was not found.`);
+      throw new NotFoundException(EHelperErrorCodes.ROLE_NOT_FOUND);
     }
 
     return userRole as TReturnType;

@@ -22,15 +22,32 @@ export type TCheckOutAppointment = NonNullableProperties<TCheckInOutAppointment,
 export const CheckInOutAppointmentQuery = {
   select: {
     id: true,
+    platformId: true,
+    clientId: true,
+    interpreterId: true,
     status: true,
     communicationType: true,
     alternativePlatform: true,
     scheduledStartTime: true,
     scheduledEndTime: true,
     schedulingDurationMin: true,
+    schedulingType: true,
+    topic: true,
+    interpreterType: true,
+    interpretingType: true,
+    acceptOvertimeRates: true,
+    timezone: true,
+    businessEndTime: true,
+    businessStartTime: true,
+    client: { id: true, operatedByCompanyId: true },
+    interpreter: { id: true, timezone: true },
     appointmentExternalSession: { id: true, alternativeStartTime: true, alternativeEndTime: true },
   } as const satisfies FindOptionsSelect<Appointment>,
-  relations: { appointmentExternalSession: true } as const satisfies FindOptionsRelations<Appointment>,
+  relations: {
+    client: true,
+    interpreter: true,
+    appointmentExternalSession: true,
+  } as const satisfies FindOptionsRelations<Appointment>,
 };
 export type TCheckInOutAppointment = QueryResultType<Appointment, typeof CheckInOutAppointmentQuery.select>;
 

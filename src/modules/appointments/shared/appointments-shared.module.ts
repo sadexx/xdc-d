@@ -10,14 +10,20 @@ import { UrlShortenerModule } from "src/modules/url-shortener/url-shortener.modu
 import { EmailsModule } from "src/modules/emails/emails.module";
 import { NotificationModule } from "src/modules/notifications/notification.module";
 import { AwsPinpointModule } from "src/modules/aws/pinpoint/aws-pinpoint.module";
-import { AppointmentAdminInfo, AppointmentReminder } from "src/modules/appointments/appointment/entities";
+import { Appointment, AppointmentAdminInfo, AppointmentReminder } from "src/modules/appointments/appointment/entities";
 import { ChimeMeetingConfiguration } from "src/modules/chime-meeting-configuration/entities";
 import { ShortUrl } from "src/modules/url-shortener/entities";
 import { RedisModule } from "src/modules/redis/redis.module";
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([AppointmentAdminInfo, AppointmentReminder, ChimeMeetingConfiguration, ShortUrl]),
+    TypeOrmModule.forFeature([
+      Appointment,
+      AppointmentAdminInfo,
+      AppointmentReminder,
+      ChimeMeetingConfiguration,
+      ShortUrl,
+    ]),
     BookingSlotManagementModule,
     UrlShortenerModule,
     EmailsModule,

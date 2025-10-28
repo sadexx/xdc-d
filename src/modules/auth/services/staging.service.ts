@@ -2,6 +2,7 @@ import { ForbiddenException, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { ENVIRONMENT } from "src/common/constants";
 import { EEnvironment } from "src/common/enums";
+import { EAuthErrorCodes } from "src/modules/auth/common/enums";
 
 @Injectable()
 export class StagingService {
@@ -19,7 +20,7 @@ export class StagingService {
     }
 
     if (!this.ALLOWED_EMAILS.includes(email)) {
-      throw new ForbiddenException("Email not authorized for staging environment");
+      throw new ForbiddenException(EAuthErrorCodes.STAGING_EMAIL_NOT_AUTHORIZED);
     }
   }
 }

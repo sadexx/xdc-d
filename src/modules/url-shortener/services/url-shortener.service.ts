@@ -9,6 +9,7 @@ import { findOneTyped } from "src/common/utils";
 import { LokiLogger } from "src/common/logger";
 import { TAppointmentForInvitation } from "src/modules/appointments/shared/common/types";
 import { ResolveShortUrlQuery, TResolveShortUrl } from "src/modules/url-shortener/common/types";
+import { EUrlShortenerErrorCodes } from "src/modules/url-shortener/common/enums";
 
 @Injectable()
 export class UrlShortenerService {
@@ -40,7 +41,7 @@ export class UrlShortenerService {
     }
 
     if (new Date() < shortUrl.activeFrom) {
-      throw new BadRequestException("This url is not active yet.");
+      throw new BadRequestException(EUrlShortenerErrorCodes.URL_NOT_ACTIVE_YET);
     }
 
     return shortUrl.destinationUrl;

@@ -15,7 +15,10 @@ import { ERecordDirectory } from "src/modules/aws/chime-sdk/common/enum";
 import { AppointmentSharedService } from "src/modules/appointments/shared/services";
 import { SettingsService } from "src/modules/settings/services";
 import { secondsToMilliseconds } from "date-fns";
-import { EMeetingClosureAction } from "src/modules/chime-meeting-configuration/common/enums";
+import {
+  EChimeMeetingConfigurationErrorCodes,
+  EMeetingClosureAction,
+} from "src/modules/chime-meeting-configuration/common/enums";
 import { IMeetingClosureDecision } from "src/modules/chime-meeting-configuration/common/interfaces";
 import { QueueInitializeService } from "src/modules/queues/services";
 
@@ -47,7 +50,7 @@ export class MeetingClosingService {
       this.lokiLogger.error(
         `Failed to update status in attendee Id: ${attendeeId} at meeting-config Id: ${meetingConfigId}`,
       );
-      throw new NotFoundException("Failed to update attendee status.");
+      throw new NotFoundException(EChimeMeetingConfigurationErrorCodes.MEETING_CLOSING_UPDATE_ATTENDEE_FAILED);
     }
 
     return { message: "Successfully left meeting" };
@@ -89,7 +92,7 @@ export class MeetingClosingService {
         this.lokiLogger.error(
           `Meeting Id: ${chimeMeetingId} not found meetingConfig: ${JSON.stringify(meetingConfig)}`,
         );
-        throw new NotFoundException("Meeting not found");
+        throw new NotFoundException(EChimeMeetingConfigurationErrorCodes.MEETING_CLOSING_MEETING_NOT_FOUND);
       }
 
       const closureDecision = await this.determineMeetingClosureAction(meetingConfig);
@@ -108,7 +111,7 @@ export class MeetingClosingService {
         `Failed to close meeting id: ${chimeMeetingId}, message: ${(error as Error).message}`,
         (error as Error).stack,
       );
-      throw new ServiceUnavailableException("Unable to close the meeting");
+      throw new ServiceUnavailableException(EChimeMeetingConfigurationErrorCodes.MEETING_CLOSING_UNABLE_CLOSE_MEETING);
     }
   }
 
@@ -170,7 +173,7 @@ export class MeetingClosingService {
       this.lokiLogger.error(
         `Meeting-config Id:${meetingConfig.id} not contains full information for closing, meetingConfig: ${JSON.stringify(meetingConfig)}`,
       );
-      throw new BadRequestException("Meeting has contains not full information for closing");
+      throw new BadRequestException(EChimeMeetingConfigurationErrorCodes.MEETING_CLOSING_INCOMPLETE_MEETING_INFO);
     }
 
     const recordingCallDirectory = await this.launchMediaConcatenationPipeline(

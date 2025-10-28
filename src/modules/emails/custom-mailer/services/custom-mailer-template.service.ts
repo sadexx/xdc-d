@@ -4,10 +4,13 @@ import { basename, extname, join } from "node:path";
 import * as Handlebars from "handlebars";
 import { ConfigService } from "@nestjs/config";
 import { IAwsConfigS3 } from "src/modules/aws/s3/common/interfaces";
-import { EEmailLayoutName, EEmailTemplateName } from "src/modules/emails/common/enums";
+import { EEmailErrorCodes, EEmailLayoutName, EEmailTemplateName } from "src/modules/emails/common/enums";
+import { LokiLogger } from "src/common/logger";
 
 @Injectable()
 export class CustomMailerTemplateService {
+  private readonly lokiLogger = new LokiLogger(CustomMailerTemplateService.name);
+
   private readonly layouts: Record<string, Handlebars.TemplateDelegate> = {};
   private readonly bodies: Record<string, Handlebars.TemplateDelegate> = {};
   private readonly mediaBucket: string;
@@ -55,13 +58,15 @@ export class CustomMailerTemplateService {
     const bodyTemplate = this.bodies[templateName];
 
     if (!bodyTemplate) {
-      throw new BadRequestException(`Body email template not found: ${templateName}`);
+      this.lokiLogger.error(`Body email template not found: ${templateName}.`);
+      throw new BadRequestException(EEmailErrorCodes.TEMPLATE_BODY_NOT_FOUND);
     }
 
     const layoutTemplate = this.layouts[layoutName];
 
     if (!layoutTemplate) {
-      throw new BadRequestException(`Layout email template not found: ${layoutName}`);
+      this.lokiLogger.error(`Layout email template not found: ${layoutName}.`);
+      throw new BadRequestException(EEmailErrorCodes.TEMPLATE_LAYOUT_NOT_FOUND);
     }
 
     const bodyHtml = bodyTemplate({ ...context, mediaBucket: this.mediaBucket });

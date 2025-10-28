@@ -12,6 +12,7 @@ import { ConfigService } from "@nestjs/config";
 import { LokiLogger } from "src/common/logger";
 import { AwsConfigService } from "src/modules/aws/config/services";
 import { IAwsConfigSqs } from "src/modules/aws/sqs/common/interfaces";
+import { EAwsSQSErrorCodes } from "src/modules/aws/sqs/common/enums";
 
 @Injectable()
 export class AwsSQSService {
@@ -40,7 +41,7 @@ export class AwsSQSService {
       return Number(Attributes!.ApproximateNumberOfMessages);
     } catch (error) {
       this.lokiLogger.error(`Failed to get queue attributes: ${(error as Error).message}`);
-      throw new ServiceUnavailableException("Failed to get queue attributes");
+      throw new ServiceUnavailableException(EAwsSQSErrorCodes.SQS_GET_QUEUE_ATTRIBUTES_FAILED);
     }
   }
 
@@ -64,7 +65,7 @@ export class AwsSQSService {
       }
     } catch (error) {
       this.lokiLogger.error(`Failed to receive AWS-SQS messages: ${(error as Error).message}`);
-      throw new ServiceUnavailableException("Failed to receive AWS-SQS messages");
+      throw new ServiceUnavailableException(EAwsSQSErrorCodes.SQS_RECEIVE_MESSAGES_FAILED);
     }
 
     return [];
@@ -86,7 +87,7 @@ export class AwsSQSService {
       this.lokiLogger.log("AWS-SQS Messages deleted successfully");
     } catch (error) {
       this.lokiLogger.error(`Failed to delete AWS-SQS messages: ${(error as Error).message}`);
-      throw new ServiceUnavailableException("Failed to delete AWS-SQS messages");
+      throw new ServiceUnavailableException(EAwsSQSErrorCodes.SQS_DELETE_MESSAGES_FAILED);
     }
   }
 }

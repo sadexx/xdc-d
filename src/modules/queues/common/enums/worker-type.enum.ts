@@ -1,7 +1,8 @@
 export const enum EWorkerType {
   DEFAULT = "default",
   PAYMENTS = "payments",
-  APPOINTMENTS = "appointments",
+  PDF_GENERATION = "pdf-generation",
   NOTIFICATIONS = "notifications",
+  APPOINTMENTS = "appointments",
   WEBHOOKS = "webhooks",
 }

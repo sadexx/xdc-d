@@ -9,4 +9,7 @@ export const enum EJobType {
   PROCESS_CLOSE_MEETING = "process-close-meeting",
   PROCESS_CHECK_IN_OUT_APPOINTMENT = "process-check-in-out-appointment",
   PROCESS_CLOSE_MEETING_WITHOUT_CLIENT_VISIT = "process-close-meeting-without-client-visit",
+  PROCESS_PAYMENT_PRE_AUTHORIZATION = "process-payment-pre-authorization",
+  PROCESS_PAYMENT_CAPTURE = "process-payment-capture",
+  PROCESS_PAY_IN_RECEIPT_PDF_GENERATION = "process-pay-in-receipt-pdf-generation",
 }

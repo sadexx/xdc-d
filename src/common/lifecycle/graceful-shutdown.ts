@@ -36,6 +36,8 @@ export function setupGracefulShutdown(app: INestApplication): void {
 
   process.on("SIGTERM", () => void gracefulShutdown("SIGTERM signal received"));
   process.on("SIGINT", () => void gracefulShutdown("SIGINT signal received"));
+  process.on("SIGHUP", () => void gracefulShutdown("SIGHUP signal received"));
+  process.on("SIGQUIT", () => void gracefulShutdown("SIGQUIT signal received"));
 
   process.on("uncaughtException", (err: Error, origin: string) => {
     SingleLokiLogger.error(`Uncaught Exception at origin: ${origin}`);

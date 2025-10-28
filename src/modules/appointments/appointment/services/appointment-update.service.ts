@@ -7,6 +7,7 @@ import { Appointment } from "src/modules/appointments/appointment/entities";
 import { Repository } from "typeorm";
 import { BadRequestException } from "@nestjs/common";
 import {
+  EAppointmentErrorCodes,
   EAppointmentParticipantType,
   EAppointmentRecreationType,
   EAppointmentStatus,
@@ -50,11 +51,11 @@ export class AppointmentUpdateService {
     const appointment = (await findOneOrFail(id, this.appointmentRepository, queryOptions)) as TUpdateAppointment;
 
     if (appointment.status !== EAppointmentStatus.ACCEPTED && appointment.status !== EAppointmentStatus.PENDING) {
-      throw new BadRequestException("The appointment cannot be updated in its current state.");
+      throw new BadRequestException(EAppointmentErrorCodes.APPOINTMENT_CANNOT_BE_UPDATED);
     }
 
     if (dto.acceptOvertimeRates !== UNDEFINED_VALUE && appointment.status !== EAppointmentStatus.PENDING) {
-      throw new BadRequestException("You can update acceptOvertimeRates only for pending appointments.");
+      throw new BadRequestException(EAppointmentErrorCodes.OVERTIME_RATES_ONLY_FOR_PENDING);
     }
 
     await this.appointmentSharedService.isAppointmentChangesRestrictedByTimeLimits(appointment, dto);

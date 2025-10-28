@@ -3,13 +3,14 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { CompanyDocument } from "src/modules/companies/entities";
 import { UploadDocDto } from "src/modules/companies/common/dto";
-import { ECompanyDocumentStatus, ECompanyType } from "src/modules/companies/common/enums";
+import { ECompaniesErrorCodes, ECompanyDocumentStatus, ECompanyType } from "src/modules/companies/common/enums";
 import { CompanyDocumentIdOutput } from "src/modules/companies/common/outputs";
 import { ITokenUserData } from "src/modules/tokens/common/interfaces";
 import { LFH_ADMIN_ROLES } from "src/common/constants";
 import { IFile } from "src/modules/file-management/common/interfaces";
 import { AccessControlService } from "src/modules/access-control/services";
-import { isInRoles } from "src/common/utils";
+import { findOneOrFailTyped, isInRoles } from "src/common/utils";
+import { ECommonErrorCodes } from "src/common/enums";
 
 @Injectable()
 export class CompaniesDocumentsService {
@@ -21,13 +22,13 @@ export class CompaniesDocumentsService {
 
   public async uploadDoc(dto: UploadDocDto, file: IFile, user: ITokenUserData): Promise<CompanyDocumentIdOutput> {
     if (!file) {
-      throw new BadRequestException("File not received!");
+      throw new BadRequestException(ECommonErrorCodes.FILE_NOT_RECEIVED);
     }
 
     const company = await this.accessControlService.getCompanyByRole(user, {}, dto.companyId);
 
     if (!company) {
-      throw new NotFoundException("Company not found!");
+      throw new NotFoundException(ECompaniesErrorCodes.COMPANIES_COMMON_COMPANY_NOT_FOUND);
     }
 
     let documentStatus: ECompanyDocumentStatus = ECompanyDocumentStatus.PENDING;
@@ -51,23 +52,20 @@ export class CompaniesDocumentsService {
   }
 
   public async approveDoc(id: string): Promise<void> {
-    const document = await this.companyDocumentRepository.findOne({ where: { id } });
+    const document = await findOneOrFailTyped<CompanyDocument>(id, this.companyDocumentRepository, {
+      where: { id },
+    });
 
-    if (!document) {
-      throw new NotFoundException("Document not found!");
-    }
-
-    await this.companyDocumentRepository.update({ id }, { status: ECompanyDocumentStatus.VERIFIED });
+    await this.companyDocumentRepository.update({ id: document.id }, { status: ECompanyDocumentStatus.VERIFIED });
 
     return;
   }
 
   public async removeDoc(id: string, user: ITokenUserData): Promise<void> {
-    const document = await this.companyDocumentRepository.findOne({ where: { id }, relations: { company: true } });
-
-    if (!document) {
-      throw new NotFoundException("Document not found!");
-    }
+    const document = await findOneOrFailTyped<CompanyDocument>(id, this.companyDocumentRepository, {
+      where: { id },
+      relations: { company: true },
+    });
 
     await this.accessControlService.authorizeUserRoleForCompanyOperation(user, document.company);
 

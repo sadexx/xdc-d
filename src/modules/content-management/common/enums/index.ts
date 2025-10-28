@@ -6,3 +6,4 @@ export * from "src/modules/content-management/common/enums/lfh-work-position.enu
 export * from "src/modules/content-management/common/enums/promo-and-review-order.enum";
 export * from "src/modules/content-management/common/enums/landing-part.enum";
 export * from "src/modules/content-management/common/enums/landing-ui-language.enum";
+export * from "src/modules/content-management/common/enums/content-management-error-codes.enum";

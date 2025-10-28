@@ -30,6 +30,7 @@ import { PaymentInformation } from "src/modules/payment-information/entities";
 import { CompanyDepositCharge } from "src/modules/companies-deposit-charge/entities";
 import { OldPayment } from "src/modules/payments/entities";
 import { COMPANY_LFH_ID } from "src/modules/companies/common/constants/constants";
+import { Payment } from "src/modules/payments-new/entities";
 
 @Entity("companies")
 export class Company {
@@ -149,6 +150,9 @@ export class Company {
 
   @OneToMany(() => OldPayment, (payment) => payment.company)
   payments: OldPayment[];
+
+  @OneToMany(() => Payment, (payment) => payment.company)
+  paymentsNEW: Payment[];
 
   @OneToOne(() => CompanyDepositCharge, (companyDepositCharge) => companyDepositCharge.company, {
     nullable: true,

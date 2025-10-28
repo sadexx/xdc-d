@@ -7,6 +7,7 @@ import { Repository } from "typeorm";
 import { DocusignSdkService, DocusignService } from "src/modules/docusign/services";
 import {
   ECorporateSignersCount,
+  EDocusignErrorCodes,
   EExtDocusignCorporateSignerStatus,
   EExtDocusignStatus,
 } from "src/modules/docusign/common/enums";
@@ -29,6 +30,7 @@ import { ITokenUserData } from "src/modules/tokens/common/interfaces";
 import { ICreateContractOutput, ISendContractOutput } from "src/modules/docusign/common/outputs";
 import { ECompanyType } from "src/modules/companies/common/enums";
 import { AccessControlService } from "src/modules/access-control/services";
+import { findOneOrFailTyped } from "src/common/utils";
 
 @Injectable()
 export class DocusignCorporateService {
@@ -53,7 +55,7 @@ export class DocusignCorporateService {
 
     if (isLfhAdminOperation) {
       if (!dto.companyId) {
-        throw new BadRequestException("Please, set company id!");
+        throw new BadRequestException(EDocusignErrorCodes.CORPORATE_COMPANY_ID_REQUIRED);
       }
 
       company = await this.companyRepository.findOne({
@@ -65,14 +67,10 @@ export class DocusignCorporateService {
     }
 
     if (!isLfhAdminOperation) {
-      const userRole = await this.userRoleRepository.findOne({
+      const userRole = await findOneOrFailTyped<UserRole>(user.userRoleId, this.userRoleRepository, {
         select: { id: true, operatedByCompanyId: true },
         where: { id: user.userRoleId },
       });
-
-      if (!userRole) {
-        throw new BadRequestException("User role not exists!");
-      }
 
       company = await this.companyRepository.findOne({
         where: { id: userRole.operatedByCompanyId },
@@ -81,7 +79,7 @@ export class DocusignCorporateService {
     }
 
     if (!company) {
-      throw new NotFoundException("Company not found!");
+      throw new NotFoundException(EDocusignErrorCodes.CORPORATE_COMPANY_NOT_FOUND);
     }
 
     await this.accessControlService.authorizeUserRoleForCompanyOperation(user, company);
@@ -108,7 +106,7 @@ export class DocusignCorporateService {
 
     if (isLfhAdminOperation) {
       if (!dto.companyId) {
-        throw new BadRequestException("Please, set company id!");
+        throw new BadRequestException(EDocusignErrorCodes.CORPORATE_COMPANY_ID_REQUIRED);
       }
 
       corporateSigners = await this.corporateContractSignersRepository.findOne({
@@ -129,14 +127,10 @@ export class DocusignCorporateService {
     }
 
     if (!isLfhAdminOperation) {
-      const userRole = await this.userRoleRepository.findOne({
+      const userRole = await findOneOrFailTyped<UserRole>(user.userRoleId, this.userRoleRepository, {
         select: { id: true, operatedByCompanyId: true },
         where: { id: user.userRoleId },
       });
-
-      if (!userRole) {
-        throw new BadRequestException("User role not exists!");
-      }
 
       corporateSigners = await this.corporateContractSignersRepository.findOne({
         select: {
@@ -156,7 +150,7 @@ export class DocusignCorporateService {
     }
 
     if (!corporateSigners) {
-      throw new NotFoundException("Corporate signers not found!");
+      throw new NotFoundException(EDocusignErrorCodes.CORPORATE_SIGNERS_NOT_FOUND);
     }
 
     await this.accessControlService.authorizeUserRoleForCompanyOperation(user, corporateSigners.company);
@@ -165,7 +159,7 @@ export class DocusignCorporateService {
       corporateSigners.company.contract &&
       corporateSigners.company.contract.docusignStatus === EExtDocusignStatus.COMPLETED
     ) {
-      throw new BadRequestException("Contract already signed!");
+      throw new BadRequestException(EDocusignErrorCodes.COMMON_ALREADY_SIGNED);
     }
 
     await this.corporateContractSignersRepository.update(
@@ -201,7 +195,7 @@ export class DocusignCorporateService {
 
     if (isLfhAdminOperation) {
       if (!dto.companyId) {
-        throw new BadRequestException("Please, set company id!");
+        throw new BadRequestException(EDocusignErrorCodes.CORPORATE_COMPANY_ID_REQUIRED);
       }
 
       corporateSigners = await this.corporateContractSignersRepository.findOne({
@@ -210,14 +204,10 @@ export class DocusignCorporateService {
     }
 
     if (!isLfhAdminOperation) {
-      const userRole = await this.userRoleRepository.findOne({
+      const userRole = await findOneOrFailTyped<UserRole>(user.userRoleId, this.userRoleRepository, {
         select: { id: true, operatedByCompanyId: true },
         where: { id: user.userRoleId },
       });
-
-      if (!userRole) {
-        throw new BadRequestException("User role not exists!");
-      }
 
       corporateSigners = await this.corporateContractSignersRepository.findOne({
         where: { company: { id: userRole.operatedByCompanyId } },
@@ -234,7 +224,7 @@ export class DocusignCorporateService {
   }
 
   public async createCorporateContract(companyId: string, user: ITokenUserData): Promise<ICreateContractOutput> {
-    const company = await this.companyRepository.findOne({
+    const company = await findOneOrFailTyped<Company>(companyId, this.companyRepository, {
       where: { id: companyId },
       relations: {
         contractSigners: true,
@@ -247,22 +237,18 @@ export class DocusignCorporateService {
       },
     });
 
-    if (!company) {
-      throw new BadRequestException("Company for this user not exist!");
-    }
-
     if (!company.contractSigners) {
-      throw new BadRequestException("Set contract signers!");
+      throw new BadRequestException(EDocusignErrorCodes.CORPORATE_SIGNERS_NOT_SET);
     }
 
     if (!company.superAdmin || company.superAdmin.userRoles.length === 0) {
-      throw new BadRequestException(`Company ${company.id} does not have superAdminId`);
+      throw new BadRequestException(EDocusignErrorCodes.CORPORATE_NO_SUPER_ADMIN_ID);
     }
 
     const superAdminRole = this.getSuperAdminRoleByCompanyType(company.companyType, company.superAdmin.userRoles);
 
     if (!superAdminRole) {
-      throw new BadRequestException(`Company ${company.id} does not have superAdmin role`);
+      throw new BadRequestException(EDocusignErrorCodes.CORPORATE_NO_SUPER_ADMIN_ROLE);
     }
 
     const companyActivationSteps = await this.companyActivationService.getActivationSteps(companyId, user);
@@ -300,7 +286,7 @@ export class DocusignCorporateService {
     const templateId = this.docusignService.getTemplateId(superAdminRole.role.name, companyCountry, signerCount);
 
     if (!templateId) {
-      throw new BadRequestException("Contract is not available for this role!");
+      throw new BadRequestException(EDocusignErrorCodes.COMMON_CONTRACT_NOT_AVAILABLE_FOR_ROLE);
     }
 
     const mainSignerName = `${mainSignerTitle ? " " + mainSignerTitle : ""} ${mainSignerFirstName}${mainSignerMiddleName ? " " + mainSignerMiddleName : ""} ${mainSignerLastName}`;
@@ -351,17 +337,17 @@ export class DocusignCorporateService {
     });
 
     if (!docusignContract?.company) {
-      throw new BadRequestException("Company for this user not exist!");
+      throw new BadRequestException(EDocusignErrorCodes.CORPORATE_COMPANY_NOT_FOUND);
     }
 
     if (!docusignContract.company?.contractSigners) {
-      throw new BadRequestException("Set contract signers!");
+      throw new BadRequestException(EDocusignErrorCodes.CORPORATE_SIGNERS_NOT_SET);
     }
 
     const contractDocuments = await this.docusignSdkService.getDocuments(docusignContract.envelopeId);
 
     if (!contractDocuments?.envelopeDocuments || contractDocuments.envelopeDocuments.length === 0) {
-      throw new BadRequestException("Envelope not contained document!");
+      throw new BadRequestException(EDocusignErrorCodes.COMMON_NO_DOCUMENTS);
     }
 
     const signers = await this.docusignSdkService.getEnvelopeSigners(docusignContract.envelopeId);
@@ -376,7 +362,7 @@ export class DocusignCorporateService {
   }
 
   public async resendContract(contractId: string): Promise<void> {
-    const contract = await this.docusignContractRepository.findOne({
+    const contract = await findOneOrFailTyped<DocusignContract>(contractId, this.docusignContractRepository, {
       where: { id: contractId },
       relations: {
         company: {
@@ -390,23 +376,19 @@ export class DocusignCorporateService {
       },
     });
 
-    if (!contract) {
-      throw new NotFoundException(`Contract with this id not exist!`);
-    }
-
     if (contract.docusignStatus === EExtDocusignStatus.COMPLETED) {
-      throw new BadRequestException(`Contract with this id already completed!`);
+      throw new BadRequestException(EDocusignErrorCodes.COMMON_CONTRACT_ALREADY_COMPLETED);
     }
 
     if (contract.isAtLeastOneSignersSigned) {
-      throw new BadRequestException("At least one signatory already signed the contract");
+      throw new BadRequestException(EDocusignErrorCodes.CORPORATE_AT_LEAST_ONE_SIGNED);
     }
 
     const signers = await this.docusignSdkService.getEnvelopeSigners(contract.envelopeId);
 
     for (const signer of signers) {
       if (signer.status === EExtDocusignCorporateSignerStatus.COMPLETED) {
-        throw new BadRequestException("At least one signatory already signed the contract");
+        throw new BadRequestException(EDocusignErrorCodes.CORPORATE_AT_LEAST_ONE_SIGNED);
       }
     }
 
@@ -416,16 +398,12 @@ export class DocusignCorporateService {
   }
 
   public async getEditLink(contractId: string): Promise<ICreateContractOutput> {
-    const contract = await this.docusignContractRepository.findOne({
+    const contract = await findOneOrFailTyped<DocusignContract>(contractId, this.docusignContractRepository, {
       where: { id: contractId },
     });
 
-    if (!contract) {
-      throw new NotFoundException(`Contract with this id not exist!`);
-    }
-
     if (contract.docusignStatus !== EExtDocusignStatus.CREATED) {
-      throw new BadRequestException(`Contract with this status is not editable!`);
+      throw new BadRequestException(EDocusignErrorCodes.CORPORATE_CONTRACT_NOT_EDITABLE);
     }
 
     const editLink = await this.docusignSdkService.getEnvelopeEditLink(contract.envelopeId);
@@ -435,15 +413,15 @@ export class DocusignCorporateService {
 
   private async updateSignersData(signers: IRecipientInterface[], contract: DocusignContract): Promise<void> {
     if (!contract.company) {
-      throw new BadRequestException(`Company for contract ${contract.id} does not exist!`);
+      throw new BadRequestException(EDocusignErrorCodes.CORPORATE_COMPANY_NOT_FOUND);
     }
 
     if (!contract.company?.contractSigners) {
-      throw new BadRequestException("Contract signers not filling");
+      throw new BadRequestException(EDocusignErrorCodes.CORPORATE_SIGNERS_NOT_FILLED);
     }
 
     if (!contract.company.superAdmin || contract.company.superAdmin.userRoles.length === 0) {
-      throw new BadRequestException(`Company with id ${contract.company.id} does not have superAdmin!`);
+      throw new BadRequestException(EDocusignErrorCodes.CORPORATE_NO_SUPER_ADMIN_ID);
     }
 
     const superAdminRole = this.getSuperAdminRoleByCompanyType(
@@ -452,7 +430,7 @@ export class DocusignCorporateService {
     );
 
     if (!superAdminRole) {
-      throw new BadRequestException(`Company ${contract.company.id} does not have superAdmin role`);
+      throw new BadRequestException(EDocusignErrorCodes.CORPORATE_NO_SUPER_ADMIN_ROLE);
     }
 
     const mainSignerIndex = signers.findIndex((signer) => signer.roleName === MAIN_SIGNER_ROLE_NAME);

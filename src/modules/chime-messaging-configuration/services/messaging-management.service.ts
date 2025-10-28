@@ -8,6 +8,7 @@ import {
   EChannelMembershipType,
   EChannelStatus,
   EChannelType,
+  EChimeMessagingConfigurationErrorCodes,
 } from "src/modules/chime-messaging-configuration/common/enums";
 import {
   MessagingCreationService,
@@ -31,6 +32,7 @@ import {
 } from "src/modules/chime-messaging-configuration/common/types";
 import { UserRole } from "src/modules/users/entities";
 import { AccessControlService } from "src/modules/access-control/services";
+import { ECommonErrorCodes } from "src/common/enums";
 
 @Injectable()
 export class MessagingManagementService {
@@ -61,7 +63,9 @@ export class MessagingManagementService {
     );
 
     if (!userRole.profile) {
-      throw new BadRequestException("User has not completed their profile.");
+      throw new BadRequestException(
+        EChimeMessagingConfigurationErrorCodes.MESSAGING_MANAGEMENT_USER_PROFILE_NOT_COMPLETED,
+      );
     }
 
     const channel = await findOneOrFailTyped<TJoinChannel>(id, this.channelRepository, queryOptions.channel);
@@ -72,11 +76,13 @@ export class MessagingManagementService {
     );
 
     if (isUserAlreadyMember) {
-      throw new BadRequestException("User is already a member of the channel.");
+      throw new BadRequestException(EChimeMessagingConfigurationErrorCodes.MESSAGING_MANAGEMENT_USER_ALREADY_MEMBER);
     }
 
     if (channel.channelMemberships.length > 1) {
-      throw new BadRequestException("Channel already has the maximum number of participants.");
+      throw new BadRequestException(
+        EChimeMessagingConfigurationErrorCodes.MESSAGING_MANAGEMENT_CHANNEL_MAX_PARTICIPANTS,
+      );
     }
 
     if (channel.channelMemberships.length > 0) {
@@ -96,7 +102,7 @@ export class MessagingManagementService {
 
   public async uploadFile(file: IFile, dto: UploadFileToChannelDto): Promise<string> {
     if (!file) {
-      throw new NotFoundException("File not received.");
+      throw new NotFoundException(ECommonErrorCodes.FILE_NOT_RECEIVED);
     }
 
     const queryOptions = this.messagingQueryOptionsService.uploadFileOptions(dto.id);
@@ -119,7 +125,7 @@ export class MessagingManagementService {
     const result = await this.channelRepository.update(channel.id, updateData);
 
     if (!result.affected || result.affected === 0) {
-      throw new BadRequestException("Failed to update channel.");
+      throw new BadRequestException(EChimeMessagingConfigurationErrorCodes.MESSAGING_MANAGEMENT_CHANNEL_UPDATE_FAILED);
     } else {
       return { message: "Success" };
     }
@@ -151,7 +157,7 @@ export class MessagingManagementService {
     const { adminArn } = await this.messagingIdentityService.getConfig();
 
     if (!dto.messageId || !dto.channelArn) {
-      throw new BadRequestException("Failed to delete channel message");
+      throw new BadRequestException(EChimeMessagingConfigurationErrorCodes.MESSAGING_MANAGEMENT_DELETE_MESSAGE_FAILED);
     }
 
     await this.awsMessagingSdkService.deleteChannelMessage(dto.channelArn, adminArn, dto.messageId);

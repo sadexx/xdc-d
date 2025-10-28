@@ -5,3 +5,4 @@ export * from "src/modules/chime-meeting-configuration/common/enums/meeting-feat
 export * from "src/modules/chime-meeting-configuration/common/enums/meeting-media-region.enum";
 export * from "src/modules/chime-meeting-configuration/common/enums/background-call-type.enum";
 export * from "src/modules/chime-meeting-configuration/common/enums/meeting-closure-action.enum";
+export * from "src/modules/chime-meeting-configuration/common/enums/chime-meeting-configuration-error-codes.enum";

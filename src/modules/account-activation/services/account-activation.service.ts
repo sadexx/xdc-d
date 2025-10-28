@@ -15,7 +15,7 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { SessionsService } from "src/modules/sessions/services";
-import { EStepStatus } from "src/modules/account-activation/common/enums";
+import { EAccountActivationErrorCodes, EStepStatus } from "src/modules/account-activation/common/enums";
 import { AccountActivationQueryOptionsService, StepInfoService } from "src/modules/account-activation/services";
 import { UserRole } from "src/modules/users/entities";
 import { OneRoleLoginOutput } from "src/modules/auth/common/outputs";
@@ -35,6 +35,8 @@ import {
   TProcessAccountActivation,
   TRetrieveRequiredAndActivationSteps,
 } from "src/modules/account-activation/common/types";
+import { localizeStepNames } from "src/modules/account-activation/common/helpers";
+import { UNDEFINED_VALUE } from "src/common/constants";
 
 @Injectable()
 export class AccountActivationService {
@@ -62,7 +64,7 @@ export class AccountActivationService {
     currentUser: TRetrieveRequiredAndActivationSteps,
   ): Promise<IAccountRequiredStepsDataOutput> {
     if (!currentUser.id || !currentUser.role) {
-      throw new BadRequestException("User not found");
+      throw new BadRequestException(EAccountActivationErrorCodes.USER_NOT_FOUND);
     }
 
     const { accountActivationSteps } = await this.fetchUserAndEvaluateRequiredAndActivationSteps(
@@ -102,7 +104,7 @@ export class AccountActivationService {
 
   public async activateAccount(currentUser: ICurrentUserData): Promise<FinishAccountActivationStepsOutput> {
     if (!currentUser.id || !currentUser.role) {
-      throw new BadRequestException("User not found.");
+      throw new BadRequestException(EAccountActivationErrorCodes.USER_NOT_FOUND);
     }
 
     const { user, userRole, accountActivationSteps } = await this.fetchUserAndEvaluateRequiredAndActivationSteps(
@@ -111,7 +113,7 @@ export class AccountActivationService {
     );
 
     if (userRole.isRequiredInfoFulfilled && userRole.isActive) {
-      throw new BadRequestException("Your account is already active.");
+      throw new BadRequestException(EAccountActivationErrorCodes.ACCOUNT_ALREADY_ACTIVE);
     }
 
     const failedActivationCriteria = await this.processAccountActivation(userRole, accountActivationSteps);
@@ -134,7 +136,7 @@ export class AccountActivationService {
     );
 
     if (userRole.isRequiredInfoFulfilled && userRole.isActive) {
-      throw new BadRequestException("This account is already active.");
+      throw new BadRequestException(EAccountActivationErrorCodes.ACCOUNT_ALREADY_ACTIVE);
     }
 
     await this.accessControlService.authorizeUserRoleForOperation(user, userRole);
@@ -184,7 +186,7 @@ export class AccountActivationService {
     const userRole = await findOneOrFailTyped<TDeactivate>(userRoleId, this.userRoleRepository, queryOptions);
 
     if (!userRole.isActive) {
-      throw new BadRequestException("This user role is not active");
+      throw new BadRequestException(EAccountActivationErrorCodes.USER_ROLE_NOT_ACTIVE);
     }
 
     await this.accessControlService.authorizeUserRoleForOperation(user, userRole);
@@ -200,14 +202,13 @@ export class AccountActivationService {
   }
 
   private throwRequiredInfoException(criteria: { passed: string[]; failed: string[] }): void {
-    let message = `Required information wasn't provided.`;
+    const passedSteps = criteria.passed.length > 0 ? localizeStepNames(criteria.passed) : UNDEFINED_VALUE;
+    const failedSteps = criteria.failed.length > 0 ? localizeStepNames(criteria.failed) : UNDEFINED_VALUE;
 
-    if (criteria.passed.length > 0) {
-      message += ` Passed steps: ${criteria.passed.join(", ")}.`;
-    }
-
-    message += ` Missed steps: ${criteria.failed.join(", ")}`;
-    throw new ForbiddenException(message);
+    throw new ForbiddenException({
+      message: EAccountActivationErrorCodes.REQUIRED_INFO_NOT_PROVIDED,
+      variables: { passedSteps, failedSteps },
+    });
   }
 
   private async startSession(
@@ -226,7 +227,7 @@ export class AccountActivationService {
       const lastSession = await this.sessionsService.getLastSession(user.id);
 
       if (!lastSession) {
-        throw new ServiceUnavailableException("Last session does not exist, re-login, please");
+        throw new ServiceUnavailableException(EAccountActivationErrorCodes.LAST_SESSION_NOT_EXIST);
       }
 
       currentUser.platform = lastSession.platform;
@@ -238,11 +239,11 @@ export class AccountActivationService {
     }
 
     if (!currentUser.clientIPAddress || !currentUser.clientUserAgent) {
-      throw new BadRequestException("Client IP address and user agent are required");
+      throw new BadRequestException(EAccountActivationErrorCodes.CLIENT_INFO_REQUIRED);
     }
 
     if (!currentUser.platform || !currentUser.deviceId) {
-      throw new BadRequestException("Client platform, device id and device token are required");
+      throw new BadRequestException(EAccountActivationErrorCodes.PLATFORM_INFO_REQUIRED);
     }
 
     return await this.sessionsService.updateActiveSession({

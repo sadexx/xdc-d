@@ -10,6 +10,7 @@ import {
   OldIAdditionalBlockPricesForCalculation,
   OldIAdditionalBlockRatesForCalculation,
   OldICalculatePrice,
+  OldIPriceByBlock,
   OldIPricesForCalculation,
   OldIRatesForCalculation,
 } from "src/modules/rates-old/common/interfaces";
@@ -619,6 +620,7 @@ export class OldRatesService {
       return this.calculateAdditionalBlockIfFullyInPeakOrNormalTime(
         additionalPriceAfterHours,
         rates.rateAfterHoursAdditionalBlock?.detailsTime,
+        currentBlockDuration,
       );
     } else if (
       (isStartBeforeNormalTime && !isEndBeforeNormalTime) ||
@@ -637,11 +639,13 @@ export class OldRatesService {
         rates.rateStandardHoursAdditionalBlock?.detailsTime,
         additionalPriceAfterHours,
         rates.rateAfterHoursAdditionalBlock?.detailsTime,
+        currentBlockDuration,
       );
     } else {
       return this.calculateAdditionalBlockIfFullyInPeakOrNormalTime(
         additionalPriceStandardHours,
         rates.rateStandardHoursAdditionalBlock?.detailsTime,
+        currentBlockDuration,
       );
     }
   }
@@ -762,22 +766,22 @@ export class OldRatesService {
   private calculateAdditionalBlockIfFullyInPeakOrNormalTime(
     additionalPrice: number | null | undefined,
     additionalDuration: number | null | undefined,
+    currentBlockDuration: number,
   ): OldICalculatePrice {
     if (!additionalPrice || !additionalDuration) {
       throw new BadRequestException("Incorrect parameter combination!");
     }
 
-    const appointmentPrice = additionalPrice;
+    const numberOfBlocks = Math.ceil(currentBlockDuration / additionalDuration);
+    const totalPrice = additionalPrice * numberOfBlocks;
 
     return {
-      price: round2(appointmentPrice),
-      priceByBlocks: [
-        {
-          price: round2(appointmentPrice),
-          duration: additionalDuration,
-        },
-      ],
-      addedDurationToLastBlockWhenRounding: 0,
+      price: round2(totalPrice),
+      priceByBlocks: Array.from({ length: numberOfBlocks }, () => ({
+        price: round2(additionalPrice),
+        duration: additionalDuration,
+      })) as OldIPriceByBlock[],
+      addedDurationToLastBlockWhenRounding: numberOfBlocks * additionalDuration - currentBlockDuration,
     };
   }
 
@@ -788,6 +792,7 @@ export class OldRatesService {
     additionalTimeStandardHours: number | null | undefined,
     additionalPriceAfterHours: number | null | undefined,
     additionalTimeAfterHours: number | null | undefined,
+    currentBlockDuration: number,
   ): OldICalculatePrice {
     if (
       !additionalPriceStandardHours ||
@@ -798,34 +803,36 @@ export class OldRatesService {
       throw new BadRequestException("Incorrect parameter combination!");
     }
 
-    let additionalTimeFirst = additionalTimeStandardHours;
-    let additionalPriceFirst = additionalPriceStandardHours;
-    let additionalTimeSecond = additionalTimeAfterHours;
-    let additionalPriceSecond = additionalPriceAfterHours;
+    let pricePerMinuteFirst: number;
+    let pricePerMinuteSecond: number;
+    let durationFirst: number;
+    let durationSecond: number;
 
     if (isStartBeforeNormalTime) {
-      additionalTimeFirst = additionalTimeAfterHours;
-      additionalPriceFirst = additionalPriceAfterHours;
-      additionalTimeSecond = additionalTimeStandardHours;
-      additionalPriceSecond = additionalPriceStandardHours;
+      pricePerMinuteFirst = additionalPriceAfterHours / additionalTimeAfterHours;
+      pricePerMinuteSecond = additionalPriceStandardHours / additionalTimeStandardHours;
+      durationFirst = Math.abs(minutesBeforePeak);
+      durationSecond = currentBlockDuration - durationFirst;
+    } else {
+      pricePerMinuteFirst = additionalPriceStandardHours / additionalTimeStandardHours;
+      pricePerMinuteSecond = additionalPriceAfterHours / additionalTimeAfterHours;
+      durationFirst = minutesBeforePeak;
+      durationSecond = currentBlockDuration - durationFirst;
     }
 
-    const additionalTimePrePeakDuration = minutesBeforePeak;
-    const additionalTimePostPeakDuration = additionalTimeFirst - additionalTimePrePeakDuration;
-
-    const firstPartPrice = (additionalPriceFirst / additionalTimeFirst) * additionalTimePrePeakDuration;
-    const secondPartPrice = (additionalPriceSecond / additionalTimeSecond) * additionalTimePostPeakDuration;
+    const firstPartPrice = pricePerMinuteFirst * durationFirst;
+    const secondPartPrice = pricePerMinuteSecond * durationSecond;
 
     return {
-      price: round2(round2(firstPartPrice) + round2(secondPartPrice)),
+      price: round2(firstPartPrice + secondPartPrice),
       priceByBlocks: [
         {
           price: round2(firstPartPrice),
-          duration: additionalTimePrePeakDuration,
+          duration: durationFirst,
         },
         {
           price: round2(secondPartPrice),
-          duration: additionalTimePostPeakDuration,
+          duration: durationSecond,
         },
       ],
       addedDurationToLastBlockWhenRounding: 0,

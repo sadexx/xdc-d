@@ -1,9 +1,13 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { ESortOrder } from "src/common/enums";
+import { ECommonErrorCodes, ESortOrder } from "src/common/enums";
 import { AwsS3Service } from "src/modules/aws/s3/aws-s3.service";
 import { CreatePromoDto, UpdateContentManagementDto, UpdatePromoDto } from "src/modules/content-management/common/dto";
-import { ELandingUiLanguage, EPromoAndReviewOrder } from "src/modules/content-management/common/enums";
+import {
+  EContentManagementErrorCodes,
+  ELandingUiLanguage,
+  EPromoAndReviewOrder,
+} from "src/modules/content-management/common/enums";
 import { ContentManagement, Promo } from "src/modules/content-management/entities";
 import { seedDataContentManagement } from "src/modules/content-management/seed-data/seed-data";
 import { ReviewsService } from "src/modules/reviews/services";
@@ -13,6 +17,7 @@ import { SaveImageOutput } from "src/modules/content-management/common/outputs";
 import { IMessageOutput } from "src/common/outputs";
 import { IFile } from "src/modules/file-management/common/interfaces";
 import { IS_MEDIA_BUCKET } from "src/common/constants";
+import { findOneOrFailTyped } from "src/common/utils";
 
 @Injectable()
 export class ContentManagementService {
@@ -46,12 +51,12 @@ export class ContentManagementService {
       }
 
       if (!englishPromo) {
-        throw new BadRequestException("You must create an English record first.");
+        throw new BadRequestException(EContentManagementErrorCodes.PROMO_ENGLISH_RECORD_REQUIRED);
       }
     }
 
     if (createPromoDto.language === ELandingUiLanguage.ENGLISH && !createPromoDto.image) {
-      throw new BadRequestException("You must create an image for English record first.");
+      throw new BadRequestException(EContentManagementErrorCodes.PROMO_IMAGE_REQUIRED_FOR_ENGLISH);
     }
 
     const promoWithSameLanguageAndOrdinalNumber = await this.getOnePromoByLanguageAndOrdinalNumber(
@@ -60,7 +65,7 @@ export class ContentManagementService {
     );
 
     if (promoWithSameLanguageAndOrdinalNumber) {
-      throw new BadRequestException("The record with this ordinal number and language already exists.");
+      throw new BadRequestException(EContentManagementErrorCodes.PROMO_DUPLICATE_ORDINAL_AND_LANGUAGE);
     }
 
     const promo = this.promoRepository.create(createPromoDto);
@@ -73,15 +78,11 @@ export class ContentManagementService {
   }
 
   public async getOnePromoById(id: string): Promise<Promo> {
-    const promo = await this.promoRepository.findOne({
+    const promo = await findOneOrFailTyped<Promo>(id, this.promoRepository, {
       select: { contentManagement: { language: true } },
       where: { id },
       relations: { contentManagement: true },
     });
-
-    if (!promo) {
-      throw new NotFoundException("Promo not found.");
-    }
 
     return promo;
   }
@@ -145,14 +146,10 @@ export class ContentManagementService {
   }
 
   private async updateContentManagementByPromoId(language: ELandingUiLanguage, promo: Promo): Promise<void> {
-    const contentManagement = await this.contentManagementRepository.findOne({
+    const contentManagement = await findOneOrFailTyped<ContentManagement>(language, this.contentManagementRepository, {
       where: { language },
       relations: { promotions: true },
     });
-
-    if (!contentManagement) {
-      throw new NotFoundException("Content Management not found.");
-    }
 
     const updatedContentManagement = this.contentManagementRepository.create({
       ...contentManagement,
@@ -170,7 +167,7 @@ export class ContentManagementService {
       return cachedData;
     }
 
-    const contentManagement = await this.contentManagementRepository.findOne({
+    const contentManagement = await findOneOrFailTyped<ContentManagement>(language, this.contentManagementRepository, {
       where: {
         language,
       },
@@ -179,10 +176,6 @@ export class ContentManagementService {
         promotions: { ordinalNumber: ESortOrder.ASC },
       },
     });
-
-    if (!contentManagement) {
-      throw new NotFoundException(`Content management with language ${language} not found`);
-    }
 
     const reviews = await this.reviewsService.getAllReviews();
     const result = { ...contentManagement, reviews };
@@ -210,7 +203,7 @@ export class ContentManagementService {
         }
       }
 
-      throw new NotFoundException(`Content management not found.`);
+      throw new NotFoundException(EContentManagementErrorCodes.CONTENT_NOT_FOUND);
     }
 
     if (imageField) {
@@ -259,7 +252,7 @@ export class ContentManagementService {
 
   public async saveImage(file: IFile): Promise<SaveImageOutput> {
     if (!file) {
-      throw new NotFoundException("Image not found.");
+      throw new NotFoundException(ECommonErrorCodes.FILE_NOT_RECEIVED);
     }
 
     const imageUrl = this.awsS3Service.getMediaObjectUrl(file.key);

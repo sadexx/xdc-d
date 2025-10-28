@@ -11,9 +11,10 @@ import { Repository } from "typeorm";
 import { ITokenUserData } from "src/modules/tokens/common/interfaces";
 import { LokiLogger } from "src/common/logger";
 import { ALLOWED_EMPLOYEE_ROLES, INDIVIDUAL_ROLES, LFH_ADMIN_ROLES, MOCK_ENABLED } from "src/common/constants";
-import { isInRoles } from "src/common/utils";
+import { findOneOrFailTyped, isInRoles } from "src/common/utils";
 import { TCheckActivationStepsEndedUserRole } from "src/modules/activation-tracking/common/types";
 import { EMockType } from "src/modules/mock/common/enums";
+import { EActivationTrackingErrorCodes } from "src/modules/activation-tracking/common/enums";
 
 @Injectable()
 export class ActivationTrackingService {
@@ -41,11 +42,11 @@ export class ActivationTrackingService {
   private async checkStepsEnded(currentUser: ICurrentUserData): Promise<void> {
     try {
       if (currentUser.isActive) {
-        throw new BadRequestException("User already activated");
+        throw new BadRequestException(EActivationTrackingErrorCodes.USER_ALREADY_ACTIVATED);
       }
 
       if (!currentUser.id || !currentUser.role) {
-        throw new BadRequestException("User not found");
+        throw new BadRequestException(EActivationTrackingErrorCodes.USER_NOT_FOUND);
       }
 
       if (!isInRoles([...LFH_ADMIN_ROLES, ...INDIVIDUAL_ROLES, ...ALLOWED_EMPLOYEE_ROLES], currentUser.role)) {
@@ -73,13 +74,9 @@ export class ActivationTrackingService {
         return;
       }
 
-      const userInfo = await this.userRepository.findOne({
+      const userInfo = await findOneOrFailTyped<User>(currentUser.id, this.userRepository, {
         where: { id: currentUser.id, userRoles: { role: { name: currentUser.role } } },
       });
-
-      if (!userInfo) {
-        throw new BadRequestException("User not found!");
-      }
 
       // TODO: Refactor as ITokenUserData after docusign refactoring
       if (isNeedContract && !isContractStarted) {

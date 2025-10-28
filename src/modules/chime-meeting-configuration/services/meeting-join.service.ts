@@ -37,6 +37,7 @@ import { EUserRoleName } from "src/modules/users/common/enums";
 import { addMinutes } from "date-fns";
 import { Appointment, AppointmentAdminInfo } from "src/modules/appointments/appointment/entities";
 import { AppointmentSharedService } from "src/modules/appointments/shared/services";
+import { EChimeMeetingConfigurationErrorCodes } from "src/modules/chime-meeting-configuration/common/enums";
 
 @Injectable()
 export class MeetingJoinService {
@@ -75,7 +76,7 @@ export class MeetingJoinService {
         this.lokiLogger.error(
           `Meeting in appointment Id:${meetingConfig.appointmentId} is not active, meetingConfig: ${JSON.stringify(meetingConfig)}`,
         );
-        throw new BadRequestException("Meeting is not active");
+        throw new BadRequestException(EChimeMeetingConfigurationErrorCodes.MEETING_JOIN_MEETING_NOT_ACTIVE);
       }
 
       await this.validateCorporateAdminMeetingAccess(meetingConfig as TMeetingConfigForSuperAdminJoin, currentUser);
@@ -95,7 +96,7 @@ export class MeetingJoinService {
         `Failed to join meeting as super admin: ${(error as Error).message}`,
         (error as Error).stack,
       );
-      throw new ServiceUnavailableException("Failed to join meeting");
+      throw new ServiceUnavailableException(EChimeMeetingConfigurationErrorCodes.MEETING_JOIN_FAILED_TO_JOIN);
     }
   }
 
@@ -115,7 +116,7 @@ export class MeetingJoinService {
         this.lokiLogger.warn(
           `User role with id: ${currentUser.userRoleId} attempted to join meeting without permission.`,
         );
-        throw new BadRequestException("You do not have permission to join this meeting.");
+        throw new BadRequestException(EChimeMeetingConfigurationErrorCodes.MEETING_JOIN_NO_PERMISSION);
       }
     }
   }
@@ -157,7 +158,7 @@ export class MeetingJoinService {
         this.lokiLogger.error(
           `Meeting in appointment Id:${meetingConfig.appointmentId} is not active, meetingConfig: ${JSON.stringify(meetingConfig)}`,
         );
-        throw new BadRequestException("Meeting is not active");
+        throw new BadRequestException(EChimeMeetingConfigurationErrorCodes.MEETING_JOIN_MEETING_NOT_ACTIVE);
       }
 
       const attendeeResponse = await this.processOnDemandJoinLogic(
@@ -176,7 +177,7 @@ export class MeetingJoinService {
         `Failed to join meeting as interpreter with id: ${interpreter.id}: ${(error as Error).message}`,
         (error as Error).stack,
       );
-      throw new ServiceUnavailableException("Failed to join meeting");
+      throw new ServiceUnavailableException(EChimeMeetingConfigurationErrorCodes.MEETING_JOIN_FAILED_TO_JOIN);
     }
   }
 
@@ -372,13 +373,11 @@ export class MeetingJoinService {
     );
 
     if (!isSameDay(currentTime, earliestStartTime)) {
-      throw new ForbiddenException("Meeting can only be started on the same day as the scheduled start time.");
+      throw new ForbiddenException(EChimeMeetingConfigurationErrorCodes.MEETING_JOIN_SAME_DAY_REQUIRED);
     }
 
     if (currentTime < earliestStartTime) {
-      throw new ForbiddenException(
-        "Meeting can only be started no more than 5 minutes before the scheduled start time.",
-      );
+      throw new ForbiddenException(EChimeMeetingConfigurationErrorCodes.MEETING_JOIN_FIVE_MINUTE_LIMIT);
     }
   }
 
@@ -407,7 +406,7 @@ export class MeetingJoinService {
       this.lokiLogger.error(
         `Failed to create meeting for appointment Id: ${meetingConfig.appointmentId}: ${JSON.stringify(meetingResponse)}`,
       );
-      throw new ServiceUnavailableException("Unable to create meeting");
+      throw new ServiceUnavailableException(EChimeMeetingConfigurationErrorCodes.MEETING_JOIN_UNABLE_CREATE_MEETING);
     }
 
     const attendeesResponse = meetingResponse.Attendees;
@@ -430,7 +429,7 @@ export class MeetingJoinService {
         this.lokiLogger.error(
           `Failed to create attendee for appointment Id: ${meetingConfig.appointmentId}, attendee: ${JSON.stringify(attendee)}`,
         );
-        throw new ServiceUnavailableException("Unable to create attendee");
+        throw new ServiceUnavailableException(EChimeMeetingConfigurationErrorCodes.MEETING_JOIN_UNABLE_CREATE_ATTENDEE);
       }
     }
 
@@ -455,14 +454,14 @@ export class MeetingJoinService {
   private async startMediaCapturePipeline(meetingConfig: TMeetingConfigForJoin): Promise<void> {
     if (!meetingConfig.chimeMeetingId) {
       this.lokiLogger.error(`Chime meeting id not found, meetingConfig: ${JSON.stringify(meetingConfig)}`);
-      throw new BadRequestException("Chime meeting id not found");
+      throw new BadRequestException(EChimeMeetingConfigurationErrorCodes.MEETING_JOIN_CHIME_MEETING_ID_NOT_FOUND);
     }
 
     const pipeline = await this.chimeSdkService.startMediaCapturePipeline(meetingConfig.chimeMeetingId);
 
     if (!pipeline || !pipeline.MediaCapturePipeline) {
       this.lokiLogger.error(`Failed to start media capture pipeline, pipeline: ${JSON.stringify(pipeline)}`);
-      throw new ServiceUnavailableException("Failed to join meeting");
+      throw new ServiceUnavailableException(EChimeMeetingConfigurationErrorCodes.MEETING_JOIN_FAILED_TO_JOIN);
     }
 
     await this.chimeMeetingConfigurationRepository.update(meetingConfig.id, {
@@ -479,7 +478,7 @@ export class MeetingJoinService {
 
     if (!currentAttendee || !meetingConfig.chimeMeetingId || !meetingConfig.mediaRegion || !meetingConfig.meeting) {
       this.lokiLogger.error(`Unable to join meeting: ${JSON.stringify(meetingConfig)}`);
-      throw new ServiceUnavailableException("Unable to join meeting");
+      throw new ServiceUnavailableException(EChimeMeetingConfigurationErrorCodes.MEETING_JOIN_UNABLE_JOIN_MEETING);
     }
 
     await this.attendeeRepository.update(currentAttendee.id, {

@@ -10,6 +10,7 @@ import {
   EAppointmentCommunicationType,
   EAppointmentRecreationType,
   EAppointmentStatus,
+  EAppointmentErrorCodes,
 } from "src/modules/appointments/appointment/common/enums";
 import { Appointment, AppointmentReminder } from "src/modules/appointments/appointment/entities";
 import {
@@ -192,7 +193,7 @@ export class AppointmentRecreateService {
     dto: Partial<UpdateAppointmentDto>,
   ): IRecreateAppointment {
     if (!oldAppointment.client || !oldAppointment.client.timezone) {
-      throw new BadRequestException("Failed to construct appointment recreate dto.");
+      throw new BadRequestException(EAppointmentErrorCodes.FAILED_TO_CONSTRUCT_RECREATE_DTO);
     }
 
     const determinedScheduledStartTime = dto.scheduledStartTime ?? oldAppointment.scheduledStartTime;

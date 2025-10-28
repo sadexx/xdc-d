@@ -3,7 +3,12 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { FindOptionsWhere, ILike, Repository } from "typeorm";
 import { GetAllInterpretersDto, NaatiCpnQueryDto } from "src/modules/naati/common/dto";
 import { NaatiInterpreter, NaatiProfile } from "src/modules/naati/entities";
-import { EExtInterpreterLevel, EExtNaatiInterpreterType, EExtNaatiLanguages } from "src/modules/naati/common/enum";
+import {
+  EExtInterpreterLevel,
+  EExtNaatiInterpreterType,
+  EExtNaatiLanguages,
+  ENaatiErrorCodes,
+} from "src/modules/naati/common/enum";
 import { INaatiCertifiedLanguages, INaatiInterpreterProfile } from "src/modules/naati/common/interface";
 import {
   EInterpreterCertificateType,
@@ -60,7 +65,7 @@ export class NaatiService {
     );
 
     if (userRole.isActive) {
-      throw new BadRequestException("User role or profile status does not permit this operation.");
+      throw new BadRequestException(ENaatiErrorCodes.VERIFICATION_INVALID_USER_STATUS);
     }
 
     const existingInterpreter = await this.findInterpreterInDatabase(
@@ -69,7 +74,7 @@ export class NaatiService {
     );
 
     if (!existingInterpreter) {
-      throw new NotFoundException("Interpreter not found.");
+      throw new NotFoundException(ENaatiErrorCodes.VERIFICATION_INTERPRETER_NOT_FOUND);
     }
 
     await this.createOrUpdateNaatiProfile(userRole, existingInterpreter);
@@ -141,7 +146,7 @@ export class NaatiService {
       ? { id: dto.userRoleId }
       : { id: user.userRoleId };
 
-    const userRole = await this.userRoleRepository.findOne({
+    const userRole = await findOneOrFailTyped<UserRole>(dto.userRoleId ?? user.userRoleId, this.userRoleRepository, {
       select: {
         id: true,
         isActive: true,
@@ -153,18 +158,18 @@ export class NaatiService {
       relations: { naatiProfile: true },
     });
 
-    if (!userRole || !userRole.naatiProfile) {
-      throw new NotFoundException("Naati profile not found.");
+    if (!userRole.naatiProfile) {
+      throw new NotFoundException(ENaatiErrorCodes.VERIFICATION_PROFILE_NOT_FOUND);
     }
 
     await this.accessControlService.authorizeUserRoleForOperation(user, userRole);
 
     if (userRole.isActive) {
-      throw new BadRequestException("User role or profile status does not permit this operation.");
+      throw new BadRequestException(ENaatiErrorCodes.VERIFICATION_INVALID_USER_STATUS);
     }
 
     if (userRole.naatiProfile.practitionerCpn === dto.cpn) {
-      throw new BadRequestException("Cpn number already saved.");
+      throw new BadRequestException(ENaatiErrorCodes.VERIFICATION_CPN_ALREADY_SAVED);
     }
 
     await this.naatiProfileRepository.update(userRole.naatiProfile.id, {
@@ -191,7 +196,7 @@ export class NaatiService {
     );
 
     if (userRole.isActive) {
-      throw new BadRequestException("User role or profile status does not permit this operation.");
+      throw new BadRequestException(ENaatiErrorCodes.VERIFICATION_INVALID_USER_STATUS);
     }
 
     let naatiResponse: INaatiApiResponseOutput;
@@ -255,7 +260,7 @@ export class NaatiService {
       const { practitioner, currentCertifications, previousCertifications } = naatiApiResponse;
 
       if (naatiApiResponse.errorDescription) {
-        throw new NotFoundException("The Cpn number is not valid.");
+        throw new NotFoundException(ENaatiErrorCodes.VERIFICATION_INVALID_CPN);
       }
 
       if (practitioner) {
@@ -267,7 +272,7 @@ export class NaatiService {
         const isLastNameFound = fullNameFromNaati.includes(userRole.profile.lastName.toUpperCase());
 
         if (!isFirstNameFound || !isLastNameFound) {
-          throw new BadRequestException("The name from Naati does not match the name entered by the user.");
+          throw new BadRequestException(ENaatiErrorCodes.VERIFICATION_NAME_MISMATCH);
         }
       }
 
@@ -310,7 +315,10 @@ export class NaatiService {
     if (key && ELanguages[key as keyof typeof ELanguages]) {
       return ELanguages[key as keyof typeof ELanguages];
     } else {
-      throw new BadRequestException(`The language ${extLang} is not supported. Please contact support.`);
+      throw new BadRequestException({
+        message: ENaatiErrorCodes.VERIFICATION_LANGUAGE_NOT_SUPPORTED,
+        variables: { language: extLang },
+      });
     }
   }
 
@@ -470,15 +478,11 @@ export class NaatiService {
   }
 
   public async removeNaatiProfile(id: string): Promise<void> {
-    const naatiProfile = await this.naatiProfileRepository.findOne({
-      where: { id },
-    });
+    const result = await this.naatiProfileRepository.delete({ id });
 
-    if (!naatiProfile) {
-      throw new NotFoundException("Naati profile not found.");
+    if (!result.affected || result.affected === 0) {
+      throw new NotFoundException(ENaatiErrorCodes.VERIFICATION_PROFILE_NOT_FOUND);
     }
-
-    await this.naatiProfileRepository.remove(naatiProfile);
 
     return;
   }

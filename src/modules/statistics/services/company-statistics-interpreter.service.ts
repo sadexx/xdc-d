@@ -5,6 +5,7 @@ import {
   EChartLine,
   EChartsHomepageLine,
   ECorporateInterpreterSubordinatesTypes,
+  EStatisticsErrorCodes,
 } from "src/modules/statistics/common/enums";
 import {
   GetAppointmentsByLanguageAndCompanyDto,
@@ -51,7 +52,7 @@ export class CompanyStatisticsInterpreterService {
     const company = await this.accessControlService.getCompanyByRole(user, {}, dto.companyId);
 
     if (!company) {
-      throw new NotFoundException("Company not found!");
+      throw new NotFoundException(EStatisticsErrorCodes.COMPANY_NOT_FOUND);
     }
 
     const subordinateCompanies = await this.companyRepository.find({
@@ -126,7 +127,7 @@ export class CompanyStatisticsInterpreterService {
     const company = await this.accessControlService.getCompanyByRole(user, {}, dto.companyId);
 
     if (!company) {
-      throw new NotFoundException("Company not found!");
+      throw new NotFoundException(EStatisticsErrorCodes.COMPANY_NOT_FOUND);
     }
 
     const subordinateCompanies = await this.companyRepository.find({
@@ -193,7 +194,7 @@ export class CompanyStatisticsInterpreterService {
     const company = await this.accessControlService.getCompanyByRole(user, {}, dto.companyId);
 
     if (!company) {
-      throw new NotFoundException("Company not found!");
+      throw new NotFoundException(EStatisticsErrorCodes.COMPANY_NOT_FOUND);
     }
 
     const { dateFrom, dateTo } = this.statisticsService.getDates(dto.dateFrom, dto.dateTo);
@@ -295,7 +296,7 @@ export class CompanyStatisticsInterpreterService {
     const company = await this.accessControlService.getCompanyByRole(user, {}, dto.companyId);
 
     if (!company) {
-      throw new NotFoundException("Company not found!");
+      throw new NotFoundException(EStatisticsErrorCodes.COMPANY_NOT_FOUND);
     }
 
     const subordinateCompanies = await this.companyRepository.find({
@@ -356,7 +357,7 @@ export class CompanyStatisticsInterpreterService {
     const company = await this.accessControlService.getCompanyByRole(user, {}, dto.companyId);
 
     if (!company) {
-      throw new NotFoundException("Company not found!");
+      throw new NotFoundException(EStatisticsErrorCodes.COMPANY_NOT_FOUND);
     }
 
     const { dateFrom, dateTo } = this.statisticsService.getDates(dto.dateFrom, dto.dateTo);
@@ -405,7 +406,7 @@ export class CompanyStatisticsInterpreterService {
     const company = await this.accessControlService.getCompanyByRole(user, {}, dto.companyId);
 
     if (!company) {
-      throw new NotFoundException("Company not found!");
+      throw new NotFoundException(EStatisticsErrorCodes.COMPANY_NOT_FOUND);
     }
 
     const { dateFrom, dateTo } = this.statisticsService.getDates(dto.dateFrom, dto.dateTo);
@@ -494,7 +495,7 @@ export class CompanyStatisticsInterpreterService {
     const company = await this.accessControlService.getCompanyByRole(user, {}, dto.companyId);
 
     if (!company) {
-      throw new NotFoundException("Company not found!");
+      throw new NotFoundException(EStatisticsErrorCodes.COMPANY_NOT_FOUND);
     }
 
     const onDemandCount = await this.appointmentRepository.count({
@@ -564,7 +565,7 @@ export class CompanyStatisticsInterpreterService {
     const company = await this.accessControlService.getCompanyByRole(user, {}, dto.companyId);
 
     if (!company) {
-      throw new NotFoundException("Company not found!");
+      throw new NotFoundException(EStatisticsErrorCodes.COMPANY_NOT_FOUND);
     }
 
     for (const [index, period] of dates.entries()) {
@@ -611,7 +612,7 @@ export class CompanyStatisticsInterpreterService {
     const company = await this.accessControlService.getCompanyByRole(user, {}, dto.companyId);
 
     if (!company) {
-      throw new NotFoundException("Company not found!");
+      throw new NotFoundException(EStatisticsErrorCodes.COMPANY_NOT_FOUND);
     }
 
     const subordinateCompanies = await this.companyRepository.find({

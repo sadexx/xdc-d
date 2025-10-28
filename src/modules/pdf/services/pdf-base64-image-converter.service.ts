@@ -6,6 +6,7 @@ import {
   NUMBER_OF_MINUTES_IN_HOUR,
   NUMBER_OF_MINUTES_IN_THREE_HOURS,
 } from "src/common/constants";
+import { EPdfErrorCodes } from "src/modules/pdf/common/enums";
 
 @Injectable()
 export class PdfBase64ImageConverterService {
@@ -27,7 +28,8 @@ export class PdfBase64ImageConverterService {
       });
 
       if (!response.ok) {
-        throw new BadRequestException(`Failed to fetch image from ${imageUrl}: ${response.statusText}`);
+        this.lokiLogger.error(`Failed to fetch image from ${imageUrl}: ${response.statusText}`);
+        throw new BadRequestException(EPdfErrorCodes.IMAGE_FETCH_FAILED);
       }
 
       const arrayBuffer = await response.arrayBuffer();
@@ -40,7 +42,7 @@ export class PdfBase64ImageConverterService {
       return base64Image;
     } catch (error) {
       this.lokiLogger.error(`Error converting image to Base64: ${(error as Error).message}, ${(error as Error).stack}`);
-      throw new InternalServerErrorException("An unexpected error occurred while converting the image.");
+      throw new InternalServerErrorException(EPdfErrorCodes.IMAGE_CONVERSION_ERROR);
     }
   }
 }

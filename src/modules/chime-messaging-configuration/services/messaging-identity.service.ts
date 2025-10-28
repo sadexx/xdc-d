@@ -7,6 +7,7 @@ import { UserRole } from "src/modules/users/entities";
 import { APP_INSTANCE_NAME } from "src/common/constants";
 import { findOneOrFail } from "src/common/utils";
 import { RedisService } from "src/modules/redis/services";
+import { EChimeMessagingConfigurationErrorCodes } from "src/modules/chime-messaging-configuration/common/enums";
 
 @Injectable()
 export class MessagingIdentityService {
@@ -31,7 +32,9 @@ export class MessagingIdentityService {
     const appInstanceResponse = await this.awsMessagingSdkService.createAppInstance(instanceName);
 
     if (!appInstanceResponse || !appInstanceResponse.AppInstanceArn) {
-      throw new ServiceUnavailableException("Failed to create AppInstance.");
+      throw new ServiceUnavailableException(
+        EChimeMessagingConfigurationErrorCodes.MESSAGING_IDENTITY_CREATE_APP_INSTANCE_FAILED,
+      );
     }
 
     const adminResponse = await this.awsMessagingSdkService.createAppInstanceAdmin(appInstanceResponse.AppInstanceArn);

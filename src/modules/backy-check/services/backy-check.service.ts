@@ -1,7 +1,6 @@
 import {
   BadRequestException,
   Injectable,
-  NotFoundException,
   ServiceUnavailableException,
   UnprocessableEntityException,
 } from "@nestjs/common";
@@ -13,6 +12,7 @@ import { EDocumentType } from "src/modules/users/common/enums";
 import { IBackyCheckOrder, IStartWWCCReq, IUploadDocsInterface } from "src/modules/backy-check/common/interfaces";
 import { StartWWCCDto, StatusManualDecisionDto, UpdateWWCCDto } from "src/modules/backy-check/common/dto";
 import {
+  EBackyCheckErrorCodes,
   EExtBackyCheckResultResponse,
   EExtCheckResult,
   EExtCheckStatus,
@@ -44,6 +44,8 @@ import { HelperService } from "src/modules/helper/services";
 import { IFile } from "src/modules/file-management/common/interfaces";
 import { AccessControlService } from "src/modules/access-control/services";
 import { EMockType } from "src/modules/mock/common/enums";
+import { findOneOrFailTyped } from "src/common/utils";
+import { ECommonErrorCodes } from "src/common/enums";
 
 @Injectable()
 export class BackyCheckService {
@@ -72,10 +74,10 @@ export class BackyCheckService {
 
   public async uploadDocs(dto: UUIDParamDto, user: ITokenUserData, file: IFile): Promise<IUploadDocsInterface> {
     if (!file) {
-      throw new BadRequestException("File not received!");
+      throw new BadRequestException(ECommonErrorCodes.FILE_NOT_RECEIVED);
     }
 
-    const backyCheck = await this.backyCheckRepository.findOne({
+    const backyCheck = await findOneOrFailTyped<BackyCheck>(dto.id, this.backyCheckRepository, {
       where: { id: dto.id },
       relations: {
         document: true,
@@ -83,14 +85,10 @@ export class BackyCheckService {
       },
     });
 
-    if (!backyCheck) {
-      throw new BadRequestException("WWCC request not exist!");
-    }
-
     await this.accessControlService.authorizeUserRoleForOperation(user, backyCheck.userRole);
 
     if (backyCheck.manualCheckResults === EManualCheckResult.MANUAL_APPROVED) {
-      throw new BadRequestException("File cannot be uploaded for this request!");
+      throw new BadRequestException(EBackyCheckErrorCodes.SERVICE_FILE_UPLOAD_NOT_ALLOWED);
     }
 
     let document: UserDocument | null = null;
@@ -128,17 +126,13 @@ export class BackyCheckService {
       ? { id: dto.id }
       : { id: dto.id, userRole: { id: user.userRoleId } };
 
-    const document = await this.userDocumentRepository.findOne({
+    const document = await findOneOrFailTyped<UserDocument>(dto.id, this.userDocumentRepository, {
       where: whereCondition,
       relations: { userRole: true },
     });
 
-    if (!document) {
-      throw new NotFoundException("Document with this id not found!");
-    }
-
     if (!document.s3Key) {
-      throw new UnprocessableEntityException("Document not uploaded or uploaded with error");
+      throw new UnprocessableEntityException(EBackyCheckErrorCodes.SERVICE_DOCUMENT_NOT_UPLOADED);
     }
 
     await this.accessControlService.authorizeUserRoleForOperation(user, document.userRole);
@@ -154,14 +148,10 @@ export class BackyCheckService {
       ? { id: dto.userRoleId }
       : { id: user.userRoleId };
 
-    const userRole = await this.userRoleRepository.findOne({
+    const userRole = await findOneOrFailTyped<UserRole>(user.userRoleId, this.userRoleRepository, {
       where: whereCondition,
       relations: { profile: true, backyCheck: { userRole: { role: true, user: true } } },
     });
-
-    if (!userRole) {
-      throw new NotFoundException("User role not found!");
-    }
 
     await this.accessControlService.authorizeUserRoleForOperation(user, userRole);
 
@@ -175,7 +165,7 @@ export class BackyCheckService {
         backyCheckRequest.checkResults === EExtCheckResult.CLEAR ||
         backyCheckRequest.manualCheckResults === EManualCheckResult.MANUAL_APPROVED
       ) {
-        throw new BadRequestException("WWCC already successfully ended");
+        throw new BadRequestException(EBackyCheckErrorCodes.SERVICE_WWCC_ALREADY_ENDED);
       }
 
       if (
@@ -183,7 +173,7 @@ export class BackyCheckService {
         backyCheckRequest.checkStatus !== EExtCheckStatus.VERIFIED &&
         backyCheckRequest.manualCheckResults !== EManualCheckResult.MANUAL_REJECTED
       ) {
-        throw new BadRequestException("Update WWCC request not possible with current status");
+        throw new BadRequestException(EBackyCheckErrorCodes.SERVICE_UPDATE_NOT_POSSIBLE);
       }
 
       await this.accessControlService.authorizeUserRoleForOperation(user, userRole);
@@ -199,7 +189,7 @@ export class BackyCheckService {
         NUMBER_OF_MILLISECONDS_IN_SECOND;
 
       if (elapsedTime >= timeDifferent) {
-        throw new BadRequestException("Order are expired");
+        throw new BadRequestException(EBackyCheckErrorCodes.SERVICE_ORDER_EXPIRED);
       }
 
       await this.backyCheckRepository.update(
@@ -292,17 +282,13 @@ export class BackyCheckService {
   }
 
   public async updateWWCC(dto: UpdateWWCCDto, user: ITokenUserData, file?: IFile): Promise<IMessageOutput> {
-    const backyCheck = await this.backyCheckRepository.findOne({
+    const backyCheck = await findOneOrFailTyped<BackyCheck>(dto.id, this.backyCheckRepository, {
       where: { id: dto.id },
       relations: {
         userRole: { role: true, user: true },
         document: true,
       },
     });
-
-    if (!backyCheck) {
-      throw new NotFoundException("WWCC check not found!");
-    }
 
     await this.accessControlService.authorizeUserRoleForOperation(user, backyCheck.userRole);
 
@@ -312,7 +298,7 @@ export class BackyCheckService {
       backyCheck.checkStatus === EExtCheckStatus.VERIFIED ||
       backyCheck.checkStatus === EExtCheckStatus.IN_REVIEW
     ) {
-      throw new BadRequestException("Cannot update a pending or in-progress WWCC request.");
+      throw new BadRequestException(EBackyCheckErrorCodes.SERVICE_UPDATE_PENDING_REQUEST);
     }
 
     if (file) {
@@ -365,7 +351,7 @@ export class BackyCheckService {
   }
 
   public async statusManualDecision(dto: StatusManualDecisionDto, user: ITokenUserData): Promise<void> {
-    const backyCheckRequest = await this.backyCheckRepository.findOne({
+    const backyCheckRequest = await findOneOrFailTyped<BackyCheck>(dto.id, this.backyCheckRepository, {
       where: { id: dto.id },
       relations: {
         userRole: {
@@ -375,14 +361,10 @@ export class BackyCheckService {
       },
     });
 
-    if (!backyCheckRequest) {
-      throw new NotFoundException("Request with this id not exist!");
-    }
-
     await this.accessControlService.authorizeUserRoleForOperation(user, backyCheckRequest.userRole);
 
     if (backyCheckRequest.manualCheckResults === EManualCheckResult.INITIAL) {
-      throw new BadRequestException("Request does not have uploaded file!");
+      throw new BadRequestException(EBackyCheckErrorCodes.SERVICE_NO_UPLOADED_FILE);
     }
 
     await this.backyCheckRepository.update({ id: dto.id }, { manualCheckResults: dto.status });
@@ -402,14 +384,10 @@ export class BackyCheckService {
   }
 
   public async removeWWCCRequest(id: string, user: ITokenUserData): Promise<void> {
-    const backyCheck = await this.backyCheckRepository.findOne({
+    const backyCheck = await findOneOrFailTyped<BackyCheck>(id, this.backyCheckRepository, {
       where: { id: id },
       relations: { userRole: true, document: true },
     });
-
-    if (!backyCheck) {
-      throw new NotFoundException("WWCC check not found!");
-    }
 
     await this.accessControlService.authorizeUserRoleForOperation(user, backyCheck.userRole);
 
@@ -419,7 +397,7 @@ export class BackyCheckService {
       backyCheck.checkStatus === EExtCheckStatus.VERIFIED ||
       backyCheck.checkStatus === EExtCheckStatus.IN_REVIEW
     ) {
-      throw new BadRequestException("Request with this id is pending!");
+      throw new BadRequestException(EBackyCheckErrorCodes.SERVICE_REQUEST_PENDING);
     }
 
     await this.backyCheckRepository.delete({ id });
@@ -476,19 +454,15 @@ export class BackyCheckService {
   }
 
   public async removeWWCCFile(id: string, user: ITokenUserData): Promise<void> {
-    const backyCheck = await this.backyCheckRepository.findOne({
+    const backyCheck = await findOneOrFailTyped<BackyCheck>(id, this.backyCheckRepository, {
       where: { id },
       relations: { userRole: true, document: true },
     });
 
-    if (!backyCheck) {
-      throw new NotFoundException("WWCC check not found.");
-    }
-
     await this.accessControlService.authorizeUserRoleForOperation(user, backyCheck.userRole);
 
     if (!backyCheck.document) {
-      throw new BadRequestException("WWCC check does not have uploaded file.");
+      throw new BadRequestException(EBackyCheckErrorCodes.SERVICE_NO_UPLOADED_FILE);
     }
 
     await this.awsS3Service.deleteObject(backyCheck.document.s3Key);

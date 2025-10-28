@@ -10,6 +10,7 @@ import { ITokenUserData } from "src/modules/tokens/common/interfaces";
 import { NUMBER_OF_DAYS_IN_TWO_WEEKS } from "src/common/constants";
 import { AppointmentSharedService } from "src/modules/appointments/shared/services";
 import { TCancelAppointment } from "src/modules/appointments/appointment/common/types";
+import { EInterpretersProfileErrorCodes } from "src/modules/interpreters/profile/common/enum";
 
 @Injectable()
 export class InterpreterCancellationRecordService {
@@ -123,7 +124,7 @@ export class InterpreterCancellationRecordService {
     });
 
     if (!interpreterProfile.cancellationRecord) {
-      throw new NotFoundException("Cancellation record not found.");
+      throw new NotFoundException(EInterpretersProfileErrorCodes.CANCELLATION_RECORD_NOT_FOUND);
     }
 
     await this.unblockInterpreterProfiles(interpreterProfile.id);

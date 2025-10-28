@@ -5,7 +5,11 @@ import { CustomInsurance, InterpreterProfile, LanguagePair } from "src/modules/i
 import { IInterpreterProfile } from "src/modules/interpreters/profile/common/interface";
 import { UserRole } from "src/modules/users/entities";
 import { EExtInterpreterLevel } from "src/modules/naati/common/enum";
-import { ELanguageLevel, ELanguages } from "src/modules/interpreters/profile/common/enum";
+import {
+  EInterpretersProfileErrorCodes,
+  ELanguageLevel,
+  ELanguages,
+} from "src/modules/interpreters/profile/common/enum";
 import {
   CreateLanguagePairDto,
   CustomInsuranceDto,
@@ -23,7 +27,7 @@ import { addMonths } from "date-fns";
 import { ITokenUserData } from "src/modules/tokens/common/interfaces";
 import { EUserRoleName } from "src/modules/users/common/enums";
 import { IMessageOutput } from "src/common/outputs";
-import { findOneOrFail } from "src/common/utils";
+import { findOneOrFail, findOneOrFailTyped } from "src/common/utils";
 import { InterpreterBadgeService } from "src/modules/interpreters/badge/services";
 import { LokiLogger } from "src/common/logger";
 import { AccessControlService } from "src/modules/access-control/services";
@@ -194,7 +198,7 @@ export class InterpreterProfileService {
       ? { id: dto.userRoleId }
       : { id: user.userRoleId };
 
-    const userRole = await this.userRoleRepository.findOne({
+    const userRole = await findOneOrFailTyped<UserRole>(dto.userRoleId ?? user.userRoleId, this.userRoleRepository, {
       select: {
         id: true,
         operatedByCompanyId: true,
@@ -213,14 +217,10 @@ export class InterpreterProfileService {
       relations: { address: true, customInsurance: true, user: true, role: true },
     });
 
-    if (!userRole) {
-      throw new NotFoundException("User role not found.");
-    }
-
     await this.accessControlService.authorizeUserRoleForOperation(user, userRole);
 
     if (!AUSTRALIA_AND_COUNTRIES_WITH_SIMILAR_RULES.includes(userRole?.address?.country as EExtCountry)) {
-      throw new ForbiddenException("This request is available only for Australia and New Zealand citizens");
+      throw new ForbiddenException(EInterpretersProfileErrorCodes.PROFILE_AUSTRALIA_NZ_ONLY);
     }
 
     if (userRole.customInsurance) {
@@ -267,15 +267,11 @@ export class InterpreterProfileService {
   }
 
   public async removeCustomInsurance(id: string, user: ITokenUserData): Promise<void> {
-    const customInsurance = await this.customInsuranceRepository.findOne({
+    const customInsurance = await findOneOrFailTyped<CustomInsurance>(id, this.customInsuranceRepository, {
       select: { userRole: { id: true, operatedByCompanyId: true, operatedByMainCorporateCompanyId: true } },
       where: { id },
       relations: { userRole: true },
     });
-
-    if (!customInsurance) {
-      throw new NotFoundException("Custom Insurance not found!");
-    }
 
     await this.accessControlService.authorizeUserRoleForOperation(user, customInsurance.userRole);
 
@@ -342,7 +338,7 @@ export class InterpreterProfileService {
     });
 
     if (!userRole || !userRole.interpreterProfile) {
-      throw new NotFoundException("Interpreter profile not found.");
+      throw new NotFoundException(EInterpretersProfileErrorCodes.PROFILE_NOT_FOUND);
     }
 
     await this.accessControlService.authorizeUserRoleForOperation(user, userRole);
@@ -372,11 +368,11 @@ export class InterpreterProfileService {
 
   public async updateInterpreterLocation(dto: OrderEventDto): Promise<IMessageOutput> {
     if (!dto.id) {
-      throw new BadRequestException("Failed to update interpreter location.");
+      throw new BadRequestException(EInterpretersProfileErrorCodes.PROFILE_LOCATION_UPDATE_FAILED);
     }
 
     if (!isUUID(dto.id)) {
-      throw new BadRequestException("Invalid interpreter id.");
+      throw new BadRequestException(EInterpretersProfileErrorCodes.PROFILE_INVALID_INTERPRETER_ID);
     }
 
     const result = await this.interpreterProfileRepository.update(
@@ -388,7 +384,7 @@ export class InterpreterProfileService {
     );
 
     if (!result.affected || result.affected === 0) {
-      throw new BadRequestException("Failed to update interpreter location.");
+      throw new BadRequestException(EInterpretersProfileErrorCodes.PROFILE_LOCATION_UPDATE_FAILED);
     } else {
       return { message: "Success" };
     }
@@ -447,7 +443,7 @@ export class InterpreterProfileService {
     }
 
     if (!this.hasValidWWCC(userRole.backyCheck)) {
-      throw new BadRequestException("Upload your WWCC to be able to get face-to-face appointments.");
+      throw new BadRequestException(EInterpretersProfileErrorCodes.PROFILE_WWCC_REQUIRED);
     }
   }
 

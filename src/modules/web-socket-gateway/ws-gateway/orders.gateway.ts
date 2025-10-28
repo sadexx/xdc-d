@@ -8,7 +8,6 @@ import {
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
-  WsException,
 } from "@nestjs/websockets";
 import { OnModuleDestroy, UseFilters } from "@nestjs/common";
 import { Server, Socket } from "socket.io";
@@ -108,23 +107,17 @@ export class OrderGateway implements OnGatewayInit, OnGatewayConnection, OnGatew
 
   @SubscribeMessage("message")
   public async handleMessage(@ConnectedSocket() client: Socket, @MessageBody() message: OrderEventDto): Promise<void> {
-    try {
-      switch (message.event) {
-        case EWebSocketEventTypes.UPDATE_INTERPRETER_LOCATION: {
-          const messages = await this.interpreterProfileService.updateInterpreterLocation(message);
-          this.prometheusService.messagesSentCounter.inc();
-          client.emit(EWebSocketEventTypes.UPDATE_INTERPRETER_LOCATION, messages);
-          break;
-        }
-
-        default:
-          this.lokiLogger.error(`Unhandled event: ${message.event}`);
-          client.disconnect();
+    switch (message.event) {
+      case EWebSocketEventTypes.UPDATE_INTERPRETER_LOCATION: {
+        const messages = await this.interpreterProfileService.updateInterpreterLocation(message);
+        this.prometheusService.messagesSentCounter.inc();
+        client.emit(EWebSocketEventTypes.UPDATE_INTERPRETER_LOCATION, messages);
+        break;
       }
-    } catch (error) {
-      this.lokiLogger.error(`Error handling message: ${(error as Error).message}, ${(error as Error).stack}`);
-      client.emit("error", { message: "An error occurred while processing your request." });
-      throw new WsException("Invalid Data");
+
+      default:
+        this.lokiLogger.error(`Unhandled event: ${message.event}`);
+        client.disconnect();
     }
   }
 

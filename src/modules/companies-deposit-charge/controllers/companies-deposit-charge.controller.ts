@@ -2,12 +2,12 @@ import { Body, Controller, Post, UseGuards } from "@nestjs/common";
 import { JwtRequiredInfoOrActivationOrFullAccessGuard, RolesGuard } from "src/modules/auth/common/guards";
 import { CurrentUser } from "src/common/decorators";
 import { ITokenUserData } from "src/modules/tokens/common/interfaces";
-import { CompaniesDepositChargeService } from "src/modules/companies-deposit-charge/services";
 import { CompanyIdOptionalDto } from "src/modules/companies/common/dto";
+import { CompaniesDepositChargeManagementService } from "src/modules/companies-deposit-charge/services";
 
 @Controller("companies-deposit-charge")
 export class CompaniesDepositChargeController {
-  constructor(private readonly companiesDepositChargeService: CompaniesDepositChargeService) {}
+  constructor(private readonly companiesDepositChargeManagementService: CompaniesDepositChargeManagementService) {}
 
   @UseGuards(JwtRequiredInfoOrActivationOrFullAccessGuard, RolesGuard)
   @Post("create-request")
@@ -15,6 +15,6 @@ export class CompaniesDepositChargeController {
     @CurrentUser() user: ITokenUserData,
     @Body() dto: CompanyIdOptionalDto,
   ): Promise<void> {
-    return await this.companiesDepositChargeService.createChargeRequest(user, dto);
+    return await this.companiesDepositChargeManagementService.createChargeRequest(user, dto);
   }
 }

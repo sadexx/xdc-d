@@ -2,22 +2,25 @@ import { Injectable } from "@nestjs/common";
 import { Appointment, AppointmentAdminInfo } from "src/modules/appointments/appointment/entities";
 import { EntityManager } from "typeorm";
 import { EAppointmentSchedulingType, EAppointmentStatus } from "src/modules/appointments/appointment/common/enums";
-import { addMinutes, isAfter } from "date-fns";
+import { addMinutes, differenceInMinutes, isAfter } from "date-fns";
 import { AppointmentRatingService } from "src/modules/appointments/appointment/services";
 import { MessagingResolveService } from "src/modules/chime-messaging-configuration/services";
 import { LokiLogger } from "src/common/logger";
 import { OldGeneralPaymentsService } from "src/modules/payments/services";
 import {
-  IAppointmentBusinessTimeRange,
+  IExternalAppointmentBusinessTimeAndOverage,
   IFinalizeExternalAppointment,
 } from "src/modules/appointments/appointment/common/interfaces";
 import {
   TAppointmentsWithoutClientVisit,
+  TCheckOutAppointment,
   TFinalizeVirtualAppointment,
 } from "src/modules/appointments/appointment/common/types";
 import { DiscountsService } from "src/modules/discounts/services";
 import { AppointmentOrderSharedLogicService } from "src/modules/appointment-orders/shared/services";
-import { AppointmentSharedService } from "src/modules/appointments/shared/services";
+import { AppointmentNotificationService, AppointmentSharedService } from "src/modules/appointments/shared/services";
+import { UNDEFINED_VALUE } from "src/common/constants";
+import { OldEPayInStatus, OldEPaymentFailedReason } from "src/modules/payments/common/enums";
 
 @Injectable()
 export class AppointmentEndService {
@@ -27,26 +30,33 @@ export class AppointmentEndService {
     private readonly appointmentSharedService: AppointmentSharedService,
     private readonly appointmentRatingService: AppointmentRatingService,
     private readonly appointmentOrderSharedLogicService: AppointmentOrderSharedLogicService,
+    private readonly appointmentNotificationService: AppointmentNotificationService,
     private readonly messagingResolveService: MessagingResolveService,
     private readonly generalPaymentsService: OldGeneralPaymentsService,
     private readonly discountsService: DiscountsService,
   ) {}
 
   public async finalizeExternalAppointment(manager: EntityManager, data: IFinalizeExternalAppointment): Promise<void> {
-    const { businessStartTime, businessEndTime } = this.calculateExternalAppointmentBusinessTime(data);
+    const { businessStartTime, businessEndTime, overageMinutes, overageStartTime } =
+      this.calculateExternalAppointmentBusinessTimeAndOverage(data);
+    const { appointment } = data;
 
-    await manager.getRepository(Appointment).update(data.appointmentId, {
+    if (overageMinutes > 0) {
+      await this.processExternalAppointmentOverageMinutes(manager, appointment, overageMinutes, overageStartTime);
+    }
+
+    await manager.getRepository(Appointment).update(appointment.id, {
       status: EAppointmentStatus.COMPLETED,
       businessStartTime,
       businessEndTime,
       internalEstimatedEndTime: businessEndTime,
     });
 
-    await this.appointmentRatingService.createAppointmentRating(manager, data.appointmentId);
-    await this.discountsService.applyDiscountsForAppointment(manager, data.appointmentId);
-    await this.processAppointmentCleanupTasks(data.appointmentId);
+    await this.appointmentRatingService.createAppointmentRating(manager, appointment.id);
+    await this.discountsService.applyDiscountsForAppointment(manager, appointment.id);
+    await this.processAppointmentCleanupTasks(appointment.id);
 
-    this.generalPaymentsService.makePayInCaptureAndPayOut(data.appointmentId).catch((error: Error) => {
+    this.generalPaymentsService.makePayInCaptureAndPayOut(appointment.id).catch((error: Error) => {
       this.lokiLogger.error(`Make payin capture and payout error: ${error.message} `, error.stack);
     });
   }
@@ -94,12 +104,16 @@ export class AppointmentEndService {
       notes: cancellationReason,
     });
 
-    if (appointment.appointmentAdminInfo && appointment.appointmentAdminInfo.isRedFlagEnabled) {
-      await this.appointmentSharedService.disableRedFlag(appointment);
+    if (appointment.schedulingType === EAppointmentSchedulingType.ON_DEMAND) {
+      if (appointment.appointmentOrder) {
+        await this.appointmentOrderSharedLogicService.cancelOnDemandCalls(appointment.appointmentOrder);
+      }
+
+      await this.processOnDemandAppointmentCleanupTasks(appointment);
     }
 
-    if (appointment.schedulingType === EAppointmentSchedulingType.ON_DEMAND && appointment.appointmentOrder) {
-      await this.appointmentOrderSharedLogicService.cancelOnDemandCalls(appointment.appointmentOrder);
+    if (appointment.appointmentAdminInfo && appointment.appointmentAdminInfo.isRedFlagEnabled) {
+      await this.appointmentSharedService.disableRedFlag(appointment);
     }
 
     await this.processAppointmentCleanupTasks(appointment.id);
@@ -144,14 +158,21 @@ export class AppointmentEndService {
     }
   }
 
-  private calculateExternalAppointmentBusinessTime(data: IFinalizeExternalAppointment): IAppointmentBusinessTimeRange {
+  private calculateExternalAppointmentBusinessTimeAndOverage(
+    data: IFinalizeExternalAppointment,
+  ): IExternalAppointmentBusinessTimeAndOverage {
     const businessStartTime = data.alternativeStartTime ?? data.scheduledStartTime;
     const expectedBusinessEndTime = addMinutes(businessStartTime, data.schedulingDurationMin);
 
     const actualEndTime = data.alternativeEndTime ?? data.scheduledEndTime;
     const businessEndTime = isAfter(actualEndTime, expectedBusinessEndTime) ? actualEndTime : expectedBusinessEndTime;
 
-    return { businessStartTime, businessEndTime };
+    const actualDurationMin = differenceInMinutes(actualEndTime, businessStartTime);
+
+    const overageMinutes = Math.max(0, actualDurationMin - data.schedulingDurationMin);
+    const overageStartTime = addMinutes(businessStartTime, data.schedulingDurationMin);
+
+    return { businessStartTime, businessEndTime, overageMinutes, overageStartTime };
   }
 
   private calculateChimeAppointmentBusinessTime(appointment: TFinalizeVirtualAppointment): Date {
@@ -171,5 +192,38 @@ export class AppointmentEndService {
     await manager.getRepository(AppointmentAdminInfo).update(id, {
       callRecordingS3Key: recordingCallDirectory,
     });
+  }
+
+  // TODO: remove after payments refactor
+  private async processExternalAppointmentOverageMinutes(
+    manager: EntityManager,
+    appointment: TCheckOutAppointment,
+    overageMinutes: number,
+    overageStartTime: Date,
+  ): Promise<void> {
+    const discounts = await this.discountsService.fetchDiscountRateForExtension(overageMinutes, appointment);
+
+    const paymentStatus = await this.generalPaymentsService
+      .makePayInAuthByAdditionalBlock(appointment, overageMinutes, overageStartTime, discounts ?? UNDEFINED_VALUE)
+      .catch(async (error: Error) => {
+        this.lokiLogger.error(`Failed to make payin: ${error.message}, appointmentId: ${appointment.id}`, error.stack);
+
+        return OldEPayInStatus.AUTHORIZATION_FAILED;
+      });
+
+    if (paymentStatus === OldEPayInStatus.AUTHORIZATION_SUCCESS) {
+      if (discounts) {
+        await this.discountsService.applyDiscountsForExtension(manager, appointment, discounts);
+      }
+    } else {
+      if (appointment.clientId) {
+        await this.appointmentNotificationService.sendAppointmentAuthorizationPaymentFailedNotification(
+          appointment.clientId,
+          appointment.platformId,
+          OldEPaymentFailedReason.OVERAGE_AUTH_FAILED,
+          { appointmentId: appointment.id },
+        );
+      }
+    }
   }
 }

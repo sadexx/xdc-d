@@ -4,7 +4,7 @@ import { FindOptionsWhere, Repository } from "typeorm";
 import { UserProfile } from "src/modules/users/entities";
 import { UserProfileUpdatePolicyService, UsersQueryOptionsService } from "src/modules/users/services";
 import { IUserProfileData } from "src/modules/users/common/interfaces";
-import { EAccountStatus } from "src/modules/users/common/enums";
+import { EAccountStatus, EUsersErrorCodes } from "src/modules/users/common/enums";
 import { ActivationTrackingService } from "src/modules/activation-tracking/services";
 import {
   CreateUserProfileDto,
@@ -93,7 +93,7 @@ export class UserProfilesService {
     await this.accessControlService.authorizeUserRoleForOperation(user, userRole);
 
     if (userRole.address || userRole.profile) {
-      throw new BadRequestException("Cannot create a user profile because it already exists");
+      throw new BadRequestException(EUsersErrorCodes.PROFILE_ALREADY_EXISTS);
     }
 
     await this.createUserProfileAndAddress(dto.profileInformation, dto.residentialAddress, userRole);

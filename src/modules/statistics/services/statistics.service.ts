@@ -3,7 +3,12 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Between, FindOptionsWhere, In, Repository } from "typeorm";
 import { ESortOrder } from "src/common/enums";
 import { Statistic } from "src/modules/statistics/entities";
-import { EAppointmentType, EChartLine, EStatisticType } from "src/modules/statistics/common/enums";
+import {
+  EAppointmentType,
+  EChartLine,
+  EStatisticsErrorCodes,
+  EStatisticType,
+} from "src/modules/statistics/common/enums";
 import {
   INTERPRETER_ROLES,
   NUMBER_OF_DAYS_IN_MONTH,
@@ -78,7 +83,7 @@ export class StatisticsService {
     });
 
     if (!firstRecord) {
-      throw new BadRequestException("Statistics is empty!");
+      throw new BadRequestException(EStatisticsErrorCodes.STATISTICS_EMPTY);
     }
 
     return { firstStatisticRecordDate: firstRecord.date };
@@ -700,7 +705,7 @@ export class StatisticsService {
     } else if (daysDiff <= NUMBER_OF_DAYS_IN_SEVEN_YEARS) {
       statisticType = EStatisticType.YEARLY;
     } else {
-      throw new BadRequestException("Too long date range");
+      throw new BadRequestException(EStatisticsErrorCodes.DATE_RANGE_TOO_LONG);
     }
 
     return statisticType;
@@ -716,7 +721,7 @@ export class StatisticsService {
     } else if (statisticType === EStatisticType.YEARLY) {
       return format(date, "yyyy");
     } else {
-      throw new BadRequestException("Incorrect statistic type");
+      throw new BadRequestException(EStatisticsErrorCodes.INCORRECT_STATISTIC_TYPE);
     }
   }
 
@@ -767,7 +772,7 @@ export class StatisticsService {
         }
       }
     } else {
-      throw new BadRequestException("Incorrect statistic type");
+      throw new BadRequestException(EStatisticsErrorCodes.INCORRECT_STATISTIC_TYPE);
     }
 
     return dates;

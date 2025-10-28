@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { ESortOrder } from "src/common/enums";
 import { AwsS3Service } from "src/modules/aws/s3/aws-s3.service";
@@ -8,6 +8,8 @@ import { Repository } from "typeorm";
 import { RedisService } from "src/modules/redis/services";
 import { ELandingUiLanguage } from "src/modules/content-management/common/enums";
 import { IS_MEDIA_BUCKET } from "src/common/constants";
+import { findOneOrFailTyped } from "src/common/utils";
+import { EReviewsErrorCodes } from "src/modules/reviews/common/enums";
 
 @Injectable()
 export class ReviewsService {
@@ -19,11 +21,7 @@ export class ReviewsService {
   ) {}
 
   public async getOneReviewById(id: string): Promise<Review> {
-    const review = await this.reviewRepository.findOne({ where: { id } });
-
-    if (!review) {
-      throw new NotFoundException("Review not found.");
-    }
+    const review = await findOneOrFailTyped<Review>(id, this.reviewRepository, { where: { id } });
 
     return review;
   }
@@ -34,7 +32,7 @@ export class ReviewsService {
     });
 
     if (reviewWithSameOrdinalNumber) {
-      throw new BadRequestException("The record with this ordinal number already exists.");
+      throw new BadRequestException(EReviewsErrorCodes.ORDINAL_NUMBER_EXISTS);
     }
 
     const review = this.reviewRepository.create({
@@ -56,7 +54,7 @@ export class ReviewsService {
       });
 
       if (reviewWithSameOrdinalNumber && reviewWithSameOrdinalNumber.id !== id) {
-        throw new BadRequestException("The record with this ordinal number already exists.");
+        throw new BadRequestException(EReviewsErrorCodes.ORDINAL_NUMBER_EXISTS);
       }
     }
 

@@ -1,5 +1,7 @@
-import { HttpException, HttpStatus, NotFoundException } from "@nestjs/common";
+import { HttpException, HttpStatus } from "@nestjs/common";
 import { FindOneOptions, ObjectLiteral, Repository, SelectQueryBuilder } from "typeorm";
+import { SingleLokiLogger } from "src/common/logger";
+import { ECommonErrorCodes } from "src/common/enums";
 
 /**
  * Finds one entity by given options and returns it as given type, or null if not found.
@@ -61,15 +63,14 @@ export async function findOneOrFailTyped<TReturnType>(
   repository: Repository<ObjectLiteral>,
   options: FindOneOptions<ObjectLiteral>,
   searchFieldName: string = "Id",
-  customErrorText?: string,
 ): Promise<TReturnType> {
-  const STANDARD_ERROR_MESSAGE = `${repository.metadata.name} not found with specified field:${searchFieldName}, value: ${value}`;
-
   const entity = await repository.findOne(options);
 
   if (!entity) {
-    const errorText = customErrorText ?? STANDARD_ERROR_MESSAGE;
-    throw new HttpException(errorText, HttpStatus.NOT_FOUND);
+    SingleLokiLogger.error(
+      `${repository.metadata.name} not found with specified field:${searchFieldName}, value: ${value}`,
+    );
+    throw new HttpException(ECommonErrorCodes.ENTITY_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
 
   return entity as TReturnType;
@@ -97,7 +98,8 @@ export async function findOneOrFailQueryBuilderTyped<TReturnType>(
   const entity = await queryBuilder.getOne();
 
   if (!entity) {
-    throw new NotFoundException(`${entityName} not found with specified field:${searchFieldName}, value: ${value}`);
+    SingleLokiLogger.error(`${entityName} not found with specified field:${searchFieldName}, value: ${value}`);
+    throw new HttpException(ECommonErrorCodes.ENTITY_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
 
   return entity as TReturnType;

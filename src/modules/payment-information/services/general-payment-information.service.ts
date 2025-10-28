@@ -5,14 +5,15 @@ import { DeepPartial, Repository } from "typeorm";
 import { PaymentInformation } from "src/modules/payment-information/entities";
 import { EOnboardingStatus } from "src/modules/stripe/common/enums";
 import { ITokenUserData } from "src/modules/tokens/common/interfaces";
-import { findOneOrFail, isInRoles } from "src/common/utils";
+import { findOneOrFailTyped, isInRoles } from "src/common/utils";
 import { UserRole } from "src/modules/users/entities";
-import { EPaymentSystem } from "src/modules/payment-information/common/enums";
+import { EPaymentInformationErrorCodes } from "src/modules/payment-information/common/enums";
 import { COMPANY_ADMIN_ROLES, INDIVIDUAL_ROLES } from "src/common/constants";
 import { IGetPaymentInfoOutput } from "src/modules/payment-information/common/outputs";
 import { Appointment } from "src/modules/appointments/appointment/entities";
 import { PaymentInformationQueryOptionsService } from "src/modules/payment-information/services/payment-information-query-options.service";
 import { AccessControlService } from "src/modules/access-control/services";
+import { EPaymentSystem } from "src/modules/payments-new/common/enums";
 
 @Injectable()
 export class GeneralPaymentInformationService {
@@ -38,23 +39,23 @@ export class GeneralPaymentInformationService {
       const company = await this.accessControlService.getCompanyByRole(user, { paymentInformation: true });
 
       if (!company) {
-        throw new BadRequestException("Company not exist!");
+        throw new BadRequestException(EPaymentInformationErrorCodes.COMMON_COMPANY_NOT_FOUND);
       }
 
       paymentInfo = company.paymentInformation;
     } else {
-      throw new BadRequestException("Incorrect role");
+      throw new BadRequestException(EPaymentInformationErrorCodes.GENERAL_INCORRECT_ROLE);
     }
 
     if (!paymentInfo) {
-      throw new BadRequestException("Payment information for this user role not find!");
+      throw new BadRequestException(EPaymentInformationErrorCodes.COMMON_USER_PAYMENT_INFO_NOT_FILLED);
     }
 
     if (
       paymentInfo.stripeInterpreterOnboardingStatus !== EOnboardingStatus.ONBOARDING_SUCCESS ||
       !paymentInfo.paypalPayerId
     ) {
-      throw new BadRequestException("User role don`t have both of paying system");
+      throw new BadRequestException(EPaymentInformationErrorCodes.GENERAL_BOTH_SYSTEMS_REQUIRED);
     }
 
     await this.paymentInformationRepository.update(
@@ -76,12 +77,12 @@ export class GeneralPaymentInformationService {
       const company = await this.accessControlService.getCompanyByRole(user, { paymentInformation: true });
 
       if (!company) {
-        throw new BadRequestException("Company not exist!");
+        throw new BadRequestException(EPaymentInformationErrorCodes.COMMON_COMPANY_NOT_FOUND);
       }
 
       paymentInfo = company.paymentInformation;
     } else {
-      throw new BadRequestException("Incorrect role");
+      throw new BadRequestException(EPaymentInformationErrorCodes.GENERAL_INCORRECT_ROLE);
     }
 
     const data: IGetPaymentInfoOutput = {
@@ -123,7 +124,7 @@ export class GeneralPaymentInformationService {
       const company = await this.accessControlService.getCompanyByRole(user, {});
 
       if (!company) {
-        throw new BadRequestException("Company not exist!");
+        throw new BadRequestException(EPaymentInformationErrorCodes.COMMON_COMPANY_NOT_FOUND);
       }
 
       paymentInfo = await this.paymentInformationRepository.findOne({ where: { company: { id: company.id } } });
@@ -132,7 +133,9 @@ export class GeneralPaymentInformationService {
     } else {
       paymentInfo = await this.paymentInformationRepository.findOne({ where: { userRole: { id: user.userRoleId } } });
 
-      const userRole = await findOneOrFail("id", this.userRoleRepository, { where: { id: user.userRoleId } });
+      const userRole = await findOneOrFailTyped<UserRole>(user.userRoleId, this.userRoleRepository, {
+        where: { id: user.userRoleId },
+      });
 
       newPaymentInfoData.userRole = userRole;
     }
@@ -157,9 +160,7 @@ export class GeneralPaymentInformationService {
     });
 
     if (notEndedAppointmentsCount > 0) {
-      throw new BadRequestException(
-        "You cannot delete this payment method because you have upcoming appointments. Please cancel or complete these appointments before deleting the payment method.",
-      );
+      throw new BadRequestException(EPaymentInformationErrorCodes.GENERAL_CANNOT_DELETE_WITH_APPOINTMENTS);
     }
   }
 }

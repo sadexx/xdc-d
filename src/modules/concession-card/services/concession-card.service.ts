@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { FindOptionsWhere, Repository } from "typeorm";
 import { UserDocument } from "src/modules/users/entities";
@@ -12,7 +12,7 @@ import {
   SetConcessionCardDto,
   UpdateConcessionCardDto,
 } from "src/modules/concession-card/common/dto";
-import { EUserConcessionCardStatus } from "src/modules/concession-card/common/enums";
+import { EConcessionCardErrorCodes, EUserConcessionCardStatus } from "src/modules/concession-card/common/enums";
 import { EmailsService } from "src/modules/emails/services";
 import { NotificationService } from "src/modules/notifications/services";
 import { GetConcessionCardOutput, SetConcessionCardOutput } from "src/modules/concession-card/common/outputs";
@@ -24,6 +24,8 @@ import { ConfigService } from "@nestjs/config";
 import { UserRole } from "src/modules/users/entities";
 import { IFile } from "src/modules/file-management/common/interfaces";
 import { AccessControlService } from "src/modules/access-control/services";
+import { findOneOrFailTyped } from "src/common/utils";
+import { ECommonErrorCodes } from "src/common/enums";
 
 @Injectable()
 export class ConcessionCardService {
@@ -53,7 +55,7 @@ export class ConcessionCardService {
       (!dto.centerlinkPensionerConcessionCardNumber && !dto.veteranAffairsPensionerConcessionCardNumber) ||
       (dto.centerlinkPensionerConcessionCardNumber && dto.veteranAffairsPensionerConcessionCardNumber)
     ) {
-      throw new BadRequestException("Set one of concession card type!");
+      throw new BadRequestException(EConcessionCardErrorCodes.COMMON_SET_ONE_CARD_TYPE);
     }
 
     const isAdminOperation = this.accessControlService.checkAdminRoleForOperation(dto, user);
@@ -61,7 +63,7 @@ export class ConcessionCardService {
       ? { id: dto.userRoleId }
       : { id: user.userRoleId };
 
-    const userRole = await this.userRoleRepository.findOne({
+    const userRole = await findOneOrFailTyped<UserRole>(dto.userRoleId ?? user.userRoleId, this.userRoleRepository, {
       where: whereCondition,
       relations: {
         languageDocChecks: true,
@@ -70,15 +72,11 @@ export class ConcessionCardService {
       },
     });
 
-    if (!userRole) {
-      throw new NotFoundException("User role not found.");
-    }
-
     if (
       userRole.userConcessionCard &&
       userRole.userConcessionCard.status !== EUserConcessionCardStatus.DOCUMENT_VERIFICATION_FAILS
     ) {
-      throw new BadRequestException("Concession card already created for this user!");
+      throw new BadRequestException(EConcessionCardErrorCodes.CREATION_ALREADY_CREATED);
     }
 
     const existConcessionCard = await this.userConcessionCardRepository.findOne({
@@ -90,7 +88,7 @@ export class ConcessionCardService {
     });
 
     if (existConcessionCard && existConcessionCard.userRole.userId !== userRole.userId) {
-      throw new BadRequestException("Concession card already exist!");
+      throw new BadRequestException(EConcessionCardErrorCodes.CREATION_ALREADY_EXISTS);
     }
 
     let concessionCard: UserConcessionCard;
@@ -116,10 +114,10 @@ export class ConcessionCardService {
     file: IFile,
   ): Promise<SetConcessionCardOutput> {
     if (!file) {
-      throw new BadRequestException("File not received!");
+      throw new BadRequestException(ECommonErrorCodes.FILE_NOT_RECEIVED);
     }
 
-    const concessionCard = await this.userConcessionCardRepository.findOne({
+    const concessionCard = await findOneOrFailTyped<UserConcessionCard>(id, this.userConcessionCardRepository, {
       where: { id },
       relations: {
         document: true,
@@ -130,14 +128,10 @@ export class ConcessionCardService {
       },
     });
 
-    if (!concessionCard) {
-      throw new BadRequestException("Concession card not exist for this user!");
-    }
-
     await this.accessControlService.authorizeUserRoleForOperation(user, concessionCard.userRole);
 
     if (concessionCard.status === EUserConcessionCardStatus.VERIFIED) {
-      throw new BadRequestException("File cannot be uploaded for this request!");
+      throw new BadRequestException(EConcessionCardErrorCodes.UPLOAD_NOT_ALLOWED);
     }
 
     let document: UserDocument;
@@ -173,27 +167,23 @@ export class ConcessionCardService {
   }
 
   public async updateConcessionCard(dto: UpdateConcessionCardDto, file?: IFile): Promise<IMessageOutput> {
-    const concessionCard = await this.userConcessionCardRepository.findOne({
+    const concessionCard = await findOneOrFailTyped<UserConcessionCard>(dto.id, this.userConcessionCardRepository, {
       where: { id: dto.id },
       relations: { userRole: { user: true }, document: true },
     });
-
-    if (!concessionCard) {
-      throw new NotFoundException("Concession card not found.");
-    }
 
     if (
       (!dto.centerlinkPensionerConcessionCardNumber && !dto.veteranAffairsPensionerConcessionCardNumber) ||
       (dto.centerlinkPensionerConcessionCardNumber && dto.veteranAffairsPensionerConcessionCardNumber)
     ) {
-      throw new BadRequestException("Set one of concession card type!");
+      throw new BadRequestException(EConcessionCardErrorCodes.COMMON_SET_ONE_CARD_TYPE);
     }
 
     if (
       concessionCard.status === EUserConcessionCardStatus.PENDING ||
       concessionCard.status === EUserConcessionCardStatus.INITIALIZED
     ) {
-      throw new BadRequestException("Concession card with this id is pending!");
+      throw new BadRequestException(EConcessionCardErrorCodes.COMMON_REQUEST_PENDING);
     }
 
     if (file) {
@@ -243,7 +233,7 @@ export class ConcessionCardService {
   }
 
   public async concessionCardManualDecision(dto: ConcessionCardManualDecisionDto, user: ITokenUserData): Promise<void> {
-    const concessionCard = await this.userConcessionCardRepository.findOne({
+    const concessionCard = await findOneOrFailTyped<UserConcessionCard>(dto.id, this.userConcessionCardRepository, {
       where: { id: dto.id },
       relations: {
         userRole: {
@@ -253,14 +243,10 @@ export class ConcessionCardService {
       },
     });
 
-    if (!concessionCard) {
-      throw new NotFoundException("Concession card not found!");
-    }
-
     await this.accessControlService.authorizeUserRoleForOperation(user, concessionCard.userRole);
 
     if (concessionCard.status === EUserConcessionCardStatus.INITIALIZED) {
-      throw new BadRequestException("Concession card does not have uploaded file!");
+      throw new BadRequestException(EConcessionCardErrorCodes.COMMON_NO_UPLOADED_FILE);
     }
 
     await this.userConcessionCardRepository.update({ id: dto.id }, { status: dto.status });
@@ -280,20 +266,16 @@ export class ConcessionCardService {
   }
 
   public async removeConcessionCard(id: string): Promise<void> {
-    const concessionCard = await this.userConcessionCardRepository.findOne({
+    const concessionCard = await findOneOrFailTyped<UserConcessionCard>(id, this.userConcessionCardRepository, {
       where: { id },
       relations: { userRole: true, document: true },
     });
-
-    if (!concessionCard) {
-      throw new NotFoundException("Concession card not found!");
-    }
 
     if (
       concessionCard.status === EUserConcessionCardStatus.PENDING ||
       concessionCard.status === EUserConcessionCardStatus.INITIALIZED
     ) {
-      throw new BadRequestException("Concession card with this id is pending!");
+      throw new BadRequestException(EConcessionCardErrorCodes.COMMON_REQUEST_PENDING);
     }
 
     await this.userConcessionCardRepository.delete({ id });
@@ -306,19 +288,15 @@ export class ConcessionCardService {
   }
 
   public async removeConcessionCardFile(id: string, user: ITokenUserData): Promise<void> {
-    const concessionCard = await this.userConcessionCardRepository.findOne({
+    const concessionCard = await findOneOrFailTyped<UserConcessionCard>(id, this.userConcessionCardRepository, {
       where: { id },
       relations: { document: true, userRole: { role: true, user: true } },
     });
 
-    if (!concessionCard) {
-      throw new NotFoundException("Concession card not found.");
-    }
-
     await this.accessControlService.authorizeUserRoleForOperation(user, concessionCard.userRole);
 
     if (!concessionCard.document) {
-      throw new BadRequestException("Concession card does not have uploaded file.");
+      throw new BadRequestException(EConcessionCardErrorCodes.COMMON_NO_UPLOADED_FILE);
     }
 
     await this.awsS3Service.deleteObject(concessionCard.document.s3Key);

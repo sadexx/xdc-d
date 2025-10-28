@@ -3,9 +3,13 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { DataSource, EntityManager, Repository } from "typeorm";
 import { Role, User, UserRole } from "src/modules/users/entities";
 import { UserAvatarsService } from "src/modules/user-avatars/services";
-import { EAccountStatus, EUserRoleName } from "src/modules/users/common/enums";
+import { EAccountStatus, EUserRoleName, EUsersErrorCodes } from "src/modules/users/common/enums";
 import { findOneOrFailTyped, findOneTyped } from "src/common/utils";
-import { UserProfilesService, UsersQueryOptionsService } from "src/modules/users/services";
+import {
+  UserProfilesService,
+  UsersQueryOptionsService,
+  UsersRegistrationStepsService,
+} from "src/modules/users/services";
 import {
   TAddNewUserRole,
   TConstructAndCreateUserRole,
@@ -26,6 +30,7 @@ export class UsersRegistrationService {
     @InjectRepository(UserRole)
     private readonly userRoleRepository: Repository<UserRole>,
     private readonly usersQueryOptionsService: UsersQueryOptionsService,
+    private readonly usersRegistrationStepsService: UsersRegistrationStepsService,
     private readonly userProfilesService: UserProfilesService,
     private readonly userAvatarsService: UserAvatarsService,
     private readonly dataSource: DataSource,
@@ -51,7 +56,7 @@ export class UsersRegistrationService {
     const userRole = user.userRoles.find((userRole) => userRole.role.name === roleName);
 
     if (userRole && userRole.isRegistrationFinished) {
-      throw new BadRequestException("User already registered with this role");
+      throw new BadRequestException(EUsersErrorCodes.USER_ALREADY_REGISTERED_WITH_ROLE);
     }
 
     return await this.constructAndCreateUserRole(this.dataSource.manager, user, roleName);
@@ -129,11 +134,15 @@ export class UsersRegistrationService {
 
     if (user) {
       if (phoneNumber && user.phoneNumber !== phoneNumber) {
-        throw new BadRequestException("This phone number is already in use by another account.");
+        throw new BadRequestException(EUsersErrorCodes.PHONE_NUMBER_MISMATCH);
       }
 
       await this.addNewUserRole(user.id, role);
     } else {
+      if (phoneNumber) {
+        await this.usersRegistrationStepsService.validatePhoneNumberAvailability(phoneNumber);
+      }
+
       user = await this.registerUser(email, role, phoneNumber);
     }
 

@@ -17,6 +17,8 @@ import { ITokenUserData } from "src/modules/tokens/common/interfaces";
 import { IMessageOutput } from "src/common/outputs";
 import { LokiLogger } from "src/common/logger";
 import { AccessControlService } from "src/modules/access-control/services";
+import { findOneOrFailTyped } from "src/common/utils";
+import { EInterpreterQuestionnaireErrorCodes } from "src/modules/interpreters/questionnaire/common/enum";
 
 @Injectable()
 export class InterpreterQuestionnaireService {
@@ -37,7 +39,7 @@ export class InterpreterQuestionnaireService {
       ? { id: dto.userRoleId }
       : { id: user.userRoleId };
 
-    const userRole = await this.userRoleRepository.findOne({
+    const userRole = await findOneOrFailTyped<UserRole>(dto.userRoleId ?? user.userRoleId, this.userRoleRepository, {
       select: {
         id: true,
         operatedByCompanyId: true,
@@ -57,14 +59,10 @@ export class InterpreterQuestionnaireService {
       relations: { role: true, questionnaire: true, backyCheck: true, user: true },
     });
 
-    if (!userRole) {
-      throw new NotFoundException("User role not found");
-    }
-
     await this.accessControlService.authorizeUserRoleForOperation(user, userRole);
 
     if (userRole.questionnaire) {
-      throw new BadRequestException("Questionnaire is already created");
+      throw new BadRequestException(EInterpreterQuestionnaireErrorCodes.QUESTIONNAIRE_ALREADY_CREATED);
     }
 
     this.interpreterProfileService.validateWWCCRequirements(dto, userRole);
@@ -94,7 +92,7 @@ export class InterpreterQuestionnaireService {
       ? { id: dto.userRoleId }
       : { id: user.userRoleId };
 
-    const userRole = await this.userRoleRepository.findOne({
+    const userRole = await findOneOrFailTyped<UserRole>(dto.userRoleId ?? user.userRoleId, this.userRoleRepository, {
       select: {
         id: true,
         operatedByCompanyId: true,
@@ -106,14 +104,10 @@ export class InterpreterQuestionnaireService {
       relations: { questionnaire: true, role: true, user: true },
     });
 
-    if (!userRole) {
-      throw new NotFoundException("User role not found");
-    }
-
     await this.accessControlService.authorizeUserRoleForOperation(user, userRole);
 
     if (userRole.questionnaire) {
-      throw new BadRequestException("Questionnaire is already created");
+      throw new BadRequestException(EInterpreterQuestionnaireErrorCodes.QUESTIONNAIRE_ALREADY_CREATED);
     }
 
     const questionnaire = this.interpreterQuestionnaireRepository.create({
@@ -140,7 +134,7 @@ export class InterpreterQuestionnaireService {
       ? { id: dto.userRoleId }
       : { id: user.userRoleId };
 
-    const userRole = await this.userRoleRepository.findOne({
+    const userRole = await findOneOrFailTyped<UserRole>(dto.userRoleId ?? user.userRoleId, this.userRoleRepository, {
       select: {
         id: true,
         operatedByCompanyId: true,
@@ -151,14 +145,10 @@ export class InterpreterQuestionnaireService {
       relations: { questionnaire: { recommendations: true } },
     });
 
-    if (!userRole) {
-      throw new NotFoundException("User role not found");
-    }
-
     await this.accessControlService.authorizeUserRoleForOperation(user, userRole);
 
     if (!userRole.questionnaire) {
-      throw new NotFoundException("Can't find questionnaire with such user id and role");
+      throw new NotFoundException(EInterpreterQuestionnaireErrorCodes.COMMON_QUESTIONNAIRE_NOT_FOUND);
     }
 
     return userRole.questionnaire;
@@ -170,7 +160,7 @@ export class InterpreterQuestionnaireService {
       ? { id: dto.userRoleId }
       : { id: user.userRoleId };
 
-    const userRole = await this.userRoleRepository.findOne({
+    const userRole = await findOneOrFailTyped<UserRole>(dto.userRoleId ?? user.userRoleId, this.userRoleRepository, {
       select: {
         id: true,
         operatedByCompanyId: true,
@@ -182,8 +172,8 @@ export class InterpreterQuestionnaireService {
       relations: { questionnaire: true, user: true, role: true },
     });
 
-    if (!userRole || !userRole.questionnaire) {
-      throw new NotFoundException("User role not found");
+    if (!userRole.questionnaire) {
+      throw new NotFoundException(EInterpreterQuestionnaireErrorCodes.COMMON_QUESTIONNAIRE_NOT_FOUND);
     }
 
     await this.accessControlService.authorizeUserRoleForOperation(user, userRole);

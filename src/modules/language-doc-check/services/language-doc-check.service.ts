@@ -11,7 +11,10 @@ import {
   UpdateLanguageDocCheckDto,
 } from "src/modules/language-doc-check/common/dto";
 import { CreateLanguageDocCheckOutput, GetLanguageDocCheckOutput } from "src/modules/language-doc-check/common/outputs";
-import { ELanguageDocCheckRequestStatus } from "src/modules/language-doc-check/common/enums";
+import {
+  ELanguageDocCheckErrorCodes,
+  ELanguageDocCheckRequestStatus,
+} from "src/modules/language-doc-check/common/enums";
 import { EmailsService } from "src/modules/emails/services";
 import {
   EInterpreterCertificateType,
@@ -30,13 +33,14 @@ import { ITokenUserData } from "src/modules/tokens/common/interfaces";
 import { InterpreterBadgeService } from "src/modules/interpreters/badge/services";
 import { LokiLogger } from "src/common/logger";
 import { LanguageDocCheck } from "src/modules/language-doc-check/entities";
-import { findOneOrFail } from "src/common/utils";
+import { findOneOrFailTyped } from "src/common/utils";
 import { ICurrentUserData } from "src/modules/users/common/interfaces";
 import { LanguagePairDto } from "src/modules/interpreters/profile/common/dto";
 import { HelperService } from "src/modules/helper/services";
 import { ConfigService } from "@nestjs/config";
 import { IFile } from "src/modules/file-management/common/interfaces";
 import { AccessControlService } from "src/modules/access-control/services";
+import { ECommonErrorCodes } from "src/common/enums";
 
 @Injectable()
 export class LanguageDocCheckService {
@@ -103,7 +107,7 @@ export class LanguageDocCheckService {
       ? { id: dto.userRoleId }
       : { id: user.userRoleId };
 
-    const userRole = await this.userRoleRepository.findOne({
+    const userRole = await findOneOrFailTyped<UserRole>(dto.userRoleId ?? user.userRoleId, this.userRoleRepository, {
       select: {
         id: true,
         operatedByCompanyId: true,
@@ -115,10 +119,6 @@ export class LanguageDocCheckService {
       where: whereCondition,
       relations: { languageDocChecks: true, ieltsCheck: true, profile: true },
     });
-
-    if (!userRole) {
-      throw new BadRequestException("User role not found.");
-    }
 
     await this.accessControlService.authorizeUserRoleForOperation(user, userRole);
 
@@ -147,10 +147,10 @@ export class LanguageDocCheckService {
 
   public async uploadFileToLanguageDocCheck(id: string, user: ITokenUserData, file: IFile): Promise<void> {
     if (!file) {
-      throw new BadRequestException("File not received.");
+      throw new BadRequestException(ECommonErrorCodes.FILE_NOT_RECEIVED);
     }
 
-    const languageDocCheck = await findOneOrFail(id, this.languageDocCheckRepository, {
+    const languageDocCheck = await findOneOrFailTyped<LanguageDocCheck>(id, this.languageDocCheckRepository, {
       select: {
         id: true,
         pteTestRegistrationId: true,
@@ -171,7 +171,7 @@ export class LanguageDocCheckService {
     await this.accessControlService.authorizeUserRoleForOperation(user, languageDocCheck.userRole);
 
     if (languageDocCheck.status === ELanguageDocCheckRequestStatus.VERIFIED) {
-      throw new BadRequestException("File cannot be uploaded for this request.");
+      throw new BadRequestException(ELanguageDocCheckErrorCodes.UPLOAD_NOT_ALLOWED);
     }
 
     let document: UserDocument;
@@ -209,7 +209,7 @@ export class LanguageDocCheckService {
     user: ITokenUserData,
     file?: IFile,
   ): Promise<void> {
-    const languageDocCheck = await findOneOrFail(dto.id, this.languageDocCheckRepository, {
+    const languageDocCheck = await findOneOrFailTyped<LanguageDocCheck>(dto.id, this.languageDocCheckRepository, {
       select: {
         id: true,
         pteTestRegistrationId: true,
@@ -237,7 +237,7 @@ export class LanguageDocCheckService {
       languageDocCheck.status === ELanguageDocCheckRequestStatus.PENDING ||
       languageDocCheck.status === ELanguageDocCheckRequestStatus.INITIALIZED
     ) {
-      throw new BadRequestException("This language doc check is in status pending.");
+      throw new BadRequestException(ELanguageDocCheckErrorCodes.COMMON_CHECK_IN_STATUS_PENDING);
     }
 
     if (file) {
@@ -291,7 +291,7 @@ export class LanguageDocCheckService {
     dto: LanguageDocCheckManualDecisionDto,
     user: ITokenUserData,
   ): Promise<void> {
-    const languageDocCheck = await findOneOrFail(dto.id, this.languageDocCheckRepository, {
+    const languageDocCheck = await findOneOrFailTyped<LanguageDocCheck>(dto.id, this.languageDocCheckRepository, {
       select: {
         id: true,
         pteTestRegistrationId: true,
@@ -316,7 +316,7 @@ export class LanguageDocCheckService {
     await this.accessControlService.authorizeUserRoleForOperation(user, languageDocCheck.userRole);
 
     if (languageDocCheck.status === ELanguageDocCheckRequestStatus.INITIALIZED) {
-      throw new BadRequestException("Language doc check does not have uploaded file.");
+      throw new BadRequestException(ELanguageDocCheckErrorCodes.COMMON_NO_UPLOADED_FILE);
     }
 
     await this.languageDocCheckRepository.update({ id: dto.id }, { status: dto.status });
@@ -347,7 +347,7 @@ export class LanguageDocCheckService {
   }
 
   public async removeLanguageDocCheck(id: string, user: ITokenUserData): Promise<void> {
-    const languageDocCheck = await findOneOrFail(id, this.languageDocCheckRepository, {
+    const languageDocCheck = await findOneOrFailTyped<LanguageDocCheck>(id, this.languageDocCheckRepository, {
       select: {
         id: true,
         status: true,
@@ -370,7 +370,7 @@ export class LanguageDocCheckService {
       languageDocCheck.status === ELanguageDocCheckRequestStatus.PENDING ||
       languageDocCheck.status === ELanguageDocCheckRequestStatus.INITIALIZED
     ) {
-      throw new BadRequestException("This language doc check is in status pending.");
+      throw new BadRequestException(ELanguageDocCheckErrorCodes.REMOVAL_STATUS_PENDING);
     }
 
     await this.languageDocCheckRepository.delete({ id });
@@ -388,7 +388,7 @@ export class LanguageDocCheckService {
   }
 
   public async removeLanguageDocCheckFile(id: string, user: ITokenUserData): Promise<void> {
-    const languageDocCheck = await findOneOrFail(id, this.languageDocCheckRepository, {
+    const languageDocCheck = await findOneOrFailTyped<LanguageDocCheck>(id, this.languageDocCheckRepository, {
       select: {
         id: true,
         document: { id: true, s3Key: true },
@@ -405,7 +405,7 @@ export class LanguageDocCheckService {
     await this.accessControlService.authorizeUserRoleForOperation(user, languageDocCheck.userRole);
 
     if (!languageDocCheck.document) {
-      throw new BadRequestException("Language doc check does not have uploaded file!");
+      throw new BadRequestException(ELanguageDocCheckErrorCodes.COMMON_NO_UPLOADED_FILE);
     }
 
     await this.awsS3Service.deleteObject(languageDocCheck.document.s3Key);
@@ -424,7 +424,7 @@ export class LanguageDocCheckService {
     newLanguage: ELanguages,
   ): Promise<void> {
     if (!userRole.profile.nativeLanguage || !userRole.interpreterProfile) {
-      throw new BadRequestException("User must set up native language.");
+      throw new BadRequestException(ELanguageDocCheckErrorCodes.VALIDATION_NATIVE_LANGUAGE_NOT_SET);
     }
 
     await this.interpreterProfileService.createLanguagePairs(currentUser as ITokenUserData, {
@@ -527,7 +527,7 @@ export class LanguageDocCheckService {
     languageToCheck: ELanguages,
   ): Promise<void> {
     if (userRole.profile.nativeLanguage === languageToCheck) {
-      throw new BadRequestException("Language doc check language cannot be the same as the user's native language.");
+      throw new BadRequestException(ELanguageDocCheckErrorCodes.VALIDATION_SAME_AS_NATIVE_LANGUAGE);
     }
 
     const existingDocCheck = userRole.languageDocChecks?.find(
@@ -536,11 +536,11 @@ export class LanguageDocCheckService {
     );
 
     if (existingDocCheck) {
-      throw new BadRequestException("Language doc check already created for this language.");
+      throw new BadRequestException(ELanguageDocCheckErrorCodes.VALIDATION_ALREADY_EXISTS_FOR_LANGUAGE);
     }
 
     if (userRole.ieltsCheck && userRole.ieltsCheck.status !== EIeltsStatus.FAIL) {
-      throw new BadRequestException("This user already have success IELTS check.");
+      throw new BadRequestException(ELanguageDocCheckErrorCodes.VALIDATION_IELTS_CHECK_EXISTS);
     }
 
     if (dto.pteTestRegistrationId && dto.pteScoreReportCode) {
@@ -551,7 +551,7 @@ export class LanguageDocCheckService {
       });
 
       if (existingPteCheck && existingPteCheck.userRole.userId !== user.id) {
-        throw new BadRequestException("PTE numbers already exist and are associated with another user.");
+        throw new BadRequestException(ELanguageDocCheckErrorCodes.VALIDATION_PTE_NUMBERS_EXIST);
       }
     }
   }

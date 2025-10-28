@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { User } from "src/modules/users/entities";
 import { Repository } from "typeorm";
@@ -36,6 +36,7 @@ import {
   UserAvatarManualDecisionQuery,
 } from "src/modules/user-avatars/common/types";
 import { RedisService } from "src/modules/redis/services";
+import { ECommonErrorCodes } from "src/common/enums";
 
 @Injectable()
 export class UserAvatarsService {
@@ -72,7 +73,7 @@ export class UserAvatarsService {
 
   public async uploadAvatar(user: ITokenUserData, file: IFile): Promise<IMessageOutput> {
     if (!file) {
-      throw new NotFoundException("File not received.");
+      throw new BadRequestException(ECommonErrorCodes.FILE_NOT_RECEIVED);
     }
 
     if (user.role === EUserRoleName.SUPER_ADMIN) {

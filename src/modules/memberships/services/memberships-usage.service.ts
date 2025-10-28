@@ -2,7 +2,6 @@ import { Injectable } from "@nestjs/common";
 import { EntityManager } from "typeorm";
 import { findOneOrFailTyped } from "src/common/utils";
 import { EAppointmentSchedulingType } from "src/modules/appointments/appointment/common/enums";
-import { TLiveAppointmentCache } from "src/modules/appointments/appointment/common/types";
 import {
   TApplyAppointmentFreeMinutes,
   TDeductFreeMinutes,
@@ -13,7 +12,10 @@ import {
 import { MembershipAssignment } from "src/modules/memberships/entities";
 import { IMembershipDiscountData } from "src/modules/memberships/common/interfaces";
 import { MembershipsQueryOptionsService } from "src/modules/memberships/services";
-import { TApplyDiscountsForAppointmentValidated } from "src/modules/discounts/common/types";
+import {
+  TApplyDiscountsForAppointmentValidated,
+  TApplyDiscountsForExtension,
+} from "src/modules/discounts/common/types";
 
 @Injectable()
 export class MembershipsUsageService {
@@ -70,7 +72,7 @@ export class MembershipsUsageService {
 
   public async deductFreeMinutes(
     manager: EntityManager,
-    appointment: TLiveAppointmentCache,
+    appointment: TApplyDiscountsForExtension,
     freeMinutes: number,
   ): Promise<TDeductFreeMinutes | null> {
     if (!appointment.clientId) {

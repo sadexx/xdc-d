@@ -3,3 +3,4 @@ export * from "src/modules/naati/common/enum/naati-languages.enum";
 export * from "src/modules/naati/common/enum/naati-contact-types.enum";
 export * from "src/modules/naati/common/enum/sign-languages-naati";
 export * from "src/modules/naati/common/enum/naati-interpreter-type.enum";
+export * from "src/modules/naati/common/enum/naati-error-codes.enum";

@@ -34,6 +34,7 @@ import {
 } from "src/modules/data-transfer/common/interfaces";
 import { EUserRoleName } from "src/modules/users/common/enums";
 import { HelperService } from "src/modules/helper/services";
+import { EDataTransferErrorCodes } from "src/modules/data-transfer/common/enums";
 
 @Injectable()
 export class ActivationStepsTransferService {
@@ -86,6 +87,7 @@ export class ActivationStepsTransferService {
 
     let isDataTransferred = false;
     let userCountry: string | undefined;
+    let userTimezone: string | undefined;
     let logMessage = `Data transferred to user role ${currentUserRole.role.name} (${currentUserRole.id}):`;
 
     const entitiesToInsert: TTransferEntity<TTransferEntities>[] = [];
@@ -101,6 +103,9 @@ export class ActivationStepsTransferService {
         if (profileTransferResult.existingRoleWithStep.country) {
           userCountry = profileTransferResult.existingRoleWithStep.country;
           currentUserRole.country = profileTransferResult.existingRoleWithStep.country;
+
+          userTimezone = profileTransferResult.existingRoleWithStep.timezone ?? UNDEFINED_VALUE;
+          currentUserRole.timezone = profileTransferResult.existingRoleWithStep.timezone;
         }
 
         logMessage += `\n  - profile from role ${profileTransferResult.existingRoleWithStep.role.name} (${profileTransferResult.existingRoleWithStep.id})`;
@@ -117,11 +122,14 @@ export class ActivationStepsTransferService {
 
         if (!userCountry) {
           if (!addressTransferResult.existingRoleWithStep.address) {
-            throw new BadRequestException("Client address does not fill for transfer!");
+            throw new BadRequestException(EDataTransferErrorCodes.ADDRESS_NOT_FILLED);
           }
 
           userCountry = addressTransferResult.existingRoleWithStep.address.country;
           currentUserRole.country = addressTransferResult.existingRoleWithStep.address.country;
+
+          userTimezone = addressTransferResult.existingRoleWithStep.address.timezone;
+          currentUserRole.timezone = addressTransferResult.existingRoleWithStep.address.timezone;
         }
 
         logMessage += `\n  - address from role ${addressTransferResult.existingRoleWithStep.role.name} (${addressTransferResult.existingRoleWithStep.id})`;
@@ -201,7 +209,7 @@ export class ActivationStepsTransferService {
     if (isDataTransferred) {
       this.lokiLogger.debug(logMessage);
 
-      await this.saveTransferredData(entitiesToInsert, currentUserRole.id, userCountry);
+      await this.saveTransferredData(entitiesToInsert, currentUserRole.id, userCountry, userTimezone);
 
       this.activationTrackingService.checkActivationStepsEnded(currentUserRole).catch((error: Error) => {
         this.lokiLogger.error(`checkActivationStepsEnded error, userRoleId: ${currentUserRole.id}`, error.stack);
@@ -284,7 +292,7 @@ export class ActivationStepsTransferService {
         !existingRoleWithAddress.address.state ||
         !existingRoleWithAddress.address.postcode
       ) {
-        throw new BadRequestException("Client address does not fill!");
+        throw new BadRequestException(EDataTransferErrorCodes.ADDRESS_NOT_FILLED);
       }
 
       const newAddress = this.addressRepository.create({
@@ -508,6 +516,7 @@ export class ActivationStepsTransferService {
     entitiesToInsert: TTransferEntity<TTransferEntities>[],
     currentRoleId: string,
     userCountry?: string,
+    userTimezone?: string,
   ): Promise<void> {
     const queryRunner = this.userRoleRepository.manager.connection.createQueryRunner();
     await queryRunner.connect();
@@ -527,7 +536,7 @@ export class ActivationStepsTransferService {
         await queryRunner.manager
           .createQueryBuilder()
           .update(UserRole)
-          .set({ country: userCountry })
+          .set({ country: userCountry, timezone: userTimezone })
           .where("id = :id", { id: currentRoleId })
           .execute();
       }

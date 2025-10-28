@@ -42,6 +42,7 @@ import { Blacklist } from "src/modules/blacklists/entities";
 import { OldIncomingPaymentsWaitList, OldPayment } from "src/modules/payments/entities";
 import { OldECurrencies } from "src/modules/payments/common/enums";
 import { ShortUrl } from "src/modules/url-shortener/entities";
+import { IncomingPaymentWaitList, Payment } from "src/modules/payments-new/entities";
 
 @Entity({ name: "appointments" })
 export class Appointment {
@@ -173,8 +174,16 @@ export class Appointment {
   })
   incomingPaymentsWaitList: OldIncomingPaymentsWaitList | null;
 
+  @OneToOne(() => IncomingPaymentWaitList, (incomingPaymentsWaitList) => incomingPaymentsWaitList.appointment, {
+    nullable: true,
+  })
+  incomingPaymentsWaitListNEW: IncomingPaymentWaitList | null;
+
   @OneToMany(() => OldPayment, (payment) => payment.appointment)
   payments: OldPayment[];
+
+  @OneToMany(() => Payment, (payment) => payment.appointment)
+  paymentsNEW: Payment[];
 
   @OneToMany(() => ShortUrl, (shortUrl) => shortUrl.appointment)
   shortUrls: ShortUrl[];

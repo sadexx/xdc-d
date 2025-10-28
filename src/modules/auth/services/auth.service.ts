@@ -20,6 +20,7 @@ import {
 import { compare } from "bcrypt";
 import { Session } from "src/modules/sessions/entities";
 import { ICurrentUserData } from "src/modules/users/common/interfaces";
+import { EAuthErrorCodes } from "src/modules/auth/common/enums";
 
 @Injectable()
 export class AuthService {
@@ -98,7 +99,7 @@ export class AuthService {
       !currentUser.clientUserAgent ||
       !currentUser.clientIPAddress
     ) {
-      throw new BadRequestException("Invalid request.");
+      throw new BadRequestException(EAuthErrorCodes.AUTHORIZATION_INVALID_REQUEST);
     }
 
     const queryOptions = this.authQueryOptionsService.selectRoleOptions(currentUser.email, dto.role);
@@ -130,7 +131,7 @@ export class AuthService {
     currentClient: ICurrentClientData,
   ): Promise<OneRoleLoginOutput | RegistrationOutput> {
     if (dto.role === user.role) {
-      throw new BadRequestException("User is already using this role.");
+      throw new BadRequestException(EAuthErrorCodes.AUTHORIZATION_ROLE_ALREADY_ACTIVE);
     }
 
     const queryOptions = this.authQueryOptionsService.changeRoleOptions(user.id, dto.role);
@@ -218,13 +219,13 @@ export class AuthService {
     const user = await findOneTyped<TVerifyUserAuthorization>(this.userRepository, queryOptions);
 
     if (!user || !user.password) {
-      throw new NotFoundException("Incorrect password or email");
+      throw new NotFoundException(EAuthErrorCodes.AUTHORIZATION_INVALID_CREDENTIALS);
     }
 
     const isPasswordCorrect = await compare(dto.password, user.password);
 
     if (!isPasswordCorrect) {
-      throw new NotFoundException("Incorrect password or email");
+      throw new NotFoundException(EAuthErrorCodes.AUTHORIZATION_INVALID_CREDENTIALS);
     }
 
     return user;

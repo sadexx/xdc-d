@@ -4,7 +4,7 @@ import { Repository } from "typeorm";
 import { EmailsService } from "src/modules/emails/services";
 import { CreateEmployeeDto, SendEmployeeInvitationLinkDto } from "src/modules/companies/common/dto";
 import { UserRole } from "src/modules/users/entities";
-import { ECompanyStatus, ECompanyType } from "src/modules/companies/common/enums";
+import { ECompaniesErrorCodes, ECompanyStatus, ECompanyType } from "src/modules/companies/common/enums";
 import { EAccountStatus } from "src/modules/users/common/enums";
 import { SendEmployeeInvitationLinkOutput } from "src/modules/companies/common/outputs";
 import { ITokenUserData } from "src/modules/tokens/common/interfaces";
@@ -16,7 +16,7 @@ import {
 } from "src/common/constants";
 import { COMPANY_LFH_FULL_NAME, COMPANY_LFH_ID } from "src/modules/companies/common/constants/constants";
 import { Company } from "src/modules/companies/entities";
-import { findOneOrFail, isInRoles } from "src/common/utils";
+import { findOneOrFail, findOneOrFailTyped, isInRoles } from "src/common/utils";
 import { AccessControlService } from "src/modules/access-control/services";
 import { CreateAddressDto } from "src/modules/addresses/common/dto";
 import { AuthRegistrationLinkService } from "src/modules/auth/services";
@@ -41,11 +41,11 @@ export class CompaniesEmployeeService {
     const company = await this.accessControlService.getCompanyByRole(currentUser, { address: true }, dto.id);
 
     if (!company) {
-      throw new NotFoundException("Company not found!");
+      throw new NotFoundException(ECompaniesErrorCodes.COMPANIES_COMMON_COMPANY_NOT_FOUND);
     }
 
     if (company.status !== ECompanyStatus.ACTIVE) {
-      throw new BadRequestException("Company not activated!");
+      throw new BadRequestException(ECompaniesErrorCodes.EMPLOYEE_COMPANY_NOT_ACTIVATED);
     }
 
     if (
@@ -56,7 +56,7 @@ export class CompaniesEmployeeService {
       (company.companyType === ECompanyType.CORPORATE_INTERPRETING_PROVIDER_CORPORATE_CLIENTS &&
         !isInRoles(ALLOWED_CORPORATE_INTERPRETING_PROVIDER_CORPORATE_CLIENTS_EMPLOYEE_ROLES, dto.role))
     ) {
-      throw new BadRequestException("This company does not have this role!");
+      throw new BadRequestException(ECompaniesErrorCodes.EMPLOYEE_ROLE_NOT_ALLOWED);
     }
 
     let operatedByMainCorporateCompanyName = COMPANY_LFH_FULL_NAME;
@@ -92,14 +92,10 @@ export class CompaniesEmployeeService {
     dto: SendEmployeeInvitationLinkDto,
     currentUser: ITokenUserData,
   ): Promise<SendEmployeeInvitationLinkOutput> {
-    const userRole = await this.userRoleRepository.findOne({
+    const userRole = await findOneOrFailTyped<UserRole>(dto.userRoleId, this.userRoleRepository, {
       where: { id: dto.userRoleId },
       relations: { user: true },
     });
-
-    if (!userRole) {
-      throw new NotFoundException("Role not found!");
-    }
 
     await this.authRegistrationLinkService.validateInvitationLinkTimeLimit(userRole);
     await this.accessControlService.authorizeUserRoleForOperation(currentUser, userRole);
@@ -111,14 +107,10 @@ export class CompaniesEmployeeService {
     userRoleId: string,
     isUserExists: boolean,
   ): Promise<SendEmployeeInvitationLinkOutput> {
-    const userRole = await this.userRoleRepository.findOne({
+    const userRole = await findOneOrFailTyped<UserRole>(userRoleId, this.userRoleRepository, {
       where: { id: userRoleId },
       relations: { user: true, role: true, profile: true },
     });
-
-    if (!userRole) {
-      throw new BadRequestException("This role is not exist!");
-    }
 
     const { registrationLink, linkDurationString } = await this.authRegistrationLinkService.generateRegistrationLink(
       userRole.user.id,

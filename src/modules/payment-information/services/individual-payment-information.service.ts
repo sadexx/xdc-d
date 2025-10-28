@@ -1,6 +1,5 @@
 import { BadRequestException, Injectable, UnprocessableEntityException } from "@nestjs/common";
 import Stripe from "stripe";
-import { StripeService } from "src/modules/stripe/services";
 import {
   AddPaypalAccountForPayOutDto,
   AttachPaymentMethodToStripeForPayInDto,
@@ -8,10 +7,9 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { DeepPartial, Repository } from "typeorm";
 import { PaymentInformation } from "src/modules/payment-information/entities";
-import { EPaymentSystem } from "src/modules/payment-information/common/enums";
+import { EPaymentInformationErrorCodes } from "src/modules/payment-information/common/enums";
 import { UserRole } from "src/modules/users/entities";
-import { findOneOrFail } from "src/common/utils";
-import { IAttachPaymentMethodToCustomer } from "src/modules/stripe/common/interfaces";
+import { findOneOrFailTyped } from "src/common/utils";
 import { ActivationTrackingService } from "src/modules/activation-tracking/services";
 import { EOnboardingStatus } from "src/modules/stripe/common/enums";
 import { PaypalSdkService } from "src/modules/paypal/services";
@@ -24,6 +22,9 @@ import {
 } from "src/modules/payment-information/common/outputs";
 import { GeneralPaymentInformationService } from "src/modules/payment-information/services/general-payment-information.service";
 import { LokiLogger } from "src/common/logger";
+import { EPaymentSystem } from "src/modules/payments-new/common/enums";
+import { StripeConnectService, StripeCustomersService } from "src/modules/stripe/services";
+import { ICreateAccountLink, IInitializeCustomerSetup } from "src/modules/stripe/common/interfaces";
 
 @Injectable()
 export class IndividualPaymentInformationService {
@@ -33,7 +34,8 @@ export class IndividualPaymentInformationService {
     private readonly paymentInformationRepository: Repository<PaymentInformation>,
     @InjectRepository(UserRole)
     private readonly userRoleRepository: Repository<UserRole>,
-    private readonly stripeService: StripeService,
+    private readonly stripeCustomersService: StripeCustomersService,
+    private readonly stripeConnectService: StripeConnectService,
     private readonly activationTrackingService: ActivationTrackingService,
     private readonly paypalSdkService: PaypalSdkService,
     private readonly generalPaymentInformationService: GeneralPaymentInformationService,
@@ -44,25 +46,26 @@ export class IndividualPaymentInformationService {
    */
 
   public async createStripeCustomerForPayIn(user: ITokenUserData): Promise<ICreateStripeCustomerForPayInOutput> {
-    const userRole = await findOneOrFail(user.userRoleId, this.userRoleRepository, {
+    const userRole = await findOneOrFailTyped<UserRole>(user.userRoleId, this.userRoleRepository, {
       where: { id: user.userRoleId },
       relations: { profile: true, paymentInformation: true, role: true, user: true },
     });
 
     if (!userRole.profile) {
-      throw new BadRequestException("User profile not filled!");
+      throw new BadRequestException(EPaymentInformationErrorCodes.INDIVIDUAL_PROFILE_NOT_FILLED);
     }
 
     if (!userRole.profile.contactEmail) {
-      throw new BadRequestException("User contact email not filled!");
+      throw new BadRequestException(EPaymentInformationErrorCodes.INDIVIDUAL_CONTACT_EMAIL_NOT_FILLED);
     }
 
-    let customerInfo: IAttachPaymentMethodToCustomer | null = null;
+    let customerInfo: IInitializeCustomerSetup | null = null;
 
     try {
-      customerInfo = await this.stripeService.createCustomer(
+      customerInfo = await this.stripeCustomersService.initializeCustomerSetup(
         userRole.profile.contactEmail,
         userRole.user.platformId || userRole.profile.contactEmail,
+        false,
       );
     } catch (error) {
       throw new UnprocessableEntityException((error as Stripe.Response<Stripe.StripeRawError>).message);
@@ -75,21 +78,21 @@ export class IndividualPaymentInformationService {
     user: ITokenUserData,
     dto: AttachPaymentMethodToStripeForPayInDto,
   ): Promise<void> {
-    const userRole = await findOneOrFail(user.userRoleId, this.userRoleRepository, {
+    const userRole = await findOneOrFailTyped<UserRole>(user.userRoleId, this.userRoleRepository, {
       where: { id: user.userRoleId },
       relations: { profile: true, paymentInformation: true, role: true, user: true },
     });
 
     if (!userRole.profile) {
-      throw new BadRequestException("User profile not filled!");
+      throw new BadRequestException(EPaymentInformationErrorCodes.INDIVIDUAL_PROFILE_NOT_FILLED);
     }
 
     if (!userRole.profile.contactEmail) {
-      throw new BadRequestException("User contact email not filled!");
+      throw new BadRequestException(EPaymentInformationErrorCodes.INDIVIDUAL_CONTACT_EMAIL_NOT_FILLED);
     }
 
     try {
-      await this.stripeService.attachPaymentMethodToCustomer(dto.paymentMethodId, dto.customerId);
+      await this.stripeCustomersService.attachPaymentMethodToCustomer(dto.paymentMethodId, dto.customerId);
     } catch (error) {
       throw new UnprocessableEntityException((error as Stripe.Response<Stripe.StripeRawError>).message);
     }
@@ -120,13 +123,13 @@ export class IndividualPaymentInformationService {
   }
 
   public async deleteStripeForPayIn(user: ITokenUserData): Promise<void> {
-    const userRole = await findOneOrFail(user.userRoleId, this.userRoleRepository, {
+    const userRole = await findOneOrFailTyped<UserRole>(user.userRoleId, this.userRoleRepository, {
       where: { id: user.userRoleId },
       relations: { paymentInformation: true, role: true, user: true },
     });
 
     if (!userRole.paymentInformation) {
-      throw new BadRequestException("User role payment information not filled!");
+      throw new BadRequestException(EPaymentInformationErrorCodes.COMMON_USER_PAYMENT_INFO_NOT_FILLED);
     }
 
     await this.generalPaymentInformationService.checkPaymentMethodDeletionPossibility(userRole.id);
@@ -146,7 +149,7 @@ export class IndividualPaymentInformationService {
    */
 
   public async createStripeAccountForPayOut(user: ITokenUserData): Promise<IAccountLinkOutput> {
-    const userRole = await findOneOrFail(user.userRoleId, this.userRoleRepository, {
+    const userRole = await findOneOrFailTyped<UserRole>(user.userRoleId, this.userRoleRepository, {
       where: { id: user.userRoleId },
       relations: { paymentInformation: true },
     });
@@ -163,7 +166,7 @@ export class IndividualPaymentInformationService {
         onboardingStatus === EOnboardingStatus.DOCUMENTS_PENDING ||
         onboardingStatus === EOnboardingStatus.ONBOARDING_SUCCESS
       ) {
-        throw new BadRequestException("User already onboarded!");
+        throw new BadRequestException(EPaymentInformationErrorCodes.INDIVIDUAL_ALREADY_ONBOARDED);
       }
 
       if (
@@ -171,11 +174,12 @@ export class IndividualPaymentInformationService {
         onboardingStatus === EOnboardingStatus.ONBOARDING_STARTED
       ) {
         try {
-          const accountLink = await this.stripeService.createAccountLink(
+          const accountLink = await this.stripeConnectService.createAccountLink(
             userRole.paymentInformation.stripeInterpreterAccountId,
+            false,
           );
 
-          return { accountLink: accountLink.url };
+          return accountLink;
         } catch (error) {
           throw new UnprocessableEntityException((error as Stripe.Response<Stripe.StripeRawError>).message);
         }
@@ -183,12 +187,12 @@ export class IndividualPaymentInformationService {
     }
 
     let account: { accountId: string } | null = null;
-    let accountLink: Stripe.Response<Stripe.AccountLink> | null = null;
+    let accountLink: ICreateAccountLink | null = null;
 
     try {
-      account = await this.stripeService.createAccount();
+      account = await this.stripeConnectService.createAccount();
 
-      accountLink = await this.stripeService.createAccountLink(account.accountId);
+      accountLink = await this.stripeConnectService.createAccountLink(account.accountId, false);
     } catch (error) {
       throw new UnprocessableEntityException((error as Stripe.Response<Stripe.StripeRawError>).message);
     }
@@ -211,25 +215,25 @@ export class IndividualPaymentInformationService {
       await this.paymentInformationRepository.save(paymentInformation);
     }
 
-    return { accountLink: accountLink.url };
+    return accountLink;
   }
 
   public async createStripeLoginLinkForPayOut(user: ITokenUserData): Promise<ILoginLinkOutput> {
-    const userRole = await findOneOrFail(user.userRoleId, this.userRoleRepository, {
+    const userRole = await findOneOrFailTyped<UserRole>(user.userRoleId, this.userRoleRepository, {
       where: { id: user.userRoleId },
       relations: { paymentInformation: true },
     });
 
     if (!userRole.paymentInformation) {
-      throw new BadRequestException("User role payment info not fill!");
+      throw new BadRequestException(EPaymentInformationErrorCodes.COMMON_USER_PAYMENT_INFO_NOT_FILLED);
     }
 
     if (!userRole.paymentInformation.stripeInterpreterAccountId) {
-      throw new BadRequestException("User role stripe account id not exist!");
+      throw new BadRequestException(EPaymentInformationErrorCodes.COMMON_STRIPE_ACCOUNT_NOT_EXIST);
     }
 
     try {
-      const loginLink = await this.stripeService.createLoginLink(
+      const loginLink = await this.stripeConnectService.createLoginLink(
         userRole.paymentInformation.stripeInterpreterAccountId,
       );
 
@@ -240,17 +244,13 @@ export class IndividualPaymentInformationService {
   }
 
   public async deleteStripeForPayOut(user: ITokenUserData): Promise<void> {
-    const userRole = await findOneOrFail(user.userRoleId, this.userRoleRepository, {
+    const userRole = await findOneOrFailTyped<UserRole>(user.userRoleId, this.userRoleRepository, {
       where: { id: user.userRoleId },
       relations: { paymentInformation: true, role: true, user: true },
     });
 
-    if (!userRole) {
-      throw new BadRequestException("User role not exist!");
-    }
-
     if (!userRole.paymentInformation) {
-      throw new BadRequestException("User role payment information not filled!");
+      throw new BadRequestException(EPaymentInformationErrorCodes.COMMON_USER_PAYMENT_INFO_NOT_FILLED);
     }
 
     await this.generalPaymentInformationService.checkPaymentMethodDeletionPossibility(userRole.id);
@@ -282,17 +282,17 @@ export class IndividualPaymentInformationService {
    */
 
   public async createPaypalForPayOut(user: ITokenUserData, dto: AddPaypalAccountForPayOutDto): Promise<void> {
-    const userRole = await findOneOrFail(user.userRoleId, this.userRoleRepository, {
+    const userRole = await findOneOrFailTyped<UserRole>(user.userRoleId, this.userRoleRepository, {
       where: { id: user.userRoleId },
       relations: { profile: true, paymentInformation: true, role: true, user: true },
     });
 
     if (!userRole.profile) {
-      throw new BadRequestException("User profile not filled!");
+      throw new BadRequestException(EPaymentInformationErrorCodes.INDIVIDUAL_PROFILE_NOT_FILLED);
     }
 
     if (!userRole.profile.contactEmail) {
-      throw new BadRequestException("User contact email not filled!");
+      throw new BadRequestException(EPaymentInformationErrorCodes.INDIVIDUAL_CONTACT_EMAIL_NOT_FILLED);
     }
 
     let profile: IProfileInformationResponse | null = null;
@@ -304,7 +304,7 @@ export class IndividualPaymentInformationService {
     }
 
     if (!profile.payer_id) {
-      throw new BadRequestException("Paypal profile does not have payer id!");
+      throw new BadRequestException(EPaymentInformationErrorCodes.COMMON_PAYPAL_PAYER_ID_MISSING);
     }
 
     const updateData: DeepPartial<PaymentInformation> = {
@@ -336,13 +336,13 @@ export class IndividualPaymentInformationService {
   }
 
   public async deletePaypalForPayOut(user: ITokenUserData): Promise<void> {
-    const userRole = await findOneOrFail(user.userRoleId, this.userRoleRepository, {
+    const userRole = await findOneOrFailTyped<UserRole>(user.userRoleId, this.userRoleRepository, {
       where: { id: user.userRoleId },
       relations: { paymentInformation: true, role: true, user: true },
     });
 
     if (!userRole.paymentInformation) {
-      throw new BadRequestException("User role payment information not filled!");
+      throw new BadRequestException(EPaymentInformationErrorCodes.COMMON_USER_PAYMENT_INFO_NOT_FILLED);
     }
 
     await this.generalPaymentInformationService.checkPaymentMethodDeletionPossibility(userRole.id);

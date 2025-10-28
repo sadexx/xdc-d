@@ -28,6 +28,7 @@ import { LokiLogger } from "src/common/logger";
 import { IAwsConfigS3 } from "src/modules/aws/s3/common/interfaces";
 import { Readable } from "stream";
 import { AwsConfigService } from "src/modules/aws/config/services";
+import { EAwsS3ErrorCodes } from "src/modules/aws/s3/common/enums";
 
 @Injectable()
 export class AwsS3Service {
@@ -57,13 +58,14 @@ export class AwsS3Service {
       const listResponse = await this.s3Client.send(listCommand);
 
       if (!listResponse.Contents || listResponse.Contents.length === 0) {
-        throw new NotFoundException(`No files found in the specified folder path: ${folderPath}`);
+        this.lokiLogger.error(`No files found in the specified folder path: ${folderPath}.`);
+        throw new NotFoundException(EAwsS3ErrorCodes.S3_FILES_NOT_FOUND);
       }
 
       return listResponse;
     } catch (error) {
       this.lokiLogger.error(`Error getting signed URL: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Unable to get signed URL for the file");
+      throw new ServiceUnavailableException(EAwsS3ErrorCodes.S3_GET_SIGNED_URL_FAILED);
     }
   }
 
@@ -84,7 +86,7 @@ export class AwsS3Service {
       this.lokiLogger.log(`Restore request initiated for object ${key}. Response: ${JSON.stringify(response)}`);
     } catch (error) {
       this.lokiLogger.error(`Error restoring object ${key}: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Unable to restore object from DEEP_ARCHIVE");
+      throw new ServiceUnavailableException(EAwsS3ErrorCodes.S3_RESTORE_OBJECT_FAILED);
     }
   }
 
@@ -100,7 +102,7 @@ export class AwsS3Service {
       });
     } catch (error) {
       this.lokiLogger.error(`Error getting signed URL:${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Unable to get signed URL for the file");
+      throw new ServiceUnavailableException(EAwsS3ErrorCodes.S3_GET_SIGNED_URL_FAILED);
     }
   }
 
@@ -116,7 +118,7 @@ export class AwsS3Service {
       });
     } catch (error) {
       this.lokiLogger.error(`Error getting signed URL:${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Unable to get signed URL for the file");
+      throw new ServiceUnavailableException(EAwsS3ErrorCodes.S3_GET_SIGNED_URL_FAILED);
     }
   }
 
@@ -141,7 +143,7 @@ export class AwsS3Service {
       return await commandToUploadFile.done();
     } catch (error) {
       this.lokiLogger.error(`Error uploading object:${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Unable to upload object");
+      throw new ServiceUnavailableException(EAwsS3ErrorCodes.S3_UPLOAD_OBJECT_FAILED);
     }
   }
 
@@ -157,7 +159,7 @@ export class AwsS3Service {
       return data.Contents?.map((item) => item.Key!) ?? [];
     } catch (error) {
       this.lokiLogger.error(`Error getting list of objects:${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Unable to get list of objects");
+      throw new ServiceUnavailableException(EAwsS3ErrorCodes.S3_GET_OBJECT_LIST_FAILED);
     }
   }
 
@@ -172,7 +174,7 @@ export class AwsS3Service {
       return await this.s3Client.send(deleteObjectCommand);
     } catch (error) {
       this.lokiLogger.error(`Error deleting object:${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Unable to delete object");
+      throw new ServiceUnavailableException(EAwsS3ErrorCodes.S3_DELETE_OBJECT_FAILED);
     }
   }
 
@@ -189,7 +191,7 @@ export class AwsS3Service {
       await this.s3Client.send(deleteObjectsCommand);
     } catch (error) {
       this.lokiLogger.error(`Error deleting objects:${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Unable to delete objects");
+      throw new ServiceUnavailableException(EAwsS3ErrorCodes.S3_DELETE_OBJECTS_FAILED);
     }
   }
 
@@ -211,7 +213,7 @@ export class AwsS3Service {
       return await this.s3Client.send(copyObjectCommand);
     } catch (error) {
       this.lokiLogger.error(`Error copying object:${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Unable to copy object");
+      throw new ServiceUnavailableException(EAwsS3ErrorCodes.S3_COPY_OBJECT_FAILED);
     }
   }
 

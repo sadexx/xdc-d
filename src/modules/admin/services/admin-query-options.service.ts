@@ -8,7 +8,7 @@ import {
   languageLevelOrder,
   languageOrder,
 } from "src/modules/interpreters/profile/common/enum";
-import { accountStatusOrder, EUserRoleName, userGenderOrder } from "src/modules/users/common/enums";
+import { accountStatusOrder, EAccountStatus, EUserRoleName, userGenderOrder } from "src/modules/users/common/enums";
 import { UserRole } from "src/modules/users/entities";
 import { OldPayment } from "src/modules/payments/entities";
 import {
@@ -29,6 +29,8 @@ export class AdminQueryOptionsService {
         "user.platformId",
         "user.email",
         "user.phoneNumber",
+        "user.isInDeleteWaiting",
+        "user.deletingDate",
         "user.creationDate",
         "user.updatingDate",
       ])
@@ -38,6 +40,8 @@ export class AdminQueryOptionsService {
         "userRole.accountStatus",
         "userRole.invitationLinkCreationDate",
         "userRole.operatedByCompanyId",
+        "userRole.isInDeleteWaiting",
+        "userRole.deletingDate",
       ])
       .leftJoin("userRole.discountHolder", "discountHolder")
       .addSelect(["discountHolder.id"])
@@ -75,8 +79,6 @@ export class AdminQueryOptionsService {
   }
 
   private applyFiltersForUsers(queryBuilder: SelectQueryBuilder<User>, dto: GetUsersDto): void {
-    queryBuilder.where("userRole.isInDeleteWaiting = :isInDeleteWaiting", { isInDeleteWaiting: false });
-
     if (dto.searchField) {
       this.applySearchForUsers(queryBuilder, dto.searchField);
     }
@@ -117,7 +119,10 @@ export class AdminQueryOptionsService {
       queryBuilder.andWhere("address.suburb = :suburb", { suburb: dto.suburb });
     }
 
-    if (!dto.roles?.includes(EUserRoleName.LFH_BOOKING_OFFICER)) {
+    const isFilteringStartRegistration = dto.statuses?.includes(EAccountStatus.START_REGISTRATION);
+    const isIncludingBookingOfficer = dto.roles?.includes(EUserRoleName.LFH_BOOKING_OFFICER);
+
+    if (!isFilteringStartRegistration && !isIncludingBookingOfficer) {
       queryBuilder.andWhere("user.platformId IS NOT NULL");
     }
   }

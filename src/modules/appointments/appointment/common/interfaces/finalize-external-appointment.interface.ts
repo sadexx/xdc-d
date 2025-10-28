@@ -1,5 +1,7 @@
+import { TCheckOutAppointment } from "src/modules/appointments/appointment/common/types";
+
 export interface IFinalizeExternalAppointment {
-  appointmentId: string;
+  appointment: TCheckOutAppointment;
   scheduledStartTime: Date;
   scheduledEndTime: Date;
   schedulingDurationMin: number;

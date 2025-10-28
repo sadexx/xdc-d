@@ -11,9 +11,13 @@ import { GetCompaniesOutput, GetDocumentOutput, GetEmployeesOutput } from "src/m
 import { CompaniesQueryOptionsService } from "src/modules/companies/services";
 import { AwsS3Service } from "src/modules/aws/s3/aws-s3.service";
 import { AccessControlService } from "src/modules/access-control/services";
+import { findOneOrFailTyped } from "src/common/utils";
+import { ECompaniesErrorCodes } from "src/modules/companies/common/enums";
+import { LokiLogger } from "src/common/logger";
 
 @Injectable()
 export class CompaniesQueryService {
+  private readonly lokiLogger = new LokiLogger(CompaniesQueryService.name);
   constructor(
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
@@ -91,14 +95,10 @@ export class CompaniesQueryService {
     if (isLfhAdminOperation) {
       companyId = COMPANY_LFH_ID;
     } else {
-      const userRole = await this.userRoleRepository.findOne({
+      const userRole = await findOneOrFailTyped<UserRole>(user.userRoleId, this.userRoleRepository, {
         select: { id: true, operatedByCompanyId: true },
         where: { id: user.userRoleId },
       });
-
-      if (!userRole) {
-        throw new BadRequestException("This user not found!");
-      }
 
       companyId = userRole.operatedByCompanyId;
     }
@@ -131,7 +131,7 @@ export class CompaniesQueryService {
       const companyOperatedBy = await this.accessControlService.getCompanyByRole(user, {}, dto.operatedByMainCompanyId);
 
       if (!companyOperatedBy) {
-        throw new NotFoundException("Main company not found!");
+        throw new NotFoundException(ECompaniesErrorCodes.QUERY_MAIN_COMPANY_NOT_FOUND);
       }
     }
 
@@ -143,22 +143,19 @@ export class CompaniesQueryService {
   }
 
   public async getSuperAdminByCompanyId(id: string, user: ITokenUserData): Promise<UserRole | null> {
-    const company = await this.companyRepository.findOne({ where: { id } });
+    const company = await findOneOrFailTyped<Company>(id, this.companyRepository, {
+      where: { id },
+    });
 
-    if (!company) {
-      throw new NotFoundException("Company not found!");
-    }
-
-    const personalUserRole = await this.userRoleRepository.findOne({ where: { id: user.userRoleId } });
-
-    if (!personalUserRole) {
-      throw new BadRequestException("User not found!");
-    }
+    const personalUserRole = await findOneOrFailTyped<UserRole>(user.userRoleId, this.userRoleRepository, {
+      where: { id: user.userRoleId },
+    });
 
     this.accessControlService.validateParentCompanyAccess(personalUserRole, company);
 
     if (!company.superAdminId) {
-      throw new BadRequestException(`Company ${id} does not have superAdminId!`);
+      this.lokiLogger.error(`Company ${id} does not have superAdmin.`);
+      throw new BadRequestException(ECompaniesErrorCodes.COMPANIES_COMMON_NO_SUPER_ADMIN);
     }
 
     const userRole = await this.userRoleRepository.findOne({
@@ -211,7 +208,7 @@ export class CompaniesQueryService {
     const company = await this.accessControlService.getCompanyByRole(user, {}, dto.companyId);
 
     if (!company) {
-      throw new NotFoundException("Company not found!");
+      throw new NotFoundException(ECompaniesErrorCodes.COMPANIES_COMMON_COMPANY_NOT_FOUND);
     }
 
     const queryBuilder = this.userRoleRepository
@@ -268,18 +265,17 @@ export class CompaniesQueryService {
     const company = await this.accessControlService.getCompanyByRole(user, { documents: true }, companyId);
 
     if (!company) {
-      throw new NotFoundException("Company not found!");
+      throw new NotFoundException(ECompaniesErrorCodes.COMPANIES_COMMON_COMPANY_NOT_FOUND);
     }
 
     return company.documents;
   }
 
   public async getDoc(id: string, user: ITokenUserData): Promise<GetDocumentOutput> {
-    const document = await this.companyDocumentRepository.findOne({ where: { id }, relations: { company: true } });
-
-    if (!document) {
-      throw new NotFoundException("Document not found!");
-    }
+    const document = await findOneOrFailTyped<CompanyDocument>(id, this.companyDocumentRepository, {
+      where: { id },
+      relations: { company: true },
+    });
 
     await this.accessControlService.getCompanyByRole(user, {}, document.company.id);
 

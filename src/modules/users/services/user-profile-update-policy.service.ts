@@ -11,6 +11,7 @@ import { ELanguageDocCheckRequestStatus } from "src/modules/language-doc-check/c
 import { ERightToWorkCheckStatus } from "src/modules/right-to-work-check/common/enums";
 import { ITokenUserData } from "src/modules/tokens/common/interfaces";
 import { AccessControlService } from "src/modules/access-control/services";
+import { EUsersErrorCodes } from "src/modules/users/common/enums";
 
 @Injectable()
 export class UserProfileUpdatePolicyService {
@@ -28,23 +29,19 @@ export class UserProfileUpdatePolicyService {
     await this.accessControlService.authorizeUserRoleForOperation(user, userRole);
 
     if (this.isNameChangeRestricted(dto, userRole)) {
-      throw new BadRequestException(
-        "Cannot edit firstName, middleName, or lastName because the user has a verified Concession card or green SumSub status.",
-      );
+      throw new BadRequestException(EUsersErrorCodes.NAME_CHANGE_RESTRICTED_VERIFIED_DOCUMENTS);
     }
 
     if (this.isTimezoneRequiredButMissing(dto)) {
-      throw new BadRequestException("Timezone must be provided when country or state or suburb is specified.");
+      throw new BadRequestException(EUsersErrorCodes.TIMEZONE_REQUIRED);
     }
 
     if (this.isNameChangeRestrictedByVerifiedDocuments(dto, userRole)) {
-      throw new BadRequestException(
-        "Cannot edit firstName, middleName, or lastName because the user has verified documents.",
-      );
+      throw new BadRequestException(EUsersErrorCodes.NAME_CHANGE_RESTRICTED_PROFESSIONAL_DOCUMENTS);
     }
 
     if (this.isEmailChangeRestrictedByBackgroundCheck(dto, userRole)) {
-      throw new BadRequestException("Cannot change contact email while background check is in progress or completed.");
+      throw new BadRequestException(EUsersErrorCodes.EMAIL_CHANGE_RESTRICTED_BACKGROUND_CHECK);
     }
   }
 

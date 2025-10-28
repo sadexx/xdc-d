@@ -10,6 +10,7 @@ import { EAppointmentStatus } from "src/modules/appointments/appointment/common/
 import { IMessageOutput } from "src/common/outputs";
 import { INTERPRETER_ROLES } from "src/common/constants";
 import { AccessControlService } from "src/modules/access-control/services";
+import { EBlacklistErrorCodes } from "src/modules/blacklists/common/enums";
 
 @Injectable()
 export class BlacklistService {
@@ -46,7 +47,7 @@ export class BlacklistService {
       },
       where: {
         id: appointmentId,
-        status: In([EAppointmentStatus.COMPLETED]),
+        status: In([EAppointmentStatus.COMPLETED, EAppointmentStatus.NO_SHOW]),
         client: Not(IsNull()),
         interpreter: Not(IsNull()),
       },
@@ -61,14 +62,14 @@ export class BlacklistService {
     const blacklists = appointment.blacklists || [];
 
     if (blacklists.length === this.MAX_BLACKLISTS) {
-      throw new BadRequestException("You have already created a blacklist for this appointment");
+      throw new BadRequestException(EBlacklistErrorCodes.SERVICE_BLACKLIST_ALREADY_EXISTS);
     }
 
     if (blacklists.length === 1) {
       const existingBlacklist = blacklists[0];
 
       if (existingBlacklist.blockedByUserRoleId === user.userRoleId) {
-        throw new BadRequestException("You have already created a blacklist for this appointment");
+        throw new BadRequestException(EBlacklistErrorCodes.SERVICE_BLACKLIST_ALREADY_EXISTS);
       }
     }
 
@@ -90,7 +91,7 @@ export class BlacklistService {
 
   private async constructBlacklist(appointment: Appointment, user: ITokenUserData): Promise<Partial<Blacklist>> {
     if (!appointment.client || !appointment.interpreter) {
-      throw new BadRequestException("Cannot create a blacklist if client or interpreter does not exist.");
+      throw new BadRequestException(EBlacklistErrorCodes.SERVICE_CLIENT_OR_INTERPRETER_MISSING);
     }
 
     let blockedByUserRole = appointment.client;
@@ -116,13 +117,14 @@ export class BlacklistService {
     const blacklist = await this.blacklistRepository.findOne({
       select: {
         id: true,
-        appointment: { id: true, operatedByCompanyId: true, operatedByMainCorporateCompanyId: true },
+        appointment: { id: true, clientId: true, operatedByCompanyId: true, operatedByMainCorporateCompanyId: true },
       },
       where: { appointment: { id: appointmentId } },
+      relations: { appointment: true },
     });
 
     if (!blacklist) {
-      throw new NotFoundException("Not found any blacklist for this appointment");
+      throw new NotFoundException(EBlacklistErrorCodes.SERVICE_BLACKLIST_NOT_FOUND);
     }
 
     await this.accessControlService.authorizeUserRoleForAppointmentOperation(user, blacklist.appointment);

@@ -1,9 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Method } from "src/modules/permissions/entities";
-import { app } from "src/main";
-import { Router } from "express";
+import { httpServer } from "src/main";
+import { Express } from "express";
 import { ILayer } from "express-serve-static-core";
 import { API_PREFIX } from "src/common/constants";
 import { languageDocCheck } from "src/modules/language-doc-check/common/permissions-seeds";
@@ -66,6 +66,8 @@ import { taskExecution } from "src/modules/task-execution/common/permissions-see
 import { urlShortener } from "src/modules/url-shortener/common/permissions-seeds";
 import { removal } from "src/modules/removal/common/permissions-seeds";
 import { settings } from "src/modules/settings/common/permissions-seeds";
+import { findOneOrFailTyped } from "src/common/utils";
+import { EPermissionsErrorCodes } from "src/modules/permissions/common/enums";
 
 const seeds = {
   ...abn,
@@ -146,17 +148,13 @@ export class PermissionsService {
   }
 
   public async editOnePermission(dto: EditOnePermissionDto): Promise<void> {
-    const method = await this.methodRepository.findOne({
+    const method = await findOneOrFailTyped<Method>(dto.id, this.methodRepository, {
       where: { id: dto.id },
       relations: { role: true },
     });
 
-    if (!method) {
-      throw new NotFoundException("Method with this id not found!");
-    }
-
     if (!method.isEditable) {
-      throw new BadRequestException("Method is not editable!");
+      throw new BadRequestException(EPermissionsErrorCodes.METHOD_NOT_EDITABLE);
     }
 
     await this.methodRepository.update({ id: dto.id }, { isAllowed: dto.isAllowed, isEdited: true });
@@ -172,7 +170,7 @@ export class PermissionsService {
     });
 
     if (methods.length === 0) {
-      throw new BadRequestException("Incorrect method name!");
+      throw new BadRequestException(EPermissionsErrorCodes.INCORRECT_METHOD_NAME);
     }
 
     methods.forEach((method) => {
@@ -196,7 +194,9 @@ export class PermissionsService {
     const newMethods: Method[] = [];
     const newMethodsNames: string[] = [];
 
-    const router: Router = app.getHttpAdapter().getInstance()._router as Router;
+    const httpAdapter = httpServer.getHttpAdapter();
+    const server = httpAdapter.getInstance() as Express;
+    const router = server.router;
 
     router.stack.forEach((layer: ILayer) => {
       if (layer.route) {

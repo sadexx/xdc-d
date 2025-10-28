@@ -14,8 +14,12 @@ import {
   TUpdateMembershipPrice,
 } from "src/modules/memberships/common/types";
 import { IGetMembershipPrice } from "src/modules/memberships/common/interfaces";
-import { EMembershipAssignmentStatus, membershipTypeOrder } from "src/modules/memberships/common/enums";
-import { StripeService } from "src/modules/stripe/services";
+import {
+  EMembershipAssignmentStatus,
+  EMembershipErrorCodes,
+  membershipTypeOrder,
+} from "src/modules/memberships/common/enums";
+import { StripePaymentsService, StripeSubscriptionsService } from "src/modules/stripe/services";
 import { UNDEFINED_VALUE, NUMBER_OF_MILLISECONDS_IN_SECOND } from "src/common/constants";
 import { UpdateMembershipPriceDto } from "src/modules/memberships/common/dto";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -23,7 +27,7 @@ import { randomUUID } from "crypto";
 import Stripe from "stripe";
 import { Repository } from "typeorm";
 import { findOneOrFailTyped, normalizedAmountToDenormalized } from "src/common/utils";
-import { EPaymentSystem } from "src/modules/payment-information/common/enums";
+import { EPaymentSystem } from "src/modules/payments-new/common/enums";
 import {
   OldECurrencies,
   OldECustomerType,
@@ -60,7 +64,8 @@ export class MembershipPaymentsService {
     private readonly membershipsQueryOptionsService: MembershipsQueryOptionsService,
     private readonly membershipsPriceService: MembershipsPriceService,
     private readonly membershipAssignmentsService: MembershipAssignmentsService,
-    private readonly stripeService: StripeService,
+    private readonly stripeSubscriptionsService: StripeSubscriptionsService,
+    private readonly stripePaymentsService: StripePaymentsService,
     private readonly pdfBuilderService: PdfBuilderService,
     private readonly awsS3Service: AwsS3Service,
     private readonly emailsService: EmailsService,
@@ -82,27 +87,27 @@ export class MembershipPaymentsService {
       !paymentInformation.stripeClientPaymentMethodId ||
       !stripePriceId
     ) {
-      throw new BadRequestException("User payment or membership pricing information is missing.");
+      throw new BadRequestException(EMembershipErrorCodes.PAYMENTS_PAYMENT_INFO_MISSING);
     }
 
     const trialEndTimestamp = this.getTrialEndTimestamp(membership, discountHolder);
-    await this.stripeService.createSubscription(
-      paymentInformation.stripeClientAccountId,
-      paymentInformation.stripeClientPaymentMethodId,
-      stripePriceId,
-      { membershipId: membership.id, userRoleId: userRole.id },
-      trialEndTimestamp,
-    );
+    await this.stripeSubscriptionsService.createSubscription({
+      customerId: paymentInformation.stripeClientAccountId,
+      stripeClientPaymentMethodId: paymentInformation.stripeClientPaymentMethodId,
+      priceId: stripePriceId,
+      metadata: { membershipId: membership.id, userRoleId: userRole.id },
+      trialEnd: trialEndTimestamp,
+    });
   }
 
   public async cancelStripeSubscription(userRole: TCancelMembershipSubscriptionUserRole): Promise<void> {
     const { paymentInformation } = userRole;
 
     if (!paymentInformation || !paymentInformation.stripeClientAccountId) {
-      throw new BadRequestException("User payment information not found.");
+      throw new BadRequestException(EMembershipErrorCodes.PAYMENTS_PAYMENT_INFO_NOT_FOUND);
     }
 
-    await this.stripeService.cancelSubscriptionByCustomerId(paymentInformation.stripeClientAccountId);
+    await this.stripeSubscriptionsService.cancelSubscriptionByCustomerId(paymentInformation.stripeClientAccountId);
   }
 
   public async updateStripePrice(
@@ -113,31 +118,39 @@ export class MembershipPaymentsService {
     const gstAmount = dto.gstAmount ?? membershipPrice.gstAmount ?? 0;
     const totalPrice = Number(basePrice) + Number(gstAmount);
 
-    const newStripePrice = await this.stripeService.createNewProductPrice(
+    const { priceId } = await this.stripeSubscriptionsService.createNewProductPrice(
       membershipPrice.stripePriceId,
       totalPrice,
       membershipPrice.currency,
     );
 
-    return newStripePrice.id;
+    return priceId;
   }
 
   public async activateSubscriptionProduct(membership: TActivateMembership): Promise<void> {
     const stripePriceId = membership.membershipPrices[0].stripePriceId;
-    await this.stripeService.activateSubscriptionProduct(stripePriceId);
+    await this.stripeSubscriptionsService.activateSubscriptionProduct(stripePriceId);
   }
 
   public async deactivateSubscriptionProduct(membership: TDeactivateMembership): Promise<void> {
     const stripePriceIds = membership.membershipPrices.map((price) => price.stripePriceId);
-    await this.stripeService.deactivateSubscriptionProduct(stripePriceIds);
+    await this.stripeSubscriptionsService.deactivateSubscriptionProduct(stripePriceIds);
   }
 
   public async processMembershipPaymentSucceeded(invoice: Stripe.Invoice): Promise<void> {
-    const subscription = await this.stripeService.getSubscription(invoice.subscription as string);
+    if (!invoice.parent || invoice.parent.type !== "subscription_details" || !invoice.parent.subscription_details) {
+      throw new BadRequestException(EMembershipErrorCodes.PAYMENTS_INVOICE_NOT_SUBSCRIPTION);
+    }
+
+    const subscription = await this.stripeSubscriptionsService.getSubscription(
+      invoice.parent.subscription_details.subscription as string,
+    );
+
+    const [firstSubscriptionItem] = subscription.items.data;
     const { membershipId, userRoleId } = subscription.metadata;
 
-    const startDate = new Date(subscription.start_date * NUMBER_OF_MILLISECONDS_IN_SECOND);
-    const endDate = new Date(subscription.current_period_end * NUMBER_OF_MILLISECONDS_IN_SECOND);
+    const startDate = new Date(firstSubscriptionItem.current_period_start * NUMBER_OF_MILLISECONDS_IN_SECOND);
+    const endDate = new Date(firstSubscriptionItem.current_period_end * NUMBER_OF_MILLISECONDS_IN_SECOND);
 
     await this.membershipAssignmentsService.processMembershipAssignment(membershipId, userRoleId, startDate, endDate);
 
@@ -173,7 +186,13 @@ export class MembershipPaymentsService {
   }
 
   public async processMembershipPaymentFailed(invoice: Stripe.Invoice): Promise<void> {
-    const subscription = await this.stripeService.getSubscription(invoice.subscription as string);
+    if (!invoice.parent || invoice.parent.type !== "subscription_details" || !invoice.parent.subscription_details) {
+      throw new BadRequestException(EMembershipErrorCodes.PAYMENTS_INVOICE_NOT_SUBSCRIPTION);
+    }
+
+    const subscription = await this.stripeSubscriptionsService.getSubscription(
+      invoice.parent.subscription_details.subscription as string,
+    );
     const { membershipId, userRoleId } = subscription.metadata;
 
     const queryOptions = this.membershipsQueryOptionsService.processMembershipPaymentOptions(membershipId, userRoleId);
@@ -266,7 +285,9 @@ export class MembershipPaymentsService {
     });
 
     let stripeReceiptKey: string | null = null;
-    const paymentIntent = await this.stripeService.getPaymentIntent(invoice.payment_intent as string);
+
+    const finalizedInvoice = invoice as Stripe.Invoice & { payment_intent: string };
+    const paymentIntent = await this.stripePaymentsService.getPaymentIntent(finalizedInvoice.payment_intent);
 
     if (paymentSucceeded) {
       const membershipReceipt = await this.pdfBuilderService.generateMembershipInvoice(
@@ -277,7 +298,7 @@ export class MembershipPaymentsService {
       );
       payment.receipt = membershipReceipt.receiptKey;
 
-      const stripeReceipt = await this.stripeService.getReceipt(paymentIntent.latest_charge as string);
+      const stripeReceipt = await this.stripePaymentsService.getReceipt(paymentIntent.latest_charge as string);
 
       stripeReceiptKey = `payments/stripe-receipts/${randomUUID()}.html`;
       await this.awsS3Service.uploadObject(stripeReceiptKey, stripeReceipt as ReadableStream, "text/html");

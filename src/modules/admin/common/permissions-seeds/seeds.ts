@@ -49,4 +49,14 @@ export const admin: IMethodSeed = {
     roles: allLfhAdminRoles,
     isNotEditableForOtherRoles: true,
   },
+  "PATCH /v1/admin/payments/status/:id": {
+    description: "07. Update payment status",
+    roles: {
+      "super-admin": {
+        isAllowed: true,
+        isEditable: false,
+      },
+    },
+    isNotEditableForOtherRoles: true,
+  },
 };

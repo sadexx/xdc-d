@@ -24,6 +24,7 @@ import {
   TUpdateParticipant,
   UpdateParticipantQuery,
 } from "src/modules/multi-way-participant/common/types";
+import { EMultiWayParticipantErrorCodes } from "src/modules/multi-way-participant/common/enums";
 
 @Injectable()
 export class MultiWayParticipantService {
@@ -57,7 +58,7 @@ export class MultiWayParticipantService {
     );
 
     if (!appointment.client) {
-      throw new BadRequestException("Cannot add participant to an appointment without a client.");
+      throw new BadRequestException(EMultiWayParticipantErrorCodes.PARTICIPANT_CLIENT_REQUIRED_FOR_ADD);
     }
 
     const newParticipant = this.multiWayParticipantRepository.create({
@@ -106,7 +107,7 @@ export class MultiWayParticipantService {
     const { appointment } = participant;
 
     if (!appointment.client) {
-      throw new BadRequestException("Cannot update participant without a client.");
+      throw new BadRequestException(EMultiWayParticipantErrorCodes.PARTICIPANT_CLIENT_REQUIRED_FOR_UPDATE);
     }
 
     await this.multiWayParticipantRepository.update(id, dto);

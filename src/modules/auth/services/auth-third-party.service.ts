@@ -21,7 +21,7 @@ import { ConfigService } from "@nestjs/config";
 import { frontendRegistrationStepRoutes, thirdPartyAuthProviderConfig } from "src/modules/auth/common/constants";
 import { Response } from "express";
 import { ETokenName } from "src/modules/tokens/common/enums";
-import { EThirdPartyAuthProvider } from "src/modules/auth/common/enums";
+import { EAuthErrorCodes, EThirdPartyAuthProvider } from "src/modules/auth/common/enums";
 import { ThirdPartyAuthWebDto } from "src/modules/auth/common/dto";
 import { ICurrentClientData } from "src/modules/sessions/common/interfaces";
 import { UsersRegistrationService } from "src/modules/users/services";
@@ -61,7 +61,7 @@ export class AuthThirdPartyService {
     const roleName = thirdPartyAuthData.role ?? user?.userRoles?.[0]?.role.name;
 
     if (!roleName) {
-      throw new BadRequestException("Unable to determine user role for registration.");
+      throw new BadRequestException(EAuthErrorCodes.THIRD_PARTY_AUTH_ROLE_UNDETERMINED);
     }
 
     if (!user) {

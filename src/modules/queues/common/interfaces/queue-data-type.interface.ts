@@ -8,6 +8,8 @@ import {
 import { EMembershipNotificationType, EMembershipPricingRegion } from "src/modules/memberships/common/enums";
 import { CheckInOutAppointmentDto } from "src/modules/appointments/appointment/common/dto";
 import { ITokenUserData } from "src/modules/tokens/common/interfaces";
+import { IMakePreAuthorization } from "src/modules/payments-new/common/interfaces";
+import { IGeneratePayInReceipt } from "src/modules/pdf-new/common/interfaces";
 
 export interface IQueueData {
   queueEnum: EQueueType;
@@ -69,6 +71,16 @@ export interface IProcessCheckInOutAppointmentData {
   payload: { appointmentId: string; dto: CheckInOutAppointmentDto; user: ITokenUserData };
 }
 
+export interface IProcessPaymentPreAuthorizationData {
+  jobName: EJobType.PROCESS_PAYMENT_PRE_AUTHORIZATION;
+  payload: IMakePreAuthorization;
+}
+
+export interface IProcessPayInReceiptPdfGenerationData {
+  jobName: EJobType.PROCESS_PAY_IN_RECEIPT_PDF_GENERATION;
+  payload: IGeneratePayInReceipt;
+}
+
 export type IQueueJobType =
   | IProcessNotifyMembershipChangesData
   | IProcessStripeCancelSubscriptionsData
@@ -78,4 +90,6 @@ export type IQueueJobType =
   | IProcessStripeWebhookData
   | IProcessCloseMeetingData
   | IProcessCloseMeetingWithoutClientVisitData
-  | IProcessCheckInOutAppointmentData;
+  | IProcessCheckInOutAppointmentData
+  | IProcessPaymentPreAuthorizationData
+  | IProcessPayInReceiptPdfGenerationData;

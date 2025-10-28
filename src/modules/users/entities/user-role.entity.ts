@@ -34,6 +34,7 @@ import { PaymentInformation } from "src/modules/payment-information/entities";
 import { DraftAppointment } from "src/modules/draft-appointments/entities";
 import { Blacklist } from "src/modules/blacklists/entities";
 import { OldPayment } from "src/modules/payments/entities";
+import { Payment } from "src/modules/payments-new/entities";
 
 @Entity({ name: "user_roles" })
 export class UserRole {
@@ -133,8 +134,14 @@ export class UserRole {
   @OneToMany(() => OldPayment, (payment) => payment.fromClient)
   clientPayIns: OldPayment[];
 
+  @OneToMany(() => Payment, (payment) => payment.fromClient)
+  clientPayInsNEW: Payment[];
+
   @OneToMany(() => OldPayment, (payment) => payment.toInterpreter)
   interpreterPayOuts: OldPayment[];
+
+  @OneToMany(() => Payment, (payment) => payment.toInterpreter)
+  interpreterPayOutsNEW: Payment[];
 
   @Column({ default: false, name: "is_user_agreed_to_terms_and_conditions" })
   isUserAgreedToTermsAndConditions: boolean;

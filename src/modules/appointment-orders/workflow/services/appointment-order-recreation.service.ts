@@ -24,6 +24,7 @@ import { UserRole } from "src/modules/users/entities";
 import { IRecreateAppointmentOrderGroup } from "src/modules/appointment-orders/workflow/common/interfaces";
 import { Address } from "src/modules/addresses/entities";
 import { TCancelAppointment } from "src/modules/appointments/appointment/common/types";
+import { EAppointmentOrderWorkflowErrorCodes } from "src/modules/appointment-orders/workflow/common/enums";
 
 @Injectable()
 export class AppointmentOrderRecreationService {
@@ -90,9 +91,8 @@ export class AppointmentOrderRecreationService {
     const { recreatedAppointment } = recreatedAppointmentsWithOldAppointments[0];
 
     if (!recreatedAppointment.appointmentsGroupId) {
-      throw new BadRequestException(
-        `Appointment with id: ${recreatedAppointment.id} does not have appointmentsGroupId.`,
-      );
+      this.lokiLogger.error(`Appointment with id: ${recreatedAppointment.id} does not have appointmentsGroupId.`);
+      throw new BadRequestException(EAppointmentOrderWorkflowErrorCodes.APPOINTMENT_MISSING_GROUP_ID);
     }
 
     const queryOptions = this.appointmentOrderQueryOptionsService.getFullGroupRecreationOptions(
@@ -121,9 +121,8 @@ export class AppointmentOrderRecreationService {
     const { oldAppointment, recreatedAppointment } = recreatedAppointmentWithOldAppointment;
 
     if (!recreatedAppointment.appointmentsGroupId) {
-      throw new BadRequestException(
-        `Appointment with id: ${recreatedAppointment.id} does not have appointmentsGroupId.`,
-      );
+      this.lokiLogger.error(`Appointment with id: ${recreatedAppointment.id} does not have appointmentsGroupId.`);
+      throw new BadRequestException(EAppointmentOrderWorkflowErrorCodes.APPOINTMENT_MISSING_GROUP_ID);
     }
 
     const queryOptions = this.appointmentOrderQueryOptionsService.getPendingAppointmentsWithoutInterpreterOptions(
@@ -155,7 +154,8 @@ export class AppointmentOrderRecreationService {
     const { oldAppointment, recreatedAppointment } = recreatedAppointmentWithOldAppointment;
 
     if (!recreatedAppointment.client) {
-      throw new BadRequestException(`No client in recreatedAppointment with id: ${recreatedAppointment.id}`);
+      this.lokiLogger.error(`No client in recreatedAppointment with id: ${recreatedAppointment.id}.`);
+      throw new BadRequestException(EAppointmentOrderWorkflowErrorCodes.NO_CLIENT_IN_APPOINTMENT);
     }
 
     const appointmentOrder = (await this.appointmentOrderCreateService.constructAndCreateAppointmentOrder(
@@ -173,7 +173,7 @@ export class AppointmentOrderRecreationService {
 
   private async recreateOrderGroup(appointmentGroup: IRecreateAppointmentOrderGroup[]): Promise<AppointmentOrderGroup> {
     if (appointmentGroup.length === 0) {
-      throw new BadRequestException("No appointments found for group that needs to be recreated.");
+      throw new BadRequestException(EAppointmentOrderWorkflowErrorCodes.NO_APPOINTMENTS_FOR_GROUP_RECREATION);
     }
 
     const appointmentWithOrder = appointmentGroup.find(
@@ -189,9 +189,8 @@ export class AppointmentOrderRecreationService {
     const [firstAppointment] = appointmentGroup;
 
     if (!firstAppointment.appointmentsGroupId || !firstAppointment.client) {
-      throw new BadRequestException(
-        `Appointment with id ${firstAppointment.id} does not have appointmentsGroupId or client.`,
-      );
+      this.lokiLogger.error(`Appointment with id ${firstAppointment.id} does not have appointmentsGroupId or client.`);
+      throw new BadRequestException(EAppointmentOrderWorkflowErrorCodes.APPOINTMENT_MISSING_GROUP_ID_OR_CLIENT);
     }
 
     const appointmentDto = firstAppointment as unknown as CreateVirtualAppointmentDto | CreateFaceToFaceAppointmentDto;

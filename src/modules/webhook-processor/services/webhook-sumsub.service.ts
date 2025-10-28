@@ -12,6 +12,7 @@ import { LokiLogger } from "src/common/logger";
 import { SumSubSdkService } from "src/modules/sumsub/services";
 import { ConfigService } from "@nestjs/config";
 import { MockService } from "src/modules/mock/services";
+import { EWebhookErrorCodes } from "src/modules/webhook-processor/common/enums";
 
 @Injectable()
 export class WebhookSumSubService {
@@ -110,7 +111,7 @@ export class WebhookSumSubService {
         applicantFirstName.toLowerCase() !== profileFirstName.toLowerCase() ||
         applicantLastName.toLowerCase() !== profileLastName.toLowerCase()
       ) {
-        throw new BadRequestException("The name from SumSub does not match the name entered by the user.");
+        throw new BadRequestException(EWebhookErrorCodes.SUMSUB_NAME_MISMATCH);
       }
 
       this.activationTrackingService.checkActivationStepsEnded(userRole).catch((error: Error) => {

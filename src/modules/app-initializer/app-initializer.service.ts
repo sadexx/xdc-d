@@ -1,5 +1,4 @@
 import { Injectable, OnModuleInit } from "@nestjs/common";
-import { EEnvironment } from "src/common/enums";
 import { WebhookService } from "src/modules/aws/sqs/services";
 import { ContentManagementService } from "src/modules/content-management/services";
 import { CompaniesService } from "src/modules/companies/services";
@@ -10,7 +9,7 @@ import { EUserRoleName } from "src/modules/users/common/enums";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Role } from "src/modules/users/entities";
 import { PermissionsService } from "src/modules/permissions/services";
-import { APP_INSTANCE_NAME, ENVIRONMENT } from "src/common/constants";
+import { APP_INSTANCE_NAME, IS_LOCAL } from "src/common/constants";
 import { MessagingIdentityService } from "src/modules/chime-messaging-configuration/services";
 import { ConfigService } from "@nestjs/config";
 import { RatesService } from "src/modules/rates/services";
@@ -52,7 +51,7 @@ export class AppInitializerService implements OnModuleInit {
       await this.settingsService.seedSettingsToDatabase();
     }
 
-    if (ENVIRONMENT !== EEnvironment.LOCAL) {
+    if (!IS_LOCAL) {
       await this.webhookService.startCheckStatusWebhook();
     }
   }

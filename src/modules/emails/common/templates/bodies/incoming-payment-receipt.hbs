@@ -33,12 +33,12 @@
                   <div style="text-align: right">
                     <p style="font-size: 35px">TAX INVOICE</p>
                     <br />
-                    <b>From: {{fromCompanyName}}</b><br />
-                    <p>ABN {{fromCompanyABNNumber}}</p>
-                    <p>{{fromCompanyAddress}}</p>
-                    <b>To: {{toUserName}}</b><br />
-                    <b>(Client ID {{toClientId}})</b><br />
-                    <p>{{toAddress}}</p>
+                    <b>From: {{lfhCompanyData.companyName}}</b><br />
+                    <p>ABN {{lfhCompanyData.abnNumber}}</p>
+                    <p>{{lfhCompanyData.companyAddress}}</p>
+                    <b>To: {{recipientData.recipientName}}</b><br />
+                    <b>(Client ID {{recipientData.recipientId}})</b><br />
+                    <p>{{recipientData.recipientAddress}}</p>
                     <br />
                   </div>
                 </td>
@@ -49,7 +49,7 @@
         <tr>
           <td>
             <h3 style="font-family: Arial, sans-serif; color: #333; line-height: 1.4">
-              Invoice Number {{receiptNumber}} - PAID
+              Invoice Number {{appointment.platformId}} - PAID
             </h3>
             <table
               width="100%"
@@ -158,7 +158,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{currency}}
+                    {{payment.currency}}
                   </td>
                   <td
                     style="
@@ -170,7 +170,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{issueDate}}
+                    {{data.issueDate}}
                   </td>
                   <td
                     style="
@@ -182,7 +182,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{currency}} {{total}}
+                    {{payment.currency}} {{payment.totalAmount}}
                   </td>
                   <td
                     style="
@@ -194,7 +194,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{currency}} {{gstAmount}}
+                    {{payment.currency}} {{payment.totalGstAmount}}
                   </td>
                   <td
                     style="
@@ -206,7 +206,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{currency}} {{invoiceTotal}}
+                    {{payment.currency}} {{payment.totalFullAmount}}
                   </td>
                   <td
                     style="
@@ -218,7 +218,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{currency}} {{amountPaid}}
+                    {{payment.currency}} {{#if payment.totalFullAmount}}-{{payment.totalFullAmount}}{{else}}0{{/if}}
                   </td>
                   <td
                     style="
@@ -230,7 +230,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{currency}} {{amountDue}}
+                    {{payment.currency}} {{"0.00"}}
                   </td>
                 </tr>
               </tbody>
@@ -311,7 +311,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{paymentDate}}
+                    {{data.issueDate}}
                   </td>
                   <td
                     style="
@@ -323,7 +323,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{paymentDescription}}
+                    {{recipientData.description}}
                   </td>
                   <td
                     style="
@@ -335,7 +335,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{currency}} {{paymentTotal}}
+                    {{payment.currency}} {{#if payment.totalFullAmount}}-{{payment.totalFullAmount}}{{else}}0{{/if}}
                   </td>
                   <td
                     style="
@@ -347,7 +347,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{currency}} {{thisInvoiceAmount}}
+                    {{payment.currency}} {{payment.totalFullAmount}}
                   </td>
                 </tr>
               </tbody>
@@ -464,7 +464,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{bookingId}}
+                    {{appointment.platformId}}
                   </td>
                   <td
                     style="
@@ -476,7 +476,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{service}}
+                    {{data.appointmentServiceType}}
                   </td>
                   <td
                     style="
@@ -488,7 +488,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{topic}}
+                    {{appointment.topic}}
                   </td>
                   <td
                     style="
@@ -500,7 +500,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{appointmentDate}}
+                    {{data.appointmentDate}}
                   </td>
                   <td
                     style="
@@ -512,7 +512,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{interpreterId}}
+                    {{data.interpreter}}
                   </td>
                   <td
                     style="
@@ -524,7 +524,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{duration}}
+                    {{data.totalDuration}}
                   </td>
                   <td
                     style="
@@ -536,7 +536,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{currency}} {{invoiceTotal}}
+                    {{payment.currency}} {{payment.totalFullAmount}}
                   </td>
                 </tr>
               </tbody>
@@ -578,7 +578,7 @@
                       text-align: center;
                     "
                   >
-                    {{currency}} {{estimatedCostAmount}}
+                    {{payment.currency}} {{payment.estimatedCostAmount}}
                   </td>
                 </tr>
                 <tr>
@@ -613,12 +613,12 @@
                       text-align: center;
                     "
                   >
-                    {{currency}} {{actualTimeAmount}}
+                    {{payment.currency}} {{payment.totalAmount}}
                   </td>
                 </tr>
                 <tr>
                   <td style="padding: 8px">Promo Code</td>
-                  <td style="padding: 8px">{{promoCodeName}}</td>
+                  <td style="padding: 8px">{{#if discountSummary.discountRate.promoCode}}{{discountSummary.discountRate.promoCode}}{{/if}}</td>
                   <td
                     style="
                       padding-top: 8px;
@@ -628,7 +628,7 @@
                       text-align: center;
                     "
                   >
-                    {{promoCodeDiscount}}
+										{{#if discountSummary.promoCodeDiscountDescription}}{{discountSummary.promoCodeDiscountDescription}}{{/if}}
                   </td>
                   <td
                     style="
@@ -639,12 +639,12 @@
                       text-align: center;
                     "
                   >
-                    {{currency}} {{promoCodeDiscountAmount}}
+                    {{payment.currency}} {{#if discountSummary.promoCodeDiscountDescription}}{{discountSummary.promoCodeDiscountDescription}}{{/if}}
                   </td>
                 </tr>
                 <tr>
                   <td style="padding: 8px">Mixed Promo code</td>
-                  <td style="padding: 8px">{{mixedPromoCodeName}}</td>
+                  <td style="padding: 8px">{{#if discountSummary.discountRate.promoCode}}{{discountSummary.discountRate.promoCode}}{{/if}}</td>
                   <td
                     style="
                       padding-top: 8px;
@@ -654,7 +654,7 @@
                       text-align: center;
                     "
                   >
-                    {{mixedPromoCodeDescription}}
+										{{#if discountSummary.mixedPromoCodeDescription}}{{discountSummary.mixedPromoCodeDescription}}{{/if}}
                   </td>
                   <td
                     style="
@@ -665,12 +665,12 @@
                       text-align: center;
                     "
                   >
-                    {{currency}} {{mixedPromoCodeDiscountAmount}}
+                    {{payment.currency}} {{#if discountSummary.appliedDiscounts.promoCampaignDiscount}}{{discountSummary.appliedDiscounts.promoCampaignDiscount}}{{/if}}
                   </td>
                 </tr>
                 <tr>
                   <td style="padding: 8px">Membership</td>
-                  <td style="padding: 8px">{{membershipDescription}}</td>
+                  <td style="padding: 8px">{{#if discountSummary.membershipDescription}}{{discountSummary.membershipDescription}}{{/if}}</td>
                   <td
                     style="
                       padding-top: 8px;
@@ -680,7 +680,7 @@
                       text-align: center;
                     "
                   >
-                    {{membershipDiscount}}
+										{{#if discountSummary.membershipDiscountDescription}}{{discountSummary.membershipDiscountDescription}}{{/if}}
                   </td>
                   <td
                     style="
@@ -691,7 +691,7 @@
                       text-align: center;
                     "
                   >
-                    {{currency}} {{membershipDiscountAmount}}
+                    {{payment.currency}} {{#if discountSummary.appliedDiscounts.membershipDiscount}}{{discountSummary.appliedDiscounts.membershipDiscount}}{{/if}}
                   </td>
                 </tr>
                 <tr>
@@ -716,7 +716,7 @@
                       text-align: center;
                     "
                   >
-                    {{currency}} {{subTotalAmount}}
+                    {{payment.currency}} {{payment.totalAmount}}
                   </td>
                 </tr>
                 <tr>
@@ -740,7 +740,7 @@
                       text-align: center;
                     "
                   >
-                    {{currency}} {{gstAmount}}
+                    {{payment.currency}} {{payment.totalGstAmount}}
                   </td>
                 </tr>
                 <tr>
@@ -776,7 +776,7 @@
                       text-align: center;
                     "
                   >
-                    {{currency}} {{totalAmount}}
+                    {{payment.currency}} {{payment.totalFullAmount}}
                   </td>
                 </tr>
               </tbody>

@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
-import { ECalculationType } from "src/modules/rates/common/enums";
+import { ECalculationType, ERatesErrorCodes } from "src/modules/rates/common/enums";
 import { CalculationConfig } from "src/modules/rates/common/interfaces";
 import { UNDEFINED_VALUE } from "src/common/constants";
 
@@ -13,35 +13,35 @@ export class CalculationConfigValidatorService {
 
   private validateBasicParameters(config: CalculationConfig): void {
     if (!config.interpreterType) {
-      throw new BadRequestException("Interpreter type is required");
+      throw new BadRequestException(ERatesErrorCodes.INTERPRETER_TYPE_REQUIRED);
     }
 
     if (!config.schedulingType) {
-      throw new BadRequestException("Scheduling type is required");
+      throw new BadRequestException(ERatesErrorCodes.SCHEDULING_TYPE_REQUIRED);
     }
 
     if (!config.communicationType) {
-      throw new BadRequestException("Communication type is required");
+      throw new BadRequestException(ERatesErrorCodes.COMMUNICATION_TYPE_REQUIRED);
     }
 
     if (!config.interpretingType) {
-      throw new BadRequestException("Interpreting type is required");
+      throw new BadRequestException(ERatesErrorCodes.INTERPRETING_TYPE_REQUIRED);
     }
 
     if (!config.topic) {
-      throw new BadRequestException("Topic is required");
+      throw new BadRequestException(ERatesErrorCodes.TOPIC_REQUIRED);
     }
 
     if (!config.duration || config.duration <= 0) {
-      throw new BadRequestException("Duration must be greater than 0");
+      throw new BadRequestException(ERatesErrorCodes.DURATION_INVALID);
     }
 
     if (!config.scheduleDateTime) {
-      throw new BadRequestException("Schedule date time is required");
+      throw new BadRequestException(ERatesErrorCodes.SCHEDULE_DATETIME_REQUIRED);
     }
 
     if (config.isEscortOrSimultaneous !== UNDEFINED_VALUE) {
-      throw new BadRequestException("Escort or Simultaneous should not be set in the config");
+      throw new BadRequestException(ERatesErrorCodes.ESCORT_SIMULTANEOUS_NOT_ALLOWED);
     }
   }
 
@@ -63,81 +63,69 @@ export class CalculationConfigValidatorService {
 
   private validatePreliminaryOrStartPrice(config: CalculationConfig): void {
     if (config.calculationType === ECalculationType.APPOINTMENT_START_PRICE && config.extraDays !== UNDEFINED_VALUE) {
-      throw new BadRequestException("Extra days must be undefined for appointment start price calculations");
+      throw new BadRequestException(ERatesErrorCodes.EXTRA_DAYS_NOT_ALLOWED_START_PRICE);
     }
 
     if (config.calculationType === ECalculationType.PRELIMINARY_ESTIMATE && config.clientIsGstPayer !== true) {
-      throw new BadRequestException("Client is GST payer must be true for preliminary estimate calculations");
+      throw new BadRequestException(ERatesErrorCodes.CLIENT_GST_PAYER_REQUIRED_PRELIMINARY);
     }
 
     if (config.interpreterTimezone !== UNDEFINED_VALUE) {
-      throw new BadRequestException(
-        "Interpreter timezone must be undefined for preliminary estimate or appointment start price calculations",
-      );
+      throw new BadRequestException(ERatesErrorCodes.INTERPRETER_TIMEZONE_NOT_ALLOWED_PRELIMINARY);
     }
 
     if (config.clientTimezone !== UNDEFINED_VALUE) {
-      throw new BadRequestException(
-        "Client timezone must be undefined for preliminary estimate or appointment start price calculations",
-      );
+      throw new BadRequestException(ERatesErrorCodes.CLIENT_TIMEZONE_NOT_ALLOWED_PRELIMINARY);
     }
 
     if (config.isExternalInterpreter !== UNDEFINED_VALUE) {
-      throw new BadRequestException(
-        "Is external interpreter must be undefined for preliminary estimate or appointment start price calculations",
-      );
+      throw new BadRequestException(ERatesErrorCodes.EXTERNAL_INTERPRETER_NOT_ALLOWED_PRELIMINARY);
     }
 
     if (config.includeDiscounts !== false) {
-      throw new BadRequestException(
-        "Include discounts must be false for preliminary estimate or appointment start price calculations",
-      );
+      throw new BadRequestException(ERatesErrorCodes.DISCOUNTS_NOT_ALLOWED_PRELIMINARY);
     }
 
     if (config.discounts !== UNDEFINED_VALUE) {
-      throw new BadRequestException(
-        "Discounts must be undefined for preliminary estimate or appointment start price calculations",
-      );
+      throw new BadRequestException(ERatesErrorCodes.DISCOUNTS_MUST_BE_UNDEFINED_PRELIMINARY);
     }
   }
 
   private validateEndPriceOrSingleBlock(config: CalculationConfig): void {
     if (config.extraDays !== UNDEFINED_VALUE) {
-      throw new BadRequestException("Extra days must be undefined for this calculation type");
+      throw new BadRequestException(ERatesErrorCodes.EXTRA_DAYS_NOT_ALLOWED);
     }
 
     if (config.isExternalInterpreter !== true && config.interpreterTimezone === UNDEFINED_VALUE) {
-      throw new BadRequestException("Interpreter timezone is required for this calculation type");
+      throw new BadRequestException(ERatesErrorCodes.INTERPRETER_TIMEZONE_REQUIRED);
     }
 
     if (config.clientTimezone === UNDEFINED_VALUE) {
-      throw new BadRequestException("Client timezone is required for this calculation type");
+      throw new BadRequestException(ERatesErrorCodes.CLIENT_TIMEZONE_REQUIRED);
     }
 
     if (config.isExternalInterpreter === true && config.interpreterTimezone === UNDEFINED_VALUE) {
-      throw new BadRequestException("Interpreter timezone is not allowed for PSTN calculation type");
+      throw new BadRequestException(ERatesErrorCodes.INTERPRETER_TIMEZONE_NOT_ALLOWED_PSTN);
     }
   }
 
   private validateDetailedBreakdown(config: CalculationConfig): void {
     if (config.isExternalInterpreter === true && config.clientTimezone === UNDEFINED_VALUE) {
-      throw new BadRequestException("Client timezone is required for PSTN calls");
+      throw new BadRequestException(ERatesErrorCodes.CLIENT_TIMEZONE_REQUIRED_PSTN);
     }
 
     if (
       config.isExternalInterpreter === true &&
       (config.timeCalculationMode !== UNDEFINED_VALUE || config.interpreterTimezone !== UNDEFINED_VALUE)
     ) {
-      throw new BadRequestException("Time calculation mode or interpreter timezone must be undefined for PSTN calls");
+      throw new BadRequestException(ERatesErrorCodes.TIME_MODE_TIMEZONE_NOT_ALLOWED);
     }
 
     if (
       config.timeCalculationMode !== UNDEFINED_VALUE &&
       (config.clientTimezone !== UNDEFINED_VALUE || config.interpreterTimezone !== UNDEFINED_VALUE)
     ) {
-      throw new BadRequestException(
-        "Client and interpreter time zones are not allowed when time calculation mode is specified",
-      );
+      throw new BadRequestException(ERatesErrorCodes.TIMEZONES_NOT_ALLOWED_WITH_TIME_MODE);
     }
 
     if (
@@ -145,28 +133,26 @@ export class CalculationConfigValidatorService {
       config.isExternalInterpreter === UNDEFINED_VALUE &&
       (config.clientTimezone === UNDEFINED_VALUE || config.interpreterTimezone === UNDEFINED_VALUE)
     ) {
-      throw new BadRequestException(
-        "Client and interpreter time zones are required when time calculation mode is auto",
-      );
+      throw new BadRequestException(ERatesErrorCodes.TIMEZONES_REQUIRED_AUTO_MODE);
     }
   }
 
   private validateDiscountParameters(config: CalculationConfig): void {
     if (config && config.discounts) {
       if (config.discounts.promoCampaignDiscount && config.discounts.promoCampaignDiscount < 0) {
-        throw new BadRequestException("Promo campaign discount cannot be negative");
+        throw new BadRequestException(ERatesErrorCodes.PROMO_DISCOUNT_NEGATIVE);
       }
 
       if (config.discounts.membershipDiscount && config.discounts.membershipDiscount < 0) {
-        throw new BadRequestException("Membership discount cannot be negative");
+        throw new BadRequestException(ERatesErrorCodes.MEMBERSHIP_DISCOUNT_NEGATIVE);
       }
 
       if (config.discounts.membershipFreeMinutes && config.discounts.membershipFreeMinutes < 0) {
-        throw new BadRequestException("Membership free minutes cannot be negative");
+        throw new BadRequestException(ERatesErrorCodes.MEMBERSHIP_FREE_MINUTES_NEGATIVE);
       }
 
       if (config.discounts.promoCampaignDiscountMinutes && config.discounts.promoCampaignDiscountMinutes < 0) {
-        throw new BadRequestException("Promo campaign discount minutes cannot be negative");
+        throw new BadRequestException(ERatesErrorCodes.PROMO_DISCOUNT_MINUTES_NEGATIVE);
       }
     }
   }

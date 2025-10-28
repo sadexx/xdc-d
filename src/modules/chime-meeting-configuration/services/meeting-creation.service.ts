@@ -4,6 +4,7 @@ import { ChimeMeetingConfiguration } from "src/modules/chime-meeting-configurati
 import { Appointment } from "src/modules/appointments/appointment/entities";
 import { EAppointmentCommunicationType } from "src/modules/appointments/appointment/common/enums";
 import {
+  EChimeMeetingConfigurationErrorCodes,
   EExternalVideoResolution,
   EExtMeetingFeatureStatus,
   EExtVideoContentResolution,
@@ -62,7 +63,7 @@ export class MeetingCreationService {
         this.lokiLogger.error(
           `Invalid communication type for appointment Id: ${id}, configuration: ${communicationType}`,
         );
-        throw new BadRequestException("Invalid communication type for meeting configuration");
+        throw new BadRequestException(EChimeMeetingConfigurationErrorCodes.MEETING_CREATION_INVALID_COMMUNICATION_TYPE);
     }
   }
 

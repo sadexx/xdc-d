@@ -1,7 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { PassportStrategy } from "@nestjs/passport";
-import { Strategy, VerifiedCallback } from "passport-custom";
+import { Strategy } from "passport-custom";
 import { AuthStrategies } from "src/config/strategies";
 import { Request } from "express";
 import { IAppleProviderOutput } from "src/modules/auth/common/interfaces";
@@ -10,14 +9,14 @@ import { AppleTokensService } from "src/modules/tokens/services";
 @Injectable()
 export class AppleMobileStrategy extends PassportStrategy(Strategy, AuthStrategies.APPLE_MOBILE_STRATEGY) {
   constructor(private readonly appleTokensService: AppleTokensService) {
-    super((req: Request, done: VerifiedCallback) => this.validate(req, done));
+    super();
   }
 
-  async validate(req: Request, done: VerifiedCallback): Promise<void> {
+  async validate(req: Request): Promise<unknown> {
     const idToken = req.body?.idToken as string;
 
     if (!idToken) {
-      return done(new UnauthorizedException("Body doesn't include idToken field"), null);
+      throw new UnauthorizedException("Body doesn't include idToken field");
     }
 
     try {
@@ -27,9 +26,9 @@ export class AppleMobileStrategy extends PassportStrategy(Strategy, AuthStrategi
         email: result.email,
       };
 
-      return done(null, user);
+      return user;
     } catch (error) {
-      return done(error, null);
+      throw new UnauthorizedException((error as Error).message || "Invalid idToken");
     }
   }
 }

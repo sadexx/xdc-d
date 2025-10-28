@@ -48,6 +48,7 @@ import {
 } from "src/modules/pdf/common/interfaces/payout-corporate-receipt.interface";
 import { toZonedTime } from "date-fns-tz";
 import { TGenerateMembershipInvoiceUserRole } from "src/modules/pdf/common/types";
+import { EPdfErrorCodes } from "src/modules/pdf/common/enums";
 
 @Injectable()
 export class PdfBuilderService {
@@ -94,11 +95,11 @@ export class PdfBuilderService {
     }
 
     if (!payment.appointment) {
-      throw new BadRequestException("Appointment not exist!");
+      throw new BadRequestException(EPdfErrorCodes.APPOINTMENT_NOT_EXIST);
     }
 
     if (!payment.appointment.client) {
-      throw new BadRequestException("Appointment client not exist!");
+      throw new BadRequestException(EPdfErrorCodes.APPOINTMENT_CLIENT_NOT_EXIST);
     }
 
     const clientRole = payment.appointment.client;
@@ -115,7 +116,7 @@ export class PdfBuilderService {
 
     if (isCorporate) {
       if (!payment.company) {
-        throw new BadRequestException("Payment company not exist!");
+        throw new BadRequestException(EPdfErrorCodes.PAYMENT_COMPANY_NOT_EXIST);
       }
 
       toUserName = payment.company.name;
@@ -124,7 +125,7 @@ export class PdfBuilderService {
       paymentDescription = `Deposit of the company ${payment.company.platformId}`;
     } else {
       if (!clientRole.paymentInformation) {
-        throw new BadRequestException("Payment info not filled!");
+        throw new BadRequestException(EPdfErrorCodes.PAYMENT_INFO_NOT_FILLED);
       }
 
       toUserName = this.getUserName(clientRole.profile);
@@ -167,7 +168,7 @@ export class PdfBuilderService {
       !clientAddress.state ||
       !clientAddress.postcode
     ) {
-      throw new BadRequestException("Client address does not fill!");
+      throw new BadRequestException(EPdfErrorCodes.CLIENT_ADDRESS_NOT_FILLED);
     }
 
     const receiptData: IPayInReceipt = {
@@ -237,25 +238,21 @@ export class PdfBuilderService {
     });
 
     if (!payment.appointment) {
-      throw new BadRequestException("Payment doesn`t have relation to appointment!");
+      throw new BadRequestException(EPdfErrorCodes.PAYMENT_NO_APPOINTMENT);
     }
 
     if (!payment.appointment.interpreter) {
-      throw new BadRequestException("Appointment interpreter not fill!");
+      throw new BadRequestException(EPdfErrorCodes.APPOINTMENT_INTERPRETER_NOT_FILLED);
     }
 
     const interpreterRole = payment.appointment.interpreter;
 
     if (!interpreterRole.profile) {
-      throw new BadRequestException("Interpreter profile does not fill!");
-    }
-
-    if (!payment.appointment) {
-      throw new BadRequestException("Payment appointment is not assigned!");
+      throw new BadRequestException(EPdfErrorCodes.INTERPRETER_PROFILE_NOT_FILLED);
     }
 
     if (!payment.appointment.businessEndTime) {
-      throw new BadRequestException("Appointment business end time not fill!");
+      throw new BadRequestException(EPdfErrorCodes.APPOINTMENT_BUSINESS_END_TIME_NOT_FILLED);
     }
 
     const currentDay = format(new Date(), "dd/MM/yyyy");
@@ -312,17 +309,17 @@ export class PdfBuilderService {
     });
 
     if (!payment.appointment) {
-      throw new BadRequestException("Payment doesn`t have relation to appointment!");
+      throw new BadRequestException(EPdfErrorCodes.PAYMENT_NO_APPOINTMENT);
     }
 
     if (!payment.appointment.interpreter) {
-      throw new BadRequestException("Appointment interpreter not fill!");
+      throw new BadRequestException(EPdfErrorCodes.APPOINTMENT_INTERPRETER_NOT_FILLED);
     }
 
     const interpreterRole = payment.appointment.interpreter;
 
     if (!interpreterRole.profile) {
-      throw new BadRequestException("Interpreter profile does not fill!");
+      throw new BadRequestException(EPdfErrorCodes.INTERPRETER_PROFILE_NOT_FILLED);
     }
 
     if (
@@ -333,18 +330,18 @@ export class PdfBuilderService {
       !interpreterRole.address.state ||
       !interpreterRole.address.postcode
     ) {
-      throw new BadRequestException("Interpreter address does not fill!");
+      throw new BadRequestException(EPdfErrorCodes.INTERPRETER_ADDRESS_NOT_FILLED);
     }
 
     if (
       (!interpreterRole.abnCheck || !interpreterRole.abnCheck.abnNumber) &&
       interpreterRole.role.name !== EUserRoleName.IND_LANGUAGE_BUDDY_INTERPRETER
     ) {
-      throw new BadRequestException("Interpreter ABN does not fill!");
+      throw new BadRequestException(EPdfErrorCodes.INTERPRETER_ABN_NOT_FILLED);
     }
 
     if (!payment.appointment.businessEndTime) {
-      throw new BadRequestException("Appointment business end time not fill!");
+      throw new BadRequestException(EPdfErrorCodes.APPOINTMENT_BUSINESS_END_TIME_NOT_FILLED);
     }
 
     const lfhCompany = await findOneOrFail(COMPANY_LFH_ID, this.companyRepository, {
@@ -360,7 +357,7 @@ export class PdfBuilderService {
       !lfhCompany.address.postcode ||
       !lfhCompany.abnNumber
     ) {
-      throw new InternalServerErrorException("Company LFH data not seeded");
+      throw new InternalServerErrorException(EPdfErrorCodes.COMPANY_LFH_DATA_NOT_SEEDED);
     }
 
     const currentDay = format(new Date(), "dd/MM/yyyy");
@@ -419,7 +416,7 @@ export class PdfBuilderService {
       !userRole.address.state ||
       !userRole.address.postcode
     ) {
-      throw new BadRequestException("Client address does not fill!");
+      throw new BadRequestException(EPdfErrorCodes.CLIENT_ADDRESS_NOT_FILLED);
     }
 
     const receiptData: IMembershipInvoice = {
@@ -482,7 +479,7 @@ export class PdfBuilderService {
     const { role, user, profile, interpreterProfile } = userRole;
 
     if (!interpreterProfile || !interpreterProfile.averageRating || !user.avatarUrl) {
-      throw new BadRequestException("Insufficient data to generate interpreter badge.");
+      throw new BadRequestException(EPdfErrorCodes.INSUFFICIENT_DATA_FOR_BADGE);
     }
 
     const IS_MEDIA_BUCKET = true;
@@ -536,11 +533,11 @@ export class PdfBuilderService {
     });
 
     if (!payment.company) {
-      throw new BadRequestException("Company of client not exist!");
+      throw new BadRequestException(EPdfErrorCodes.COMPANY_CLIENT_NOT_EXIST);
     }
 
     if (!payment.company.paymentInformation) {
-      throw new BadRequestException("Payment info not filled!");
+      throw new BadRequestException(EPdfErrorCodes.PAYMENT_INFO_NOT_FILLED);
     }
 
     const issueDate = format(new Date(payment.updatingDate), "dd/MM/yyyy");
@@ -817,17 +814,8 @@ export class PdfBuilderService {
 
     data.duration = fullDuration;
 
-    const actualTimePrice = await this.ratesService.calculatePriceByOneDay(
-      data,
-      fullDuration,
-      scheduleDateTime,
-      isGstPayers.client,
-      OldERoleType.CLIENT,
-      isNeedCalcAsNormalTime,
-      isNeedCalcAsOvertime,
-    );
-
-    const actualTimeAmount = round2(actualTimePrice.price);
+    const finalAmountAfterDiscounts = Number(payment.totalAmount);
+    let totalDiscountsApplied = 0;
 
     for (const paymentItem of payment.items) {
       if (paymentItem.status !== OldEPaymentStatus.CAPTURED) {
@@ -899,7 +887,21 @@ export class PdfBuilderService {
         membershipDiscountAmount =
           Number(membershipDiscountAmount) + Number(paymentItem.amountOfAppliedDiscountByMembershipDiscount);
       }
+
+      if (paymentItem.amountOfAppliedDiscountByPromoCode) {
+        totalDiscountsApplied += Number(paymentItem.amountOfAppliedDiscountByPromoCode);
+      }
+
+      if (paymentItem.amountOfAppliedDiscountByMembershipMinutes) {
+        totalDiscountsApplied += Number(paymentItem.amountOfAppliedDiscountByMembershipMinutes);
+      }
+
+      if (paymentItem.amountOfAppliedDiscountByMembershipDiscount) {
+        totalDiscountsApplied += Number(paymentItem.amountOfAppliedDiscountByMembershipDiscount);
+      }
     }
+
+    const actualTimeAmount = round2(finalAmountAfterDiscounts + totalDiscountsApplied);
 
     let mixedPromoCodeDescription: string | null = null;
     let membershipDescription: string | null = null;
@@ -914,7 +916,7 @@ export class PdfBuilderService {
       membershipDiscount = `${membershipAppliedMinutes} mins`;
     }
 
-    if (membershipDiscount) {
+    if (membershipDiscountPercent) {
       if (!membershipDescription) {
         membershipDescription = `${membershipType} - discount`;
         membershipDiscount = `${membershipDiscountPercent}%`;

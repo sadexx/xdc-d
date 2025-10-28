@@ -22,9 +22,13 @@ import {
   NUMBER_OF_MILLISECONDS_IN_SECOND,
   NUMBER_OF_MILLISECONDS_IN_TEN_SECONDS,
 } from "src/common/constants";
+import { EDocusignErrorCodes } from "src/modules/docusign/common/enums";
+import { LokiLogger } from "src/common/logger";
 
 @Injectable()
 export class DocusignSdkService {
+  private readonly lokiLogger = new LokiLogger(DocusignSdkService.name);
+
   private baseURI: string;
   private accountId: string;
   private tokenType: string;
@@ -69,15 +73,15 @@ export class DocusignSdkService {
             `scope=impersonation+signature&client_id=${integrationKey}&` +
             `redirect_uri=${redirectURI}`;
 
-          throw new ServiceUnavailableException(
-            `Please, Open the following URL in your browser to grant consent to the application: ${consentUrl}. After that, all must be OK`,
-          );
+          throw new ServiceUnavailableException({
+            message: EDocusignErrorCodes.SDK_CONSENT_REQUIRED,
+            variables: { link: consentUrl },
+          });
         }
       }
 
-      throw new ServiceUnavailableException(
-        `HTTP error! Status: ${response.status}, error: ${JSON.stringify(responseJson)}`,
-      );
+      this.lokiLogger.error(`HTTP error! Status: ${response.status}, error: ${JSON.stringify(responseJson)}`);
+      throw new ServiceUnavailableException(EDocusignErrorCodes.SDK_HTTP_ERROR);
     }
 
     return response;
@@ -154,7 +158,8 @@ export class DocusignSdkService {
         this.accountId = userInfo.accounts[0].account_id;
       }
     } catch (error) {
-      throw new ServiceUnavailableException(`DocuSign auth error! Error: ${(error as Error).message}`);
+      this.lokiLogger.error(`DocuSign auth error! Error: ${(error as Error).message}`);
+      throw new ServiceUnavailableException(EDocusignErrorCodes.SDK_AUTH_ERROR);
     }
   }
 
@@ -296,7 +301,7 @@ export class DocusignSdkService {
       };
     }
 
-    throw new ServiceUnavailableException("DocuSign answer wrong: incorrect file format");
+    throw new ServiceUnavailableException(EDocusignErrorCodes.SDK_INCORRECT_FILE_FORMAT);
   }
 
   async changeRecipients(envelopeId: string, recipientId: string, email: string): Promise<IChangeRecipientsInterface> {

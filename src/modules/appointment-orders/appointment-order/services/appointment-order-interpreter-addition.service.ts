@@ -14,6 +14,7 @@ import { AppointmentOrder, AppointmentOrderGroup } from "src/modules/appointment
 import { AppointmentOrderNotificationService } from "src/modules/appointment-orders/appointment-order/services";
 import { IAppointmentOrderInvitationOutput } from "src/modules/search-engine-logic/common/outputs";
 import { TGetInterpreters } from "src/modules/appointment-orders/appointment-order/common/types";
+import { EAppointmentOrderErrorCodes } from "src/modules/appointment-orders/appointment-order/common/enum";
 
 @Injectable()
 export class AppointmentOrderInterpreterAdditionService {
@@ -38,7 +39,7 @@ export class AppointmentOrderInterpreterAdditionService {
     const appointmentOrder = await findOneOrFail(id, this.appointmentOrderRepository, appointmentOrderOptions);
 
     if (appointmentOrder.schedulingType === EAppointmentSchedulingType.ON_DEMAND) {
-      throw new BadRequestException("The appointment on-demand scheduling type is not permit to add interpreters.");
+      throw new BadRequestException(EAppointmentOrderErrorCodes.ON_DEMAND_NO_INTERPRETER_ADDITION);
     }
 
     const { validInterpreters, interpreterValidationErrors } = await this.batchValidateInterpreters(

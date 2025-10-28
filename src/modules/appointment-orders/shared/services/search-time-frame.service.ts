@@ -25,13 +25,16 @@ import {
   NUMBER_OF_MINUTES_IN_FIVE_MINUTES,
   NUMBER_OF_MINUTES_IN_HALF_HOUR,
   NUMBER_OF_MINUTES_IN_HOUR,
-  NUMBER_OF_MINUTES_IN_HOUR_AND_HALF,
   NUMBER_OF_MINUTES_IN_QUARTER_HOUR,
   NUMBER_OF_MINUTES_IN_THREE_MINUTES,
   NUMBER_OF_MINUTES_IN_THREE_QUARTERS_OF_HOUR,
   NUMBER_OF_MINUTES_IN_TWENTY_MINUTES,
 } from "src/common/constants";
-import { EAppointmentCombinationType, ETimeFrameCategory } from "src/modules/appointment-orders/shared/common/enum";
+import {
+  EAppointmentCombinationType,
+  EAppointmentOrderSharedErrorCodes,
+  ETimeFrameCategory,
+} from "src/modules/appointment-orders/shared/common/enum";
 import { ITimeFrame, ITimeFrames } from "src/modules/appointment-orders/shared/common/interface";
 import { AUDIO_VIDEO_COMMUNICATION_TYPES } from "src/modules/appointments/shared/common/constants";
 
@@ -118,7 +121,7 @@ export class SearchTimeFrameService {
       }
     }
 
-    throw new BadRequestException("Unable to determine time category");
+    throw new BadRequestException(EAppointmentOrderSharedErrorCodes.UNABLE_TO_DETERMINE_TIME_CATEGORY);
   }
 
   private calculateInitialRepeatTime(
@@ -178,7 +181,7 @@ export class SearchTimeFrameService {
         case ETimeFrameCategory.EIGHTEEN_HOURS_TO_THREE_HOURS:
           intervalMinutes = NUMBER_OF_MINUTES_IN_QUARTER_HOUR;
           repeatInterval = ERepeatInterval.EVERY_15_MINUTES;
-          remainingRepeats = 7;
+          remainingRepeats = 3;
           break;
         case ETimeFrameCategory.ON_DEMAND:
           intervalMinutes = NUMBER_OF_MINUTES_IN_FIVE_MINUTES;
@@ -224,7 +227,7 @@ export class SearchTimeFrameService {
           delayMinutes = NUMBER_OF_MINUTES_IN_THREE_MINUTES;
           break;
         default:
-          throw new BadRequestException("Unsupported time category");
+          throw new BadRequestException(EAppointmentOrderSharedErrorCodes.UNSUPPORTED_TIME_CATEGORY);
       }
     } else {
       switch (timeCategory) {
@@ -238,13 +241,13 @@ export class SearchTimeFrameService {
           delayMinutes = NUMBER_OF_HOURS_IN_TEN_HOURS * NUMBER_OF_MINUTES_IN_HOUR;
           break;
         case ETimeFrameCategory.EIGHTEEN_HOURS_TO_THREE_HOURS:
-          delayMinutes = NUMBER_OF_MINUTES_IN_HOUR_AND_HALF;
+          delayMinutes = NUMBER_OF_MINUTES_IN_HALF_HOUR;
           break;
         case ETimeFrameCategory.ON_DEMAND:
           delayMinutes = NUMBER_OF_MINUTES_IN_THREE_QUARTERS_OF_HOUR;
           break;
         default:
-          throw new BadRequestException("Unsupported time category");
+          throw new BadRequestException(EAppointmentOrderSharedErrorCodes.UNSUPPORTED_TIME_CATEGORY);
       }
     }
 
@@ -278,7 +281,7 @@ export class SearchTimeFrameService {
           );
           break;
         default:
-          throw new BadRequestException("Unsupported time category");
+          throw new BadRequestException(EAppointmentOrderSharedErrorCodes.UNSUPPORTED_TIME_CATEGORY);
       }
     } else {
       switch (timeCategory) {
@@ -292,13 +295,13 @@ export class SearchTimeFrameService {
           endTime = new Date(currentTime.getTime() + NUMBER_OF_HOURS_IN_TWELVE_HOURS * NUMBER_OF_MILLISECONDS_IN_HOUR);
           break;
         case ETimeFrameCategory.EIGHTEEN_HOURS_TO_THREE_HOURS:
-          endTime = new Date(currentTime.getTime() + NUMBER_OF_HOURS_IN_TWO_HOURS * NUMBER_OF_MILLISECONDS_IN_HOUR);
+          endTime = new Date(currentTime.getTime() + NUMBER_OF_MILLISECONDS_IN_HOUR);
           break;
         case ETimeFrameCategory.ON_DEMAND:
           endTime = new Date(currentTime.getTime() + NUMBER_OF_MILLISECONDS_IN_HOUR);
           break;
         default:
-          throw new BadRequestException("Unsupported time category");
+          throw new BadRequestException(EAppointmentOrderSharedErrorCodes.UNSUPPORTED_TIME_CATEGORY);
       }
     }
 

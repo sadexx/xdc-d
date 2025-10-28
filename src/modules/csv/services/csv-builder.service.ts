@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Appointment } from "src/modules/appointments/appointment/entities";
@@ -202,11 +202,9 @@ export class CsvBuilderService {
     this.csvQueryService.getCsvCompaniesOptions(queryBuilder, dto, offset, limit);
 
     if (isInRoles(CORPORATE_INTERPRETING_PROVIDER_CORPORATE_CLIENTS_COMPANY_ADMIN_ROLES, user.role)) {
-      const personalUserRole = await this.userRoleRepository.findOne({ where: { id: user.userRoleId } });
-
-      if (!personalUserRole) {
-        throw new BadRequestException("Operator company admin not exist!");
-      }
+      const personalUserRole = await findOneOrFailTyped<UserRole>(user.userRoleId, this.userRoleRepository, {
+        where: { id: user.userRoleId },
+      });
 
       queryBuilder.andWhere("company.operatedByMainCompanyId = :operatedByMainCompanyId", {
         operatedByMainCompanyId: personalUserRole.operatedByCompanyId,
@@ -239,13 +237,9 @@ export class CsvBuilderService {
   ): Promise<IEmployeesCsv[]> {
     const company = await this.accessControlService.getCompanyByRole(user, {}, dto.companyId);
 
-    if (!company) {
-      throw new NotFoundException("Company not found!");
-    }
-
     const queryBuilder = this.userRoleRepository
       .createQueryBuilder("userRole")
-      .where("userRole.operatedByCompanyId = :companyId", { companyId: company.id });
+      .where("userRole.operatedByCompanyId = :companyId", { companyId: company?.id });
     this.csvQueryService.getCsvEmployeesOptions(queryBuilder, dto, offset, limit);
 
     const employees = await queryBuilder.getMany();

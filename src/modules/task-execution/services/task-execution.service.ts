@@ -25,7 +25,7 @@ import { RemovalSchedulerService } from "src/modules/removal/services";
 import { MembershipAssignmentsService } from "src/modules/memberships/services";
 import { LokiLogger } from "src/common/logger";
 import { OldCorporatePaymentsService, OldGeneralPaymentsService } from "src/modules/payments/services";
-import { CompaniesDepositChargeService } from "src/modules/companies-deposit-charge/services";
+import { CompaniesDepositChargeExecutionService } from "src/modules/companies-deposit-charge/services";
 import { InterpreterCancellationRecordService } from "src/modules/interpreters/profile/services";
 import { PromoCampaignBannersService, PromoCampaignsService } from "src/modules/promo-campaigns/services";
 
@@ -44,7 +44,7 @@ export class TaskExecutionService {
     private readonly removalSchedulerService: RemovalSchedulerService,
     private readonly membershipAssignmentsService: MembershipAssignmentsService,
     private readonly generalPaymentsService: OldGeneralPaymentsService,
-    private readonly companiesDepositChargeService: CompaniesDepositChargeService,
+    private readonly companiesDepositChargeExecutionService: CompaniesDepositChargeExecutionService,
     private readonly corporatePaymentsService: OldCorporatePaymentsService,
     private readonly interpreterCancellationRecordService: InterpreterCancellationRecordService,
     private readonly promoCampaignsService: PromoCampaignsService,
@@ -308,7 +308,7 @@ export class TaskExecutionService {
 
   public async autoChargeCompaniesDeposit(): Promise<void> {
     try {
-      await this.companiesDepositChargeService.chargeCompaniesDeposit();
+      await this.companiesDepositChargeExecutionService.executePendingDepositCharges();
     } catch (error) {
       this.lokiLogger.error(
         `Error in autoChargeCompaniesDeposit: ${(error as Error).message}, ${(error as Error).stack}`,

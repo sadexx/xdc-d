@@ -2,7 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { Job } from "bullmq";
 import { EJobType, EQueueType } from "src/modules/queues/common/enums";
 import { MembershipsService } from "src/modules/memberships/services";
-import { StripeService } from "src/modules/stripe/services";
+import { StripeSubscriptionsService } from "src/modules/stripe/services";
 import { IQueueJobType } from "src/modules/queues/common/interfaces";
 import { LokiLogger } from "src/common/logger";
 import { IQueueProcessor } from "src/modules/queue-processors/common/interfaces";
@@ -13,30 +13,38 @@ import {
 } from "src/modules/webhook-processor/services";
 import { MeetingClosingService } from "src/modules/chime-meeting-configuration/services";
 import { AppointmentExternalSessionService } from "src/modules/appointments/appointment/services";
+import { PaymentsExecutionService } from "src/modules/payments-new/services";
+import { PdfService } from "src/modules/pdf-new/services";
 
 @Injectable()
 export class QueueProcessorService implements IQueueProcessor {
   private readonly lokiLogger = new LokiLogger(QueueProcessorService.name);
   constructor(
     private readonly membershipsService: MembershipsService,
-    private readonly stripeService: StripeService,
+    private readonly stripeSubscriptionsService: StripeSubscriptionsService,
     private readonly webhookStripeService: WebhookStripeService,
     private readonly webhookDocusignService: WebhookDocusignService,
     private readonly webhookSumSubService: WebhookSumSubService,
     private readonly meetingClosingService: MeetingClosingService,
     private readonly appointmentExternalSessionService: AppointmentExternalSessionService,
+    private readonly paymentsExecutionService: PaymentsExecutionService,
+    private readonly pdfService: PdfService,
   ) {}
 
   public async processJob(queueEnum: EQueueType, job: Job<IQueueJobType>): Promise<void> {
     switch (queueEnum) {
       case EQueueType.PAYMENTS_QUEUE:
         return this.handlePaymentsJob(job);
+      case EQueueType.PAYMENTS_EXECUTION_QUEUE:
+        return this.handlePaymentExecutionJob(job);
+      case EQueueType.PDF_GENERATION_QUEUE:
+        return this.handlePdfGenerationJob(job);
       case EQueueType.NOTIFICATIONS_QUEUE:
         return this.handleNotificationsJob(job);
-      case EQueueType.WEBHOOKS_QUEUE:
-        return this.handleWebhooksJob(job);
       case EQueueType.APPOINTMENTS_QUEUE:
         return this.handleAppointmentsJob(job);
+      case EQueueType.WEBHOOKS_QUEUE:
+        return this.handleWebhooksJob(job);
 
       default:
         return this.handleDefaultJob(job);
@@ -48,12 +56,32 @@ export class QueueProcessorService implements IQueueProcessor {
       case EJobType.PROCESS_STRIPE_CANCEL_SUBSCRIPTIONS: {
         const { subscriptionId } = job.data.payload;
 
-        return this.stripeService.cancelSubscriptionById(subscriptionId);
+        return this.stripeSubscriptionsService.cancelSubscriptionById(subscriptionId);
       }
       case EJobType.PROCESS_STRIPE_UPDATE_SUBSCRIPTIONS_PRICE: {
         const { customerId, newPriceId } = job.data.payload;
 
-        return this.stripeService.updateSubscriptionPrice(customerId, newPriceId);
+        return this.stripeSubscriptionsService.updateSubscriptionPrice(customerId, newPriceId);
+      }
+      default:
+        return this.handleUnknownJob(job);
+    }
+  }
+
+  private async handlePaymentExecutionJob(job: Job<IQueueJobType>): Promise<void> {
+    switch (job.data.jobName) {
+      case EJobType.PROCESS_PAYMENT_PRE_AUTHORIZATION: {
+        return this.paymentsExecutionService.makePreAuthorization(job.data.payload);
+      }
+      default:
+        return this.handleUnknownJob(job);
+    }
+  }
+
+  private async handlePdfGenerationJob(job: Job<IQueueJobType>): Promise<void> {
+    switch (job.data.jobName) {
+      case EJobType.PROCESS_PAY_IN_RECEIPT_PDF_GENERATION: {
+        return this.pdfService.generatePayInReceipt(job.data.payload);
       }
       default:
         return this.handleUnknownJob(job);
@@ -71,28 +99,6 @@ export class QueueProcessorService implements IQueueProcessor {
           notificationType,
           membershipPricingRegion,
         );
-      }
-      default:
-        return this.handleUnknownJob(job);
-    }
-  }
-
-  private async handleWebhooksJob(job: Job<IQueueJobType>): Promise<void> {
-    switch (job.data.jobName) {
-      case EJobType.PROCESS_SUMSUB_WEBHOOK: {
-        const { message } = job.data.payload;
-
-        return this.webhookSumSubService.processSumSubWebhook(message);
-      }
-      case EJobType.PROCESS_DOCUSIGN_WEBHOOK: {
-        const { message } = job.data.payload;
-
-        return this.webhookDocusignService.processDocusignWebhook(message);
-      }
-      case EJobType.PROCESS_STRIPE_WEBHOOK: {
-        const { message } = job.data.payload;
-
-        return this.webhookStripeService.processStripeWebhook(message);
       }
       default:
         return this.handleUnknownJob(job);
@@ -119,6 +125,28 @@ export class QueueProcessorService implements IQueueProcessor {
         return await this.appointmentExternalSessionService.checkInOutAppointment(appointmentId, dto, user);
       }
 
+      default:
+        return this.handleUnknownJob(job);
+    }
+  }
+
+  private async handleWebhooksJob(job: Job<IQueueJobType>): Promise<void> {
+    switch (job.data.jobName) {
+      case EJobType.PROCESS_SUMSUB_WEBHOOK: {
+        const { message } = job.data.payload;
+
+        return this.webhookSumSubService.processSumSubWebhook(message);
+      }
+      case EJobType.PROCESS_DOCUSIGN_WEBHOOK: {
+        const { message } = job.data.payload;
+
+        return this.webhookDocusignService.processDocusignWebhook(message);
+      }
+      case EJobType.PROCESS_STRIPE_WEBHOOK: {
+        const { message } = job.data.payload;
+
+        return this.webhookStripeService.processStripeWebhook(message);
+      }
       default:
         return this.handleUnknownJob(job);
     }

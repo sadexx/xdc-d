@@ -11,6 +11,7 @@ import { NotificationService } from "src/modules/notifications/services";
 import { IAppointmentDetailsOutput } from "src/modules/appointments/appointment/common/outputs";
 import { AppointmentSharedService } from "src/modules/appointments/shared/services";
 
+// TODO: Add failed payment cancel notification
 @Injectable()
 export class AppointmentFailedPaymentCancelService {
   private readonly logger = new Logger(AppointmentFailedPaymentCancelService.name);

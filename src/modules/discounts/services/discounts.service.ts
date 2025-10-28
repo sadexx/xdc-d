@@ -14,11 +14,11 @@ import {
   DiscountEntityHolder,
   TApplyDiscountsForAppointment,
   TApplyDiscountsForAppointmentValidated,
+  TApplyDiscountsForExtension,
   TFetchDiscountRate,
 } from "src/modules/discounts/common/types";
 import { MembershipsUsageService } from "src/modules/memberships/services";
 import { PromoCampaignsAssignmentService, PromoCampaignsUsageService } from "src/modules/promo-campaigns/services";
-import { TLiveAppointmentCache } from "src/modules/appointments/appointment/common/types";
 
 @Injectable()
 export class DiscountsService {
@@ -33,7 +33,7 @@ export class DiscountsService {
     private readonly promoCampaignsAssignmentService: PromoCampaignsAssignmentService,
   ) {}
 
-  public async fetchDiscountRate(appointmentId: string): Promise<IDiscountRate | null> {
+  public async fetchDiscountRate(appointmentId: string): Promise<IDiscountRate | undefined> {
     const queryOptions = this.discountQueryOptionsService.fetchDiscountRateOptions(appointmentId);
     const discountAssociation = await findOneTyped<TFetchDiscountRate>(
       this.discountAssociationRepository,
@@ -41,7 +41,7 @@ export class DiscountsService {
     );
 
     if (!discountAssociation) {
-      return null;
+      return undefined;
     }
 
     return {
@@ -56,7 +56,7 @@ export class DiscountsService {
 
   public async fetchDiscountRateForExtension(
     businessExtensionTime: number,
-    appointment: TLiveAppointmentCache,
+    appointment: TApplyDiscountsForAppointment,
   ): Promise<IDiscountRate | null> {
     return this.discountsFetchService.fetchDiscountsForExtension(
       businessExtensionTime,
@@ -88,7 +88,7 @@ export class DiscountsService {
 
   public async applyDiscountsForExtension(
     manager: EntityManager,
-    appointment: TLiveAppointmentCache,
+    appointment: TApplyDiscountsForExtension,
     discounts: IDiscountRate,
   ): Promise<void> {
     if (discounts.membershipFreeMinutes) {

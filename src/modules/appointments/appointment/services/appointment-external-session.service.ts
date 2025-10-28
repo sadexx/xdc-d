@@ -22,6 +22,10 @@ import {
 } from "src/modules/appointments/appointment/common/types";
 import { UserRole } from "src/modules/users/entities";
 import { QueueInitializeService } from "src/modules/queues/services";
+import {
+  CHECK_IN_APPOINTMENT_TYPES,
+  CHECK_OUT_APPOINTMENT_TYPES,
+} from "src/modules/appointments/appointment/common/constants";
 
 @Injectable()
 export class AppointmentExternalSessionService {
@@ -140,7 +144,7 @@ export class AppointmentExternalSessionService {
     await this.createOrUpdateAppointmentExternalSession(manager, dto, appointment);
 
     await this.appointmentEndService.finalizeExternalAppointment(manager, {
-      appointmentId: appointment.id,
+      appointment,
       scheduledStartTime: appointment.scheduledStartTime,
       scheduledEndTime: appointment.scheduledEndTime,
       schedulingDurationMin: appointment.schedulingDurationMin,
@@ -154,10 +158,10 @@ export class AppointmentExternalSessionService {
     dto: TCheckInOutAppointmentDto,
     appointment: TCheckInOutAppointment,
   ): Promise<void> {
-    if (!appointment.appointmentExternalSession) {
+    if (CHECK_IN_APPOINTMENT_TYPES.includes(dto.type) && !appointment.appointmentExternalSession) {
       const checkInDto = this.constructCheckInPayload(dto, appointment);
       await this.createAppointmentExternalSession(manager, checkInDto);
-    } else {
+    } else if (CHECK_OUT_APPOINTMENT_TYPES.includes(dto.type) && appointment.appointmentExternalSession) {
       const checkOutDto = this.constructCheckOutPayload(dto);
       await this.updateAppointmentExternalSession(manager, appointment.appointmentExternalSession.id, checkOutDto);
     }

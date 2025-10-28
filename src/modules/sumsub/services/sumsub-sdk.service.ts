@@ -7,9 +7,13 @@ import {
 } from "src/modules/sumsub/common/interfaces";
 import { NUMBER_OF_MILLISECONDS_IN_SECOND, NUMBER_OF_MILLISECONDS_IN_TEN_SECONDS } from "src/common/constants";
 import * as crypto from "crypto";
+import { ESumSubErrorCodes } from "src/modules/sumsub/common/enums";
+import { LokiLogger } from "src/common/logger";
 
 @Injectable()
 export class SumSubSdkService {
+  private readonly lokiLogger = new LokiLogger(SumSubSdkService.name);
+
   private readonly baseUrl: string;
   private readonly requestPath: string;
   private readonly apiToken: string;
@@ -66,7 +70,8 @@ export class SumSubSdkService {
     });
 
     if (!response.ok) {
-      throw new ServiceUnavailableException(`Error from Sumsub: ${response.statusText}`);
+      this.lokiLogger.error(`Error from Sumsub: ${response.statusText}`);
+      throw new ServiceUnavailableException(ESumSubErrorCodes.SUMSUB_ERROR);
     }
 
     return response;

@@ -12,9 +12,13 @@ import {
   NUMBER_OF_MILLISECONDS_IN_SECOND,
   NUMBER_OF_MILLISECONDS_IN_TEN_SECONDS,
 } from "src/common/constants";
+import { EBackyCheckErrorCodes } from "src/modules/backy-check/common/enums";
+import { LokiLogger } from "src/common/logger";
 
 @Injectable()
 export class BackyCheckSdkService {
+  private readonly lokiLogger = new LokiLogger(BackyCheckSdkService.name);
+
   private baseUrl: string;
   private accessToken: string;
   private tokenExpires: number;
@@ -52,9 +56,8 @@ export class BackyCheckSdkService {
         responseMessage = rawText;
       }
 
-      throw new ServiceUnavailableException(
-        `HTTP error! Status: ${response.status}, error: ${JSON.stringify(responseMessage)}`,
-      );
+      this.lokiLogger.error(`HTTP error! Status: ${response.status}, error: ${JSON.stringify(responseMessage)}`);
+      throw new ServiceUnavailableException(EBackyCheckErrorCodes.SDK_HTTP_ERROR);
     }
 
     return response;
@@ -98,7 +101,8 @@ export class BackyCheckSdkService {
       this.userId = token.userId;
       this.tokenExpires = payload.exp * NUMBER_OF_MILLISECONDS_IN_SECOND;
     } catch (error) {
-      throw new ServiceUnavailableException(`BackyCheck auth error! Error: ${(error as Error).message}`);
+      this.lokiLogger.error(`BackyCheck auth error! Error: ${(error as Error).message}`);
+      throw new ServiceUnavailableException(EBackyCheckErrorCodes.SDK_AUTH_ERROR);
     }
   }
 

@@ -22,9 +22,10 @@ export const GetAssignedDiscountEntitiesQuery = {
       status: true,
       startDate: true,
       endDate: true,
+      discount: true,
       preBookedMinutes: true,
       onDemandMinutes: true,
-      currentMembership: { status: true },
+      currentMembership: { type: true, status: true },
     },
     promoCampaignAssignment: {
       id: true,

@@ -10,6 +10,8 @@ import { ITokenUserData } from "src/modules/tokens/common/interfaces";
 import { IMessageOutput } from "src/common/outputs";
 import { AccessControlService } from "src/modules/access-control/services";
 import { UserRole } from "src/modules/users/entities";
+import { findOneOrFailTyped } from "src/common/utils";
+import { EInterpreterQuestionnaireErrorCodes } from "src/modules/interpreters/questionnaire/common/enum";
 
 @Injectable()
 export class InterpreterRecommendationsService {
@@ -30,7 +32,7 @@ export class InterpreterRecommendationsService {
       ? { id: dto.userRoleId }
       : { id: user.userRoleId };
 
-    const userRole = await this.userRoleRepository.findOne({
+    const userRole = await findOneOrFailTyped<UserRole>(dto.userRoleId ?? user.userRoleId, this.userRoleRepository, {
       select: {
         id: true,
         operatedByCompanyId: true,
@@ -41,8 +43,8 @@ export class InterpreterRecommendationsService {
       relations: { questionnaire: true },
     });
 
-    if (!userRole || !userRole.questionnaire) {
-      throw new NotFoundException("User role or questionnaire not found.");
+    if (!userRole.questionnaire) {
+      throw new NotFoundException(EInterpreterQuestionnaireErrorCodes.COMMON_QUESTIONNAIRE_NOT_FOUND);
     }
 
     await this.accessControlService.authorizeUserRoleForOperation(user, userRole);
@@ -67,7 +69,7 @@ export class InterpreterRecommendationsService {
       ? { id: dto.userRoleId, questionnaire: { recommendations: { id } } }
       : { id: user.userRoleId, questionnaire: { recommendations: { id } } };
 
-    const userRole = await this.userRoleRepository.findOne({
+    const userRole = await findOneOrFailTyped<UserRole>(dto.userRoleId ?? user.userRoleId, this.userRoleRepository, {
       select: {
         id: true,
         operatedByCompanyId: true,
@@ -78,14 +80,14 @@ export class InterpreterRecommendationsService {
       relations: { questionnaire: { recommendations: true } },
     });
 
-    if (!userRole || !userRole.questionnaire) {
-      throw new NotFoundException("User role or questionnaire not found.");
+    if (!userRole.questionnaire) {
+      throw new NotFoundException(EInterpreterQuestionnaireErrorCodes.COMMON_QUESTIONNAIRE_NOT_FOUND);
     }
 
     await this.accessControlService.authorizeUserRoleForOperation(user, userRole);
 
     if (userRole.questionnaire.recommendations.length === 0) {
-      throw new NotFoundException("Recommendation not found.");
+      throw new NotFoundException(EInterpreterQuestionnaireErrorCodes.RECOMMENDATIONS_RECOMMENDATION_NOT_FOUND);
     }
 
     await this.interpreterRecommendationRepository.update(id, {
@@ -99,21 +101,21 @@ export class InterpreterRecommendationsService {
   }
 
   public async deleteRecommendation(id: string, user: ITokenUserData): Promise<void> {
-    const recommendation = await this.interpreterRecommendationRepository.findOne({
-      select: {
-        id: true,
-        questionnaire: {
+    const recommendation = await findOneOrFailTyped<InterpreterRecommendation>(
+      id,
+      this.interpreterRecommendationRepository,
+      {
+        select: {
           id: true,
-          userRole: { id: true, operatedByCompanyId: true, operatedByMainCorporateCompanyId: true },
+          questionnaire: {
+            id: true,
+            userRole: { id: true, operatedByCompanyId: true, operatedByMainCorporateCompanyId: true },
+          },
         },
+        where: { id },
+        relations: { questionnaire: { userRole: true } },
       },
-      where: { id },
-      relations: { questionnaire: { userRole: true } },
-    });
-
-    if (!recommendation) {
-      throw new NotFoundException("Recommendation not found.");
-    }
+    );
 
     await this.accessControlService.authorizeUserRoleForOperation(user, recommendation.questionnaire.userRole);
 

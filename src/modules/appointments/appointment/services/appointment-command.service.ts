@@ -3,6 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { AppointmentOrder } from "src/modules/appointment-orders/appointment-order/entities";
 import {
   EAppointmentCommunicationType,
+  EAppointmentErrorCodes,
   EAppointmentSchedulingType,
   EAppointmentStatus,
 } from "src/modules/appointments/appointment/common/enums";
@@ -54,7 +55,7 @@ export class AppointmentCommandService {
     const appointment = await findOneOrFail(id, this.appointmentRepository, queryOptions);
 
     if (appointment.status !== EAppointmentStatus.CANCELLED_ORDER) {
-      throw new BadRequestException("The appointment in this state cannot be deleted");
+      throw new BadRequestException(EAppointmentErrorCodes.APPOINTMENT_CANNOT_BE_DELETED);
     }
 
     const appointmentOrderGroupId = appointment.appointmentOrder?.appointmentOrderGroup?.id;
@@ -83,7 +84,7 @@ export class AppointmentCommandService {
       appointment.status !== EAppointmentStatus.COMPLETED &&
       appointment.status !== EAppointmentStatus.NO_SHOW
     ) {
-      throw new BadRequestException("The appointment cannot be archived in its current state.");
+      throw new BadRequestException(EAppointmentErrorCodes.APPOINTMENT_CANNOT_BE_ARCHIVED);
     }
 
     if (appointment.client?.userId === user.id) {
@@ -104,7 +105,7 @@ export class AppointmentCommandService {
         : NUMBER_OF_MINUTES_IN_FIVE_MINUTES;
 
     if (appointment.status !== EAppointmentStatus.LIVE) {
-      throw new BadRequestException("Appointment must be live to send a late notification.");
+      throw new BadRequestException(EAppointmentErrorCodes.APPOINTMENT_MUST_BE_LIVE_FOR_LATE_NOTIFICATION);
     }
 
     if (appointment.clientId && appointment.interpreterId && appointment.clientId === user.userRoleId) {
@@ -139,7 +140,8 @@ export class AppointmentCommandService {
     );
 
     if (!appointment.appointmentAdminInfo) {
-      throw new NotFoundException(`Appointment Admin Info not found in Appointment ${id}.`);
+      this.lokiLogger.error(`Appointment Admin Info not found in Appointment${id}.`);
+      throw new NotFoundException(EAppointmentErrorCodes.APPOINTMENT_ADMIN_INFO_NOT_FOUND);
     }
 
     const dataForUpdate: Partial<AppointmentAdminInfo> = {

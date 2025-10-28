@@ -13,6 +13,7 @@ import { AwsS3Service } from "src/modules/aws/s3/aws-s3.service";
 import { EmailsService } from "src/modules/emails/services";
 import { HelperService } from "src/modules/helper/services";
 import { FindOneOptions, Repository } from "typeorm";
+import { EArchiveAudioRecordsErrorCodes } from "src/modules/archive-audio-records/common/enums";
 
 @Injectable()
 export class ArchiveAudioRecordService {
@@ -47,18 +48,18 @@ export class ArchiveAudioRecordService {
     const appointmentAdminInfo = await findOneOrFail(id, this.appointmentAdminInfoRepository, queryOptions);
 
     if (!appointmentAdminInfo.callRecordingS3Key) {
-      throw new NotFoundException(`Recording key is not found in appointment admin info with id: ${id}`);
+      this.lokiLogger.error(`Recording key is not found in Appointment Admin Info with id: ${id}.`);
+      throw new NotFoundException(EArchiveAudioRecordsErrorCodes.RECORDING_KEY_NOT_FOUND);
     }
 
     if (
       appointmentAdminInfo.deepArchiveRestoreExpirationDate &&
       appointmentAdminInfo.deepArchiveRestoreExpirationDate > new Date()
     ) {
-      throw new BadRequestException(
-        `The requested file has been accepted for restore.` +
-          ` It will be available soon. Please try after:` +
-          ` ${appointmentAdminInfo.deepArchiveRestoreExpirationDate.toISOString()}.`,
-      );
+      throw new BadRequestException({
+        message: EArchiveAudioRecordsErrorCodes.FILE_RESTORE_IN_PROGRESS,
+        variables: { expirationDate: appointmentAdminInfo.deepArchiveRestoreExpirationDate.toISOString() },
+      });
     }
 
     const listResponse = await this.awsS3Service.getAudioKeyInFolder(appointmentAdminInfo.callRecordingS3Key);
@@ -77,15 +78,17 @@ export class ArchiveAudioRecordService {
     folderPath: string,
   ): Promise<IMessageOutput | string> {
     if (!listResponse.Contents || listResponse.Contents.length === 0) {
-      throw new NotFoundException(`File key is undefined for: ${folderPath}`);
+      this.lokiLogger.error(`File key is undefined for: ${folderPath}.`);
+      throw new NotFoundException(EArchiveAudioRecordsErrorCodes.FILE_KEY_UNDEFINED);
     }
 
     const [file] = listResponse.Contents;
 
     if (!file.Key || listResponse.Contents.length > 1) {
-      throw new NotFoundException(
-        `Issue with the number of files found for this appointment admin info: ${appointmentAdminInfo.id}`,
+      this.lokiLogger.error(
+        `Issue with the number of files found for this Appointment Admin Info: ${appointmentAdminInfo.id}.`,
       );
+      throw new NotFoundException(EArchiveAudioRecordsErrorCodes.FILE_COUNT_ISSUE);
     }
 
     if (file.StorageClass === ObjectStorageClass.DEEP_ARCHIVE) {

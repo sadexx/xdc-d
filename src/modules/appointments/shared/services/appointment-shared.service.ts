@@ -46,12 +46,19 @@ import { LokiLogger } from "src/common/logger";
 import { ChimeMeetingConfiguration } from "src/modules/chime-meeting-configuration/entities";
 import { ShortUrl } from "src/modules/url-shortener/entities";
 import { RedisService } from "src/modules/redis/services";
+import {
+  CHECK_IN_APPOINTMENT_TYPES,
+  CHECK_OUT_APPOINTMENT_TYPES,
+} from "src/modules/appointments/appointment/common/constants";
+import { EAppointmentSharedErrorCodes } from "src/modules/appointments/shared/common/enums";
 
 @Injectable()
 export class AppointmentSharedService {
   private readonly lokiLogger = new LokiLogger(AppointmentSharedService.name);
 
   constructor(
+    @InjectRepository(Appointment)
+    private readonly appointmentRepository: Repository<Appointment>,
     @InjectRepository(AppointmentAdminInfo)
     private readonly appointmentAdminInfoRepository: Repository<AppointmentAdminInfo>,
     @InjectRepository(AppointmentReminder)
@@ -77,7 +84,7 @@ export class AppointmentSharedService {
     }
 
     throw new BadRequestException({
-      message: "The time you have selected is already reserved.",
+      message: EAppointmentSharedErrorCodes.TIME_ALREADY_RESERVED,
       conflictingAppointments: conflictingAppointments,
     });
   }
@@ -130,7 +137,10 @@ export class AppointmentSharedService {
       (isFaceToFace && isAddressUpdate && hoursUntilAppointment < timeLimit);
 
     if (isRestricted) {
-      throw new BadRequestException(`Updates are not allowed within ${timeLimit} hours of the appointment.`);
+      throw new BadRequestException({
+        message: EAppointmentSharedErrorCodes.UPDATES_NOT_ALLOWED_WITHIN_TIME_LIMIT,
+        variables: { timeLimit },
+      });
     }
   }
 
@@ -178,7 +188,7 @@ export class AppointmentSharedService {
 
     if (conflictingAppointments.length > 0) {
       throw new BadRequestException({
-        message: "The time you have selected is already reserved.",
+        message: EAppointmentSharedErrorCodes.TIME_ALREADY_RESERVED,
         conflictingAppointments: conflictingAppointments,
       });
     }
@@ -221,7 +231,7 @@ export class AppointmentSharedService {
     const { status, communicationType } = appointment;
 
     if (dto.isAdminCancelByClient && !isInRoles(ADMIN_ROLES, user.role)) {
-      throw new BadRequestException("Incorrect field.");
+      throw new BadRequestException(EAppointmentSharedErrorCodes.INCORRECT_FIELD);
     }
 
     const isLiveFaceToFaceByAdminOrClient =
@@ -234,7 +244,7 @@ export class AppointmentSharedService {
       isLiveFaceToFaceByAdminOrClient;
 
     if (!isCancellableStatus) {
-      throw new BadRequestException("The appointment cannot be cancelled in its current state.");
+      throw new BadRequestException(EAppointmentSharedErrorCodes.CANNOT_BE_CANCELLED);
     }
   }
 
@@ -276,41 +286,76 @@ export class AppointmentSharedService {
     dto: CheckInOutAppointmentDto,
     user: ITokenUserData,
   ): void {
-    const { status, communicationType, alternativePlatform, appointmentExternalSession, scheduledStartTime } =
-      appointment;
+    const { communicationType, alternativePlatform, status } = appointment;
 
     const isFaceToFace = communicationType === EAppointmentCommunicationType.FACE_TO_FACE;
     const isAlternativePlatform =
       alternativePlatform === true && AUDIO_VIDEO_COMMUNICATION_TYPES.includes(communicationType);
 
     if (!isFaceToFace && !isAlternativePlatform) {
-      throw new BadRequestException("Invalid communication type.");
+      throw new BadRequestException(EAppointmentSharedErrorCodes.INVALID_COMMUNICATION_TYPE);
     }
 
     if (status !== EAppointmentStatus.LIVE) {
-      throw new BadRequestException("Appointment must be in status live to perform check in/out.");
+      throw new BadRequestException(EAppointmentSharedErrorCodes.MUST_BE_LIVE_STATUS);
     }
 
-    if (dto.alternativeTime && appointmentExternalSession) {
-      const appointmentStartReference = appointmentExternalSession.alternativeStartTime ?? scheduledStartTime;
+    this.validateAlternativeTime(dto, appointment);
 
-      if (isBefore(dto.alternativeTime, appointmentStartReference)) {
-        throw new BadRequestException("Alternative end time cannot be earlier than start time.");
-      }
+    if (CHECK_IN_APPOINTMENT_TYPES.includes(dto.type)) {
+      this.validateCheckInPermissions(appointment, user);
     }
 
-    if (appointment.appointmentExternalSession) {
-      if (isAlternativePlatform && isInRoles(INTERPRETER_ROLES, user.role)) {
-        throw new BadRequestException("Interpreters cannot check out alternative platform.");
-      }
-    } else {
-      if (isInRoles(LFH_ADMIN_ROLES, user.role)) {
-        throw new ForbiddenException("Admins cannot check in an appointment.");
-      }
+    if (CHECK_OUT_APPOINTMENT_TYPES.includes(dto.type)) {
+      this.validateCheckOutPermissions(appointment, user);
+    }
+  }
 
-      if (isAlternativePlatform && isInRoles(CLIENT_ROLES, user.role)) {
-        throw new BadRequestException("Clients cannot check in alternative platform.");
-      }
+  private validateAlternativeTime(dto: CheckInOutAppointmentDto, appointment: TCheckInOutAppointment): void {
+    const { appointmentExternalSession, scheduledStartTime } = appointment;
+
+    if (!dto.alternativeTime || !appointmentExternalSession) {
+      return;
+    }
+
+    const appointmentStartReference = appointmentExternalSession.alternativeStartTime ?? scheduledStartTime;
+
+    if (isBefore(dto.alternativeTime, appointmentStartReference)) {
+      throw new BadRequestException(EAppointmentSharedErrorCodes.ALTERNATIVE_END_TIME_ERROR);
+    }
+  }
+
+  private validateCheckInPermissions(appointment: TCheckInOutAppointment, user: ITokenUserData): void {
+    if (isInRoles(LFH_ADMIN_ROLES, user.role)) {
+      throw new ForbiddenException(EAppointmentSharedErrorCodes.ADMINS_CANNOT_CHECK_IN);
+    }
+
+    const { communicationType, alternativePlatform } = appointment;
+    const isFaceToFace = communicationType === EAppointmentCommunicationType.FACE_TO_FACE;
+    const isAlternativePlatform =
+      alternativePlatform === true && AUDIO_VIDEO_COMMUNICATION_TYPES.includes(communicationType);
+
+    if (isFaceToFace && isInRoles(CLIENT_ROLES, user.role)) {
+      throw new BadRequestException(EAppointmentSharedErrorCodes.CLIENTS_CANNOT_CHECK_IN_FACE_TO_FACE);
+    }
+
+    if (isAlternativePlatform && isInRoles(CLIENT_ROLES, user.role)) {
+      throw new BadRequestException(EAppointmentSharedErrorCodes.CLIENTS_CANNOT_CHECK_IN_ALTERNATIVE);
+    }
+  }
+
+  private validateCheckOutPermissions(appointment: TCheckInOutAppointment, user: ITokenUserData): void {
+    const { communicationType, alternativePlatform } = appointment;
+    const isFaceToFace = communicationType === EAppointmentCommunicationType.FACE_TO_FACE;
+    const isAlternativePlatform =
+      alternativePlatform === true && AUDIO_VIDEO_COMMUNICATION_TYPES.includes(communicationType);
+
+    if (isFaceToFace && isInRoles(CLIENT_ROLES, user.role)) {
+      throw new BadRequestException(EAppointmentSharedErrorCodes.CLIENTS_CANNOT_CHECK_OUT_FACE_TO_FACE);
+    }
+
+    if (isAlternativePlatform && isInRoles(INTERPRETER_ROLES, user.role)) {
+      throw new BadRequestException(EAppointmentSharedErrorCodes.INTERPRETERS_CANNOT_CHECK_OUT_ALTERNATIVE);
     }
   }
 
@@ -420,6 +465,10 @@ export class AppointmentSharedService {
     }
 
     return adminInfoIds;
+  }
+
+  public async changeAppointmentStatus(appointmentId: string, status: EAppointmentStatus): Promise<void> {
+    await this.appointmentRepository.update({ id: appointmentId }, { status });
   }
 
   public async deleteAppointmentReminder(appointmentId: string): Promise<void> {

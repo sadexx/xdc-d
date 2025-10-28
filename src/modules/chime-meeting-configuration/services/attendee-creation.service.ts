@@ -8,11 +8,13 @@ import { UserRole } from "src/modules/users/entities";
 import { MultiWayParticipant } from "src/modules/multi-way-participant/entities";
 import { Appointment } from "src/modules/appointments/appointment/entities";
 import { ICreateAttendee } from "src/modules/chime-meeting-configuration/common/interfaces";
-import { EExtMediaCapabilities } from "src/modules/chime-meeting-configuration/common/enums";
+import {
+  EChimeMeetingConfigurationErrorCodes,
+  EExtMediaCapabilities,
+} from "src/modules/chime-meeting-configuration/common/enums";
 import { EAppointmentCommunicationType } from "src/modules/appointments/appointment/common/enums";
 import { EUserRoleName } from "src/modules/users/common/enums";
-import { UNDEFINED_VALUE, ENVIRONMENT, INTERPRETER_AND_CLIENT_ROLES, LFH_ADMIN_ROLES } from "src/common/constants";
-import { EEnvironment } from "src/common/enums";
+import { UNDEFINED_VALUE, INTERPRETER_AND_CLIENT_ROLES, LFH_ADMIN_ROLES, IS_LOCAL } from "src/common/constants";
 import {
   TMeetingConfigForAddAttendee,
   TMeetingConfigForConstructAttendee,
@@ -104,7 +106,9 @@ export class AttendeeCreationService {
         this.lokiLogger.error(
           `Invalid communication type for attendee capabilities, appointment Id: ${id}, configuration: ${communicationType}`,
         );
-        throw new BadRequestException("Invalid communication type for attendee capabilities");
+        throw new BadRequestException(
+          EChimeMeetingConfigurationErrorCodes.ATTENDEE_CREATION_INVALID_COMMUNICATION_TYPE,
+        );
     }
   }
 
@@ -129,7 +133,7 @@ export class AttendeeCreationService {
       ...capabilities,
     };
 
-    if (ENVIRONMENT === EEnvironment.LOCAL) {
+    if (IS_LOCAL) {
       if (isInRoles(INTERPRETER_AND_CLIENT_ROLES, userRoleName)) {
         return {
           ...baseAttendee,

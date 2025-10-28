@@ -20,6 +20,7 @@ import { RemovalQueryOptionsService } from "src/modules/removal/services";
 import { Appointment } from "src/modules/appointments/appointment/entities";
 import { EAppointmentStatus } from "src/modules/appointments/appointment/common/enums";
 import { COMPLETED_APPOINTMENT_STATUSES } from "src/modules/appointments/shared/common/constants";
+import { ERemovalErrorCodes } from "src/modules/removal/common/enums";
 
 @Injectable()
 export class RemovalSharedService {
@@ -44,7 +45,7 @@ export class RemovalSharedService {
 
     if (statuses.length > 0) {
       throw new BadRequestException({
-        message: "User has non-completed appointments and cannot be deleted.",
+        message: ERemovalErrorCodes.USER_HAS_UNCOMPLETED_APPOINTMENTS,
         uncompletedAppointmentStatuses: statuses,
       });
     }
@@ -69,7 +70,7 @@ export class RemovalSharedService {
 
     if (statuses.length > 0) {
       throw new BadRequestException({
-        message: "Company has non-completed appointments and cannot be deleted.",
+        message: ERemovalErrorCodes.COMPANY_HAS_UNCOMPLETED_APPOINTMENTS,
         uncompletedAppointmentStatuses: statuses,
       });
     }

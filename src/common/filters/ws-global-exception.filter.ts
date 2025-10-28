@@ -2,6 +2,9 @@ import { ArgumentsHost, Catch, ExceptionFilter, UnauthorizedException } from "@n
 import { WsException } from "@nestjs/websockets";
 import { Socket } from "socket.io";
 import { LokiLogger } from "src/common/logger";
+import { EWebSocketEventTypes } from "src/modules/web-socket-gateway/common/enum";
+import { QueryFailedError } from "typeorm";
+import { ECommonErrorCodes } from "src/common/enums";
 
 @Catch()
 export class WsExceptionFilter implements ExceptionFilter {
@@ -11,25 +14,24 @@ export class WsExceptionFilter implements ExceptionFilter {
     const ctx = host.switchToWs();
     const client = ctx.getClient<Socket>();
     let status: string = "error";
-    let message: string | object = "Unexpected error occurred";
+    let defaultMessage: string = ECommonErrorCodes.UNEXPECTED_ERROR;
 
     if (exception instanceof WsException) {
-      message = exception.message;
-      client.emit("exception", { status: "error", message });
+      defaultMessage = exception.message;
+      client.emit(EWebSocketEventTypes.EXCEPTION, { status, message: defaultMessage });
     } else if (exception instanceof UnauthorizedException) {
       status = "unauthorized";
-      message = exception.message || "Unauthorized";
-      client.emit("exception", { status: "unauthorized", message });
-    } else if (exception instanceof Error) {
-      message = exception.message;
-      client.emit("exception", { status: "error", message });
+      defaultMessage = ECommonErrorCodes.UNAUTHORIZED;
+      client.emit(EWebSocketEventTypes.EXCEPTION, { status, message: defaultMessage });
+    } else if (exception instanceof QueryFailedError) {
+      this.lokiLogger.error(`Database error: ${exception.message}`, exception.stack);
+      client.emit(EWebSocketEventTypes.EXCEPTION, { status, message: defaultMessage });
     } else {
-      message = "Unexpected error occurred";
-      client.emit("exception", { status: "error", message });
+      client.emit(EWebSocketEventTypes.EXCEPTION, { status, message: defaultMessage });
     }
 
     if (status !== "unauthorized") {
-      this.lokiLogger.error(`Exception caught: ${message}`, (exception as Error).stack);
+      this.lokiLogger.error(`WebSocket exception: ${defaultMessage}`, (exception as Error).stack);
     }
   }
 }

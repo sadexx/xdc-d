@@ -28,8 +28,8 @@ export class WebhookService {
   }
 
   public async getManualStatusCheckWebhook(): Promise<void> {
-    if (ENVIRONMENT !== EEnvironment.LOCAL && ENVIRONMENT !== EEnvironment.DEVELOPMENT) {
-      throw new BadRequestException("Manual status checks can only be run in development or staging environments");
+    if ([EEnvironment.STAGING, EEnvironment.PRODUCTION].includes(ENVIRONMENT)) {
+      throw new BadRequestException("Manual status checks can only be run in development or local environments");
     }
 
     this.lokiLogger.log("Starting: Manual status checks");

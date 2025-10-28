@@ -12,6 +12,7 @@ import {
   TRestoreCompanyEntity,
 } from "src/modules/removal/common/types";
 import { RemovalQueryOptionsService } from "src/modules/removal/services";
+import { ERemovalErrorCodes } from "src/modules/removal/common/enums";
 
 @Injectable()
 export class RemovalRestorationService {
@@ -47,7 +48,7 @@ export class RemovalRestorationService {
       return;
     }
 
-    throw new BadRequestException("Incorrect restoration key.");
+    throw new BadRequestException(ERemovalErrorCodes.INCORRECT_RESTORATION_KEY);
   }
 
   private async restoreUserEntity(user: TRestoreByRestorationKeyUser): Promise<void> {
@@ -59,6 +60,10 @@ export class RemovalRestorationService {
       { user: { id: user.id }, isInDeleteWaiting: true, deletingDate: IsNull() },
       { isInDeleteWaiting: false },
     );
+
+    if (user.administratedCompany) {
+      await this.restoreCompanyEntity(user.administratedCompany.id);
+    }
   }
 
   private async restoreUserRoleEntity(userRole: TRestoreByRestorationKeyUserRole): Promise<void> {
@@ -66,18 +71,30 @@ export class RemovalRestorationService {
       { id: userRole.id },
       { isInDeleteWaiting: false, deletingDate: null, restorationKey: null },
     );
+
+    if (userRole.user.administratedCompany) {
+      await this.restoreCompanyEntity(userRole.user.administratedCompany.id);
+    }
   }
 
-  public async restoreCompanyEntity(user: ITokenUserData): Promise<void> {
+  public async restoreCompany(user: ITokenUserData): Promise<void> {
     const queryOptions = this.removalQueryOptionsService.restoreCompanyEntityOptions(user.id);
     const company = await findOneOrFailTyped<TRestoreCompanyEntity>(user.id, this.companyRepository, queryOptions);
 
     if (!company.isInDeleteWaiting) {
-      throw new Error("Company is not requested for removal.");
+      throw new BadRequestException(ERemovalErrorCodes.COMPANY_NOT_IN_DELETE_WAITING);
     }
 
+    await this.restoreCompanyEntity(company.id);
+  }
+
+  private async restoreCompanyEntity(companyId: string): Promise<void> {
     await this.companyRepository.update(
-      { id: company.id },
+      { id: companyId },
+      { isInDeleteWaiting: false, deletingDate: null, removeAllAdminRoles: null },
+    );
+    await this.companyRepository.update(
+      { operatedByMainCompanyId: companyId },
       { isInDeleteWaiting: false, deletingDate: null, removeAllAdminRoles: null },
     );
   }

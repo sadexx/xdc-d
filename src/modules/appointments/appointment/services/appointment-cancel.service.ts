@@ -1,9 +1,13 @@
 import { InjectRepository } from "@nestjs/typeorm";
 import { Appointment, AppointmentCancellationInfo } from "src/modules/appointments/appointment/entities";
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { Repository } from "typeorm";
 import { CancelAppointmentDto } from "src/modules/appointments/appointment/common/dto";
-import { EAppointmentRecreationType, EAppointmentStatus } from "src/modules/appointments/appointment/common/enums";
+import {
+  EAppointmentErrorCodes,
+  EAppointmentRecreationType,
+  EAppointmentStatus,
+} from "src/modules/appointments/appointment/common/enums";
 import { AppointmentOrderRecreationService } from "src/modules/appointment-orders/workflow/services";
 import { ICreateAppointmentCancellationInfo } from "src/modules/appointments/appointment/common/interfaces";
 import { AppointmentCommandService } from "src/modules/appointments/appointment/services";
@@ -80,7 +84,7 @@ export class AppointmentCancelService {
     const appointments = (await this.appointmentRepository.find(queryOptions)) as TCancelAppointment[];
 
     if (appointments.length === 0) {
-      throw new NotFoundException("There are no appointments that can be cancelled in this group.");
+      throw new BadRequestException(EAppointmentErrorCodes.NO_APPOINTMENTS_TO_CANCEL_IN_GROUP);
     }
 
     const isFullGroupCancellation = true;
@@ -117,9 +121,7 @@ export class AppointmentCancelService {
     isFullGroupCancellation: boolean,
   ): Promise<void> {
     if (appointment.isGroupAppointment && !isFullGroupCancellation) {
-      throw new BadRequestException(
-        "Cannot cancel a single appointment. The entire appointment group must be cancelled.",
-      );
+      throw new BadRequestException(EAppointmentErrorCodes.CANNOT_CANCEL_SINGLE_GROUP_APPOINTMENT);
     }
 
     if (appointment.status === EAppointmentStatus.PENDING) {
@@ -143,9 +145,7 @@ export class AppointmentCancelService {
     isFullGroupCancellation: boolean,
   ): Promise<void> {
     if (appointment.isGroupAppointment && appointment.sameInterpreter && !isFullGroupCancellation) {
-      throw new BadRequestException(
-        "Cannot cancel a single appointment. The entire appointment group must be cancelled.",
-      );
+      throw new BadRequestException(EAppointmentErrorCodes.CANNOT_CANCEL_SINGLE_GROUP_APPOINTMENT);
     }
 
     if (appointment.appointmentAdminInfo) {
@@ -202,7 +202,7 @@ export class AppointmentCancelService {
     const [mainAppointment] = appointmentsAssignedToInterpreter;
 
     if (appointmentsAssignedToInterpreter.length === 0) {
-      throw new BadRequestException("You are not assigned to any appointments in this group.");
+      throw new BadRequestException(EAppointmentErrorCodes.NOT_ASSIGNED_TO_GROUP_APPOINTMENTS);
     }
 
     for (const appointment of appointmentsAssignedToInterpreter) {

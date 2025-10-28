@@ -3,7 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { compare } from "bcrypt";
 import { User } from "src/modules/users/entities";
-import { EAccountStatus } from "src/modules/users/common/enums";
+import { EAccountStatus, EUsersErrorCodes } from "src/modules/users/common/enums";
 import { EmailsService } from "src/modules/emails/services";
 import { ChangeEmailDto, ChangePasswordDto, VerifyPhoneNumberDto } from "src/modules/users/common/dto";
 import { COMPANY_LFH_FULL_NAME } from "src/modules/companies/common/constants/constants";
@@ -57,7 +57,7 @@ export class UsersService {
     const user = await this.userRepository.exists({ where: { email: changeEmail.email } });
 
     if (user) {
-      throw new ForbiddenException("This email is already registered.");
+      throw new ForbiddenException(EUsersErrorCodes.EMAIL_ALREADY_REGISTERED);
     }
 
     const emailConfirmationCode = generateCode();
@@ -84,7 +84,7 @@ export class UsersService {
     const userWithSamePhoneNumber = await this.userRepository.exists({ where: { phoneNumber: dto.phoneNumber } });
 
     if (userWithSamePhoneNumber) {
-      throw new BadRequestException("User with this phone number already exists.");
+      throw new BadRequestException(EUsersErrorCodes.PHONE_NUMBER_ALREADY_EXISTS);
     }
 
     await this.usersRegistrationStepsService.sendPhoneNumberVerificationCode(dto.phoneNumber, user.id);
@@ -107,17 +107,17 @@ export class UsersService {
     );
 
     if (!user.password) {
-      throw new BadRequestException("User password not set.");
+      throw new BadRequestException(EUsersErrorCodes.PASSWORD_NOT_SET);
     }
 
     const isOldPasswordValid = await compare(dto.oldPassword, user.password);
 
     if (!isOldPasswordValid) {
-      throw new BadRequestException("Incorrect current password.");
+      throw new BadRequestException(EUsersErrorCodes.INCORRECT_CURRENT_PASSWORD);
     }
 
     if (dto.oldPassword === dto.newPassword) {
-      throw new BadRequestException("New password cannot be the same as the current password.");
+      throw new BadRequestException(EUsersErrorCodes.NEW_PASSWORD_SAME_AS_CURRENT);
     }
 
     await this.usersPasswordService.setPassword(user.id, dto.newPassword);
@@ -136,13 +136,13 @@ export class UsersService {
       );
 
       if (company && company.isInDeleteWaiting) {
-        throw new ForbiddenException("Your company has been deleted. You can restore company by link on your post");
+        throw new ForbiddenException(EUsersErrorCodes.COMPANY_DELETED);
       }
     }
 
     if (userRole.operatedByCompanyName !== COMPANY_LFH_FULL_NAME) {
       if (!userRole.operatedByCompanyId) {
-        throw new BadRequestException("Operated company is not find!");
+        throw new BadRequestException(EUsersErrorCodes.OPERATED_COMPANY_NOT_FOUND);
       }
 
       const company = await findOneOrFailTyped<TІsUserNotDeletedAndNotDeactivatedCompany>(
@@ -153,22 +153,20 @@ export class UsersService {
       );
 
       if (company.status === ECompanyStatus.DEACTIVATED) {
-        throw new ForbiddenException("Your company account has been deactivated. Please contact your admin");
+        throw new ForbiddenException(EUsersErrorCodes.COMPANY_DEACTIVATED);
       }
 
       if (company.isInDeleteWaiting) {
-        throw new ForbiddenException("Your company account has been deleted. Please contact your admin");
+        throw new ForbiddenException(EUsersErrorCodes.COMPANY_DELETED_CONTACT_ADMIN);
       }
     }
 
     if (userRole.isInDeleteWaiting) {
-      throw new ForbiddenException(
-        "Your account has been deleted. Please use the restoration link sent to your email or contact the LFH Support Team.",
-      );
+      throw new ForbiddenException(EUsersErrorCodes.ACCOUNT_DELETED_USE_RESTORATION);
     }
 
     if (userRole.accountStatus === EAccountStatus.DEACTIVATED) {
-      throw new ForbiddenException("Your account has been locked. Please contact the LFH Support Team.");
+      throw new ForbiddenException(EUsersErrorCodes.ACCOUNT_LOCKED);
     }
   }
 }

@@ -12,20 +12,20 @@ import { IAppleWebUserDataOutput, IThirdPartyAuthWebStateOutput } from "src/modu
 @Injectable()
 export class AppleWebStrategy extends PassportStrategy(Strategy, AuthStrategies.APPLE_WEB_STRATEGY) {
   constructor(private readonly appleTokensService: AppleTokensService) {
-    super((req: Request, done: (error: unknown, user?: unknown) => void) => this.validate(req, done));
+    super();
   }
 
-  async validate(req: Request, done: (error: unknown, user?: unknown) => void): Promise<void> {
+  async validate(req: Request): Promise<IAppleWebUserDataOutput> {
     const idToken = req.body.id_token;
-    const user = req.body.user;
+    const rawUser = req.body.user;
     const state = req.body.state;
 
     if (!state) {
-      return done(new UnauthorizedException("Body doesn't include state field"), null);
+      throw new UnauthorizedException("Body doesn't include state field");
     }
 
     const parsedState: IThirdPartyAuthWebStateOutput = JSON.parse(state);
-    const userProfile = user ? JSON.parse(user) : null;
+    const userProfile = rawUser ? JSON.parse(rawUser) : null;
 
     let firstName = null;
     let lastName = null;
@@ -36,28 +36,24 @@ export class AppleWebStrategy extends PassportStrategy(Strategy, AuthStrategies.
     }
 
     if (!idToken) {
-      return done(new UnauthorizedException("Body doesn't include id_token field"), null);
+      throw new UnauthorizedException("Body doesn't include id_token field");
     }
 
-    try {
-      const result = (await this.appleTokensService.verifyToken(idToken)) as IAppleProviderOutput;
+    const result = (await this.appleTokensService.verifyToken(idToken)) as IAppleProviderOutput;
 
-      const user = {
-        email: result.email,
-        firstName,
-        lastName,
-        role: parsedState.role,
-        platform: parsedState.platform,
-        deviceId: parsedState.deviceId,
-        deviceToken: parsedState.deviceToken,
-        iosVoipToken: parsedState.iosVoipToken,
-        clientUserAgent: parsedState.userAgent,
-        clientIPAddress: parsedState.IPAddress,
-      } as IAppleWebUserDataOutput;
+    const user = {
+      email: result.email,
+      firstName,
+      lastName,
+      role: parsedState.role,
+      platform: parsedState.platform,
+      deviceId: parsedState.deviceId,
+      deviceToken: parsedState.deviceToken,
+      iosVoipToken: parsedState.iosVoipToken,
+      clientUserAgent: parsedState.userAgent,
+      clientIPAddress: parsedState.IPAddress,
+    } as IAppleWebUserDataOutput;
 
-      return done(null, user);
-    } catch (error) {
-      return done(error, null);
-    }
+    return user;
   }
 }

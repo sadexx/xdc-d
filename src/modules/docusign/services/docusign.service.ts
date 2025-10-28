@@ -7,7 +7,7 @@ import { DocusignContract } from "src/modules/docusign/entities";
 import { FindOptionsWhere, Repository } from "typeorm";
 import { AccountActivationService } from "src/modules/account-activation/services";
 import { DocusignQueryOptionsService, DocusignSdkService } from "src/modules/docusign/services";
-import { ECorporateSignersCount, EExtDocusignStatus } from "src/modules/docusign/common/enums";
+import { ECorporateSignersCount, EDocusignErrorCodes, EExtDocusignStatus } from "src/modules/docusign/common/enums";
 import { AwsS3Service } from "src/modules/aws/s3/aws-s3.service";
 import { DownloadContractDto, GetContractsDto, SendContractDto } from "src/modules/docusign/common/dto";
 import { EExtCountry } from "src/modules/addresses/common/enums";
@@ -60,23 +60,23 @@ export class DocusignService {
     );
 
     if (userRole.isActive) {
-      throw new BadRequestException("User role or profile status does not permit this operation.");
+      throw new BadRequestException(EDocusignErrorCodes.INDIVIDUAL_INVALID_USER_STATUS);
     }
 
     const userCountry = userRole.address?.country;
 
     if (!userCountry) {
-      throw new BadRequestException("User country is not defined!");
+      throw new BadRequestException(EDocusignErrorCodes.INDIVIDUAL_COUNTRY_NOT_DEFINED);
     }
 
     const neededSteps = await this.accountActivationService.retrieveRequiredAndActivationSteps(user);
 
     if (!neededSteps?.docusignContractFulfilled) {
-      throw new BadRequestException("Contract is not available for this role!");
+      throw new BadRequestException(EDocusignErrorCodes.COMMON_CONTRACT_NOT_AVAILABLE_FOR_ROLE);
     }
 
     if (neededSteps?.docusignContractFulfilled?.status === EStepStatus.SUCCESS) {
-      throw new BadRequestException("Contract already signed!");
+      throw new BadRequestException(EDocusignErrorCodes.COMMON_ALREADY_SIGNED);
     }
 
     delete neededSteps.docusignContractFulfilled;
@@ -86,7 +86,7 @@ export class DocusignService {
 
       if (step.isBlockAccountActivation) {
         if (step.status !== EStepStatus.SUCCESS) {
-          throw new BadRequestException("Not all steps are completed!");
+          throw new BadRequestException(EDocusignErrorCodes.INDIVIDUAL_STEPS_NOT_COMPLETED);
         }
       }
     });
@@ -94,14 +94,14 @@ export class DocusignService {
     const templateId = this.getTemplateId(user.role, userCountry);
 
     if (!templateId) {
-      throw new BadRequestException("Contract is not available for this role!");
+      throw new BadRequestException(EDocusignErrorCodes.COMMON_CONTRACT_NOT_AVAILABLE_FOR_ROLE);
     }
 
     const { title, firstName, middleName, lastName, contactEmail } = userRole.profile;
     const signerName = `${title ? title + " " : ""} ${firstName}${middleName ? " " + middleName : ""} ${lastName}`;
 
     if (!contactEmail) {
-      throw new UnprocessableEntityException("Contact email is not specified!");
+      throw new UnprocessableEntityException(EDocusignErrorCodes.INDIVIDUAL_CONTACT_EMAIL_NOT_SPECIFIED);
     }
 
     const { envelopeId, status } = await this.docusignSdkService.createEnvelope(templateId, contactEmail, signerName);
@@ -120,13 +120,9 @@ export class DocusignService {
   }
 
   public async fillAndSendContract(contractId: string, user: ITokenUserData): Promise<ISendContractOutput> {
-    const { id: userId, role: userRoleName } = user;
+    const { role: userRoleName } = user;
 
-    if (!userId) {
-      throw new BadRequestException("User not found");
-    }
-
-    const docusignContract = await this.docusignContractRepository.findOne({
+    const docusignContract = await findOneOrFailTyped<DocusignContract>(contractId, this.docusignContractRepository, {
       where: { id: contractId },
       relations: {
         userRole: {
@@ -135,18 +131,14 @@ export class DocusignService {
       },
     });
 
-    if (!docusignContract) {
-      throw new NotFoundException(`Contract with this id not found!`);
-    }
-
     if (docusignContract.docusignStatus === EExtDocusignStatus.COMPLETED) {
-      throw new BadRequestException(`Contract already completed!`);
+      throw new BadRequestException(EDocusignErrorCodes.COMMON_CONTRACT_ALREADY_COMPLETED);
     }
 
     const contractDocuments = await this.docusignSdkService.getDocuments(docusignContract.envelopeId);
 
     if (!contractDocuments?.envelopeDocuments || contractDocuments.envelopeDocuments.length === 0) {
-      throw new BadRequestException("Envelope not contained document!");
+      throw new BadRequestException(EDocusignErrorCodes.COMMON_NO_DOCUMENTS);
     }
 
     const queryOptions = this.docusignQueryService.getFillAndSendContractUserRoleQueryOptions(user);
@@ -159,11 +151,11 @@ export class DocusignService {
     const userCountry = userRole.address?.country;
 
     if (!userCountry) {
-      throw new BadRequestException("User country is not defined!");
+      throw new BadRequestException(EDocusignErrorCodes.INDIVIDUAL_COUNTRY_NOT_DEFINED);
     }
 
     if (!userRole.profile) {
-      throw new BadRequestException("User profile is not defined!");
+      throw new BadRequestException(EDocusignErrorCodes.INDIVIDUAL_PROFILE_NOT_DEFINED);
     }
 
     const tabs: ICreateTabInterface[] = this.getPersonalTabs(userRoleName, userCountry, userRole.profile);
@@ -184,7 +176,7 @@ export class DocusignService {
   }
 
   public async downloadContract(dto: DownloadContractDto, user: ITokenUserData): Promise<IDownloadContractOutput> {
-    const contract = await this.docusignContractRepository.findOne({
+    const contract = await findOneOrFailTyped<DocusignContract>(dto.id, this.docusignContractRepository, {
       select: {
         id: true,
         s3ContractKey: true,
@@ -196,10 +188,6 @@ export class DocusignService {
       relations: { userRole: true, company: true },
     });
 
-    if (!contract) {
-      throw new NotFoundException(`Contract with this id not exist!`);
-    }
-
     if (contract.userRole) {
       await this.accessControlService.authorizeUserRoleForOperation(user, contract.userRole);
     }
@@ -209,11 +197,11 @@ export class DocusignService {
     }
 
     if (contract.docusignStatus !== EExtDocusignStatus.COMPLETED) {
-      throw new BadRequestException(`Contract with this id not completed!`);
+      throw new BadRequestException(EDocusignErrorCodes.INDIVIDUAL_CONTRACT_NOT_COMPLETED);
     }
 
     if (!contract.s3ContractKey) {
-      throw new UnprocessableEntityException(`File of this contract saved with error!`);
+      throw new UnprocessableEntityException(EDocusignErrorCodes.INDIVIDUAL_CONTRACT_FILE_ERROR);
     }
 
     const fileLink = await this.awsS3Service.getShortLivedSignedUrl(contract.s3ContractKey);
@@ -234,11 +222,11 @@ export class DocusignService {
     });
 
     if (!contract || !contract.userRole) {
-      throw new NotFoundException(`Contract with this id not exist!`);
+      throw new NotFoundException(EDocusignErrorCodes.INDIVIDUAL_CONTRACT_NOT_EXIST);
     }
 
     if (contract.docusignStatus === EExtDocusignStatus.COMPLETED) {
-      throw new BadRequestException(`Contract with this id already completed!`);
+      throw new BadRequestException(EDocusignErrorCodes.COMMON_CONTRACT_ALREADY_COMPLETED);
     }
 
     const recipientId = await this.docusignSdkService.getEnvelopeRecipient(contract.envelopeId);
@@ -278,7 +266,7 @@ export class DocusignService {
   }
 
   public async getLinkToDocument(contractId: string): Promise<IGetLinkToDocumentOutput> {
-    const docusignContract = await this.docusignContractRepository.findOne({
+    const docusignContract = await findOneOrFailTyped<DocusignContract>(contractId, this.docusignContractRepository, {
       where: { id: contractId },
       relations: {
         userRole: {
@@ -286,10 +274,6 @@ export class DocusignService {
         },
       },
     });
-
-    if (!docusignContract) {
-      throw new NotFoundException(`Contract with this id not found!`);
-    }
 
     const documentLink = await this.docusignSdkService.getEnvelopeEditDocumentLink(docusignContract.envelopeId);
 

@@ -1,4 +1,4 @@
-import { FindOptionsSelect } from "typeorm";
+import { FindOptionsRelations, FindOptionsSelect } from "typeorm";
 import { QueryResultType } from "src/common/types";
 import { User, UserRole } from "src/modules/users/entities";
 import { Company } from "src/modules/companies/entities";
@@ -8,12 +8,17 @@ import { Company } from "src/modules/companies/entities";
  */
 
 export const RestoreByRestorationKeyUserQuery = {
-  select: { id: true } as const satisfies FindOptionsSelect<User>,
+  select: { id: true, administratedCompany: { id: true } } as const satisfies FindOptionsSelect<User>,
+  relations: { administratedCompany: true } as const satisfies FindOptionsRelations<User>,
 };
 export type TRestoreByRestorationKeyUser = QueryResultType<User, typeof RestoreByRestorationKeyUserQuery.select>;
 
 export const RestoreByRestorationKeyUserRoleQuery = {
-  select: { id: true } as const satisfies FindOptionsSelect<UserRole>,
+  select: {
+    id: true,
+    user: { id: true, administratedCompany: { id: true } },
+  } as const satisfies FindOptionsSelect<UserRole>,
+  relations: { user: { administratedCompany: true } } as const satisfies FindOptionsRelations<UserRole>,
 };
 export type TRestoreByRestorationKeyUserRole = QueryResultType<
   UserRole,

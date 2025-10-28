@@ -1,11 +1,12 @@
 import { BadRequestException, Injectable, UnprocessableEntityException } from "@nestjs/common";
 import Stripe from "stripe";
 import { randomUUID } from "node:crypto";
-import { StripeService } from "src/modules/stripe/services";
+import { StripeConnectService, StripePaymentsService } from "src/modules/stripe/services";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { OldPayment, OldPaymentItem } from "src/modules/payments/entities";
 import {
+  EOldPaymentsErrorCodes,
   OldECurrencies,
   OldECustomerType,
   OldEPayInStatus,
@@ -27,7 +28,7 @@ import { EAppointmentStatus } from "src/modules/appointments/appointment/common/
 import { LokiLogger } from "src/common/logger";
 import { NotificationService } from "src/modules/notifications/services";
 import { OldICreateTransfer } from "src/modules/payments/common/interfaces/old-create-transfer.interface";
-import { EPaymentSystem } from "src/modules/payment-information/common/enums";
+import { EPaymentSystem } from "src/modules/payments-new/common/enums";
 import { ESortOrder } from "src/common/enums";
 import { OldPaymentsHelperService } from "src/modules/payments/services/old-payments-helper.service";
 import {
@@ -36,6 +37,8 @@ import {
   NUMBER_OF_MINUTES_IN_SIX_HOURS,
 } from "src/common/constants";
 import { differenceInMinutes } from "date-fns";
+import { IAuthorizePayment, ICreateTransfer } from "src/modules/stripe/common/interfaces";
+import { IPayInReceipt } from "src/modules/pdf-new/common/interfaces";
 
 @Injectable()
 export class OldIndividualPaymentsService {
@@ -49,7 +52,8 @@ export class OldIndividualPaymentsService {
     private readonly appointmentRepository: Repository<Appointment>,
     @InjectRepository(OldPaymentItem)
     private readonly paymentItemRepository: Repository<OldPaymentItem>,
-    private readonly stripeService: StripeService,
+    private readonly stripePaymentsService: StripePaymentsService,
+    private readonly stripeConnectService: StripeConnectService,
     private readonly pdfBuilderService: PdfBuilderService,
     private readonly awsS3Service: AwsS3Service,
     private readonly emailsService: EmailsService,
@@ -105,21 +109,21 @@ export class OldIndividualPaymentsService {
 
     if (!appointment.client) {
       await this.changeAppointmentStatusToCancelledBySystem(appointment.id);
-      throw new BadRequestException("User role not exist!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.USER_ROLE_NOT_EXIST);
     }
 
     if (payment && payment.items && payment.items.length > 0) {
       const capturedItemsCount = payment.items.filter((item) => item.status === OldEPaymentStatus.CAPTURED).length;
 
       if (capturedItemsCount > 0) {
-        throw new BadRequestException("Payment already captured!");
+        throw new BadRequestException(EOldPaymentsErrorCodes.PAYMENT_ALREADY_CAPTURED);
       }
     }
 
     if (!appointment.client.paymentInformation) {
       await this.changeAppointmentStatusToCancelledBySystem(appointment.id);
       this.sendAuthorizationPaymentFailedNotification(appointment, OldEPaymentFailedReason.INFO_NOT_FILLED);
-      throw new BadRequestException("Payment info not filled!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.PAYMENT_INFO_NOT_FILLED);
     }
 
     if (
@@ -128,26 +132,22 @@ export class OldIndividualPaymentsService {
     ) {
       await this.changeAppointmentStatusToCancelledBySystem(appointment.id);
       this.sendAuthorizationPaymentFailedNotification(appointment, OldEPaymentFailedReason.INFO_NOT_FILLED);
-      throw new BadRequestException("Stripe payment info not filled!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.STRIPE_PAYMENT_INFO_NOT_FILLED);
     }
 
-    let paymentIntent;
+    let paymentIntent: IAuthorizePayment | null = null;
     let paymentStatus: OldEPaymentStatus = OldEPaymentStatus.AUTHORIZED;
     let paymentNote: string | null | undefined = null;
 
     if (amount > 0) {
       try {
-        paymentIntent = await this.stripeService.authorizePayment(
-          denormalizedAmountToNormalized(Number(amount) + Number(gstAmount)),
+        paymentIntent = await this.stripePaymentsService.authorizePayment({
+          amount: denormalizedAmountToNormalized(Number(amount) + Number(gstAmount)),
           currency,
-          appointment.client.paymentInformation.stripeClientPaymentMethodId,
-          appointment.client.paymentInformation.stripeClientAccountId,
-          appointment.platformId,
-        );
-
-        if (paymentIntent.next_action) {
-          this.lokiLogger.warn(`STRIPE AUTHORIZE, REQUIRED NEXT ACTION, appointment id: ${appointmentId}`);
-        } // TODO check
+          paymentMethodId: appointment.client.paymentInformation.stripeClientPaymentMethodId,
+          customerId: appointment.client.paymentInformation.stripeClientAccountId,
+          appointmentPlatformId: appointment.platformId,
+        });
       } catch (error) {
         paymentStatus = OldEPaymentStatus.AUTHORIZATION_FAILED;
         paymentNote = (error as Stripe.Response<Stripe.StripeRawError>).message ?? null;
@@ -177,15 +177,13 @@ export class OldIndividualPaymentsService {
 
         this.sendAuthorizationPaymentFailedNotification(appointment, OldEPaymentFailedReason.INCORRECT_CURRENCY);
 
-        throw new BadRequestException(
-          "New payment item currency must been the same like other payment items currencies",
-        );
+        throw new BadRequestException(EOldPaymentsErrorCodes.CURRENCY_MISMATCH);
       }
     }
 
     const paymentItem = this.paymentItemRepository.create({
       payment,
-      externalId: paymentIntent?.id,
+      externalId: paymentIntent?.paymentIntentId,
       amount,
       gstAmount,
       fullAmount: amount + gstAmount,
@@ -300,30 +298,30 @@ export class OldIndividualPaymentsService {
     );
 
     if (payment.system !== EPaymentSystem.STRIPE) {
-      throw new BadRequestException("Incorrect payment system!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.INCORRECT_PAYMENT_SYSTEM);
     }
 
     if (payment.direction !== OldEPaymentDirection.INCOMING) {
-      throw new BadRequestException("Incorrect payment direction!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.INCORRECT_PAYMENT_DIRECTION);
     }
 
     if (!appointment.client) {
-      throw new BadRequestException("Client not exist!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.CLIENT_NOT_EXIST);
     }
 
     if (!appointment.client.profile) {
       this.sendAuthorizationPaymentFailedNotification(appointment, OldEPaymentFailedReason.PROFILE_NOT_FILLED);
-      throw new BadRequestException("Client profile not fill!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.CLIENT_PROFILE_NOT_FILLED);
     }
 
     if (!appointment.client.profile.contactEmail) {
       this.sendAuthorizationPaymentFailedNotification(appointment, OldEPaymentFailedReason.PROFILE_NOT_FILLED);
-      throw new BadRequestException("Client contact email not fill!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.CLIENT_CONTACT_EMAIL_NOT_FILLED);
     }
 
     let paymentStatus: OldEPaymentStatus = OldEPaymentStatus.CAPTURED;
-
     let isFirstItem = true;
+    let totalCapturedAmount: number = 0;
 
     for (const paymentItem of payment.items) {
       if (paymentItem.status !== OldEPaymentStatus.AUTHORIZED && !isSecondAttempt) {
@@ -354,36 +352,44 @@ export class OldIndividualPaymentsService {
         continue;
       }
 
-      let finalPrice: number | null = null;
+      let normalizedFinalPrice: number | null = null;
+      let actualCapturedAmount: number = Number(paymentItem.fullAmount);
 
       if (isFirstItem) {
         isFirstItem = false;
 
         try {
-          finalPrice = await this.recalculateFinalPrice(appointment, paymentItem);
+          const finalPrice = await this.recalculateFinalPrice(appointment, paymentItem);
+
+          if (finalPrice) {
+            normalizedFinalPrice = denormalizedAmountToNormalized(finalPrice);
+            actualCapturedAmount = finalPrice;
+          }
         } catch (error) {
           this.lokiLogger.error(
             `Error in corporate capturePayment: ${(error as Error).message}, ${(error as Error).stack}`,
           );
         }
-
-        if (finalPrice) {
-          finalPrice = denormalizedAmountToNormalized(finalPrice);
-        }
       }
 
       try {
         if (paymentItem.fullAmount > 0 && paymentItem.externalId) {
-          const paymentIntent = await this.stripeService.capturePayment(paymentItem.externalId, finalPrice);
+          const paymentIntent = await this.stripePaymentsService.capturePayment(
+            paymentItem.externalId,
+            paymentItem.externalId,
+            normalizedFinalPrice ?? paymentItem.fullAmount,
+          );
 
           await this.paymentItemRepository.update({ id: paymentItem.id }, { status: OldEPaymentStatus.CAPTURED });
+
+          totalCapturedAmount += actualCapturedAmount;
 
           if (!paymentIntent.latest_charge) {
             await this.paymentItemRepository.update({ id: paymentItem.id }, { note: "Receipt download failed" });
             continue;
           }
 
-          const stripeReceipt = await this.stripeService.getReceipt(paymentIntent.latest_charge as string);
+          const stripeReceipt = await this.stripePaymentsService.getReceipt(paymentIntent.latest_charge as string);
           const key = `payments/stripe-receipts/${randomUUID()}.html`;
 
           await this.awsS3Service.uploadObject(key, stripeReceipt as ReadableStream, "text/html");
@@ -391,6 +397,7 @@ export class OldIndividualPaymentsService {
           await this.paymentItemRepository.update({ id: paymentItem.id }, { receipt: key });
         } else {
           await this.paymentItemRepository.update({ id: paymentItem.id }, { status: OldEPaymentStatus.CAPTURED });
+          totalCapturedAmount += actualCapturedAmount;
         }
       } catch (error) {
         paymentStatus = OldEPaymentStatus.CAPTURE_FAILED;
@@ -408,7 +415,7 @@ export class OldIndividualPaymentsService {
     if (paymentStatus === OldEPaymentStatus.CAPTURED) {
       await this.appointmentRepository.update(
         { id: appointment.id },
-        { paidByClient: payment.totalFullAmount, clientCurrency: payment.currency },
+        { paidByClient: round2(totalCapturedAmount), clientCurrency: payment.currency },
       );
 
       try {
@@ -426,7 +433,7 @@ export class OldIndividualPaymentsService {
         await this.emailsService.sendIncomingPaymentReceipt(
           appointment.client.profile.contactEmail,
           receiptLink,
-          receipt.receiptData,
+          receipt.receiptData as unknown as IPayInReceipt,
         );
       } catch (error) {
         this.lokiLogger.error(
@@ -448,11 +455,11 @@ export class OldIndividualPaymentsService {
     );
 
     if (payment.system !== EPaymentSystem.STRIPE) {
-      throw new BadRequestException("Incorrect payment system!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.INCORRECT_PAYMENT_SYSTEM);
     }
 
     if (payment.direction !== OldEPaymentDirection.INCOMING) {
-      throw new BadRequestException("Incorrect payment direction!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.INCORRECT_PAYMENT_DIRECTION);
     }
 
     for (const paymentItem of payment.items) {
@@ -481,7 +488,7 @@ export class OldIndividualPaymentsService {
 
       try {
         if (paymentItem.fullAmount > 0 && paymentItem.externalId) {
-          await this.stripeService.cancelAuthorization(paymentItem.externalId);
+          await this.stripePaymentsService.cancelAuthorization(paymentItem.externalId);
         }
 
         await this.paymentItemRepository.update({ id: paymentItem.id }, { status: OldEPaymentStatus.CANCELED });
@@ -502,14 +509,14 @@ export class OldIndividualPaymentsService {
     let finalPrice: number | null = null;
 
     if (!appointment.client) {
-      throw new BadRequestException("Client not exist!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.CLIENT_NOT_EXIST);
     }
 
     const isCorporate: boolean = false;
     const country = appointment.client.country;
 
     if (!country) {
-      throw new BadRequestException("Country not filled!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.COUNTRY_NOT_FILLED);
     }
 
     let date: Date;
@@ -594,22 +601,22 @@ export class OldIndividualPaymentsService {
     stripeInterpreterAccountId: string | null,
   ): Promise<OldICreateTransfer> {
     if (!stripeInterpreterAccountId) {
-      throw new BadRequestException("Stripe payment info not filled!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.STRIPE_PAYMENT_INFO_NOT_FILLED);
     }
 
-    let transfer: Stripe.Response<Stripe.Transfer> | null = null;
+    let transfer: ICreateTransfer | null = null;
     let paymentStatus: OldEPaymentStatus = OldEPaymentStatus.TRANSFERED;
     let paymentNote: string | null | undefined = null;
 
     try {
-      transfer = await this.stripeService.createTransfer(fullAmount, currency, stripeInterpreterAccountId);
+      transfer = await this.stripeConnectService.createTransfer(fullAmount, currency, stripeInterpreterAccountId);
     } catch (error) {
       paymentStatus = OldEPaymentStatus.TRANSFER_FAILED;
       paymentNote = (error as Stripe.Response<Stripe.StripeRawError>).message ?? null;
     }
 
     return {
-      transferId: transfer?.id,
+      transferId: transfer?.transferId,
       paymentStatus,
       paymentNote,
     };
@@ -627,31 +634,31 @@ export class OldIndividualPaymentsService {
     );
 
     if (payment.system !== EPaymentSystem.STRIPE) {
-      throw new BadRequestException("Incorrect payment system!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.INCORRECT_PAYMENT_SYSTEM);
     }
 
     if (payment.direction !== OldEPaymentDirection.OUTCOMING) {
-      throw new BadRequestException("Incorrect payment direction!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.INCORRECT_PAYMENT_DIRECTION);
     }
 
     if (!appointment.interpreter) {
-      throw new BadRequestException("Interpreter not exist!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.INTERPRETER_NOT_EXIST);
     }
 
     if (!appointment.interpreter.profile) {
-      throw new BadRequestException("Interpreter profile not fill!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.INTERPRETER_PROFILE_NOT_FILLED);
     }
 
     if (!appointment.interpreter.profile.contactEmail) {
-      throw new BadRequestException("Interpreter contact email not fill!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.INTERPRETER_CONTACT_EMAIL_NOT_FILLED);
     }
 
     if (!appointment.interpreter.paymentInformation) {
-      throw new BadRequestException("Payment info not filled!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.PAYMENT_INFO_NOT_FILLED);
     }
 
     if (!appointment.interpreter.paymentInformation.stripeInterpreterAccountId) {
-      throw new BadRequestException("Stripe payment info not filled!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.STRIPE_PAYMENT_INFO_NOT_FILLED);
     }
 
     if (
@@ -659,7 +666,7 @@ export class OldIndividualPaymentsService {
       !appointment.interpreter.paymentInformation.stripeInterpreterCardBrand ||
       !appointment.interpreter.paymentInformation.stripeInterpreterCardLast4
     ) {
-      throw new BadRequestException("Stripe card payment info not filled!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.STRIPE_CARD_PAYMENT_INFO_NOT_FILLED);
     }
 
     for (const paymentItem of payment.items) {
@@ -683,7 +690,7 @@ export class OldIndividualPaymentsService {
     }
 
     try {
-      const payout = await this.stripeService.createPayout(
+      const payout = await this.stripeConnectService.createPayout(
         payment.totalAmount,
         payment.currency,
         appointment.interpreter.paymentInformation.stripeInterpreterAccountId,
@@ -691,7 +698,7 @@ export class OldIndividualPaymentsService {
 
       await this.paymentItemRepository.update(
         { paymentId: payment.id },
-        { status: OldEPaymentStatus.PAYOUT_SUCCESS, externalId: payout.id },
+        { status: OldEPaymentStatus.PAYOUT_SUCCESS, externalId: payout.payoutId },
       );
 
       // TODO: check stripe payout receipt, if exist -- save
@@ -717,7 +724,7 @@ export class OldIndividualPaymentsService {
     appointmentPlatformId: string,
   ): Promise<OldICreateTransfer> {
     if (!paypalPayerId) {
-      throw new BadRequestException("Stripe payment info not filled!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.STRIPE_PAYMENT_INFO_NOT_FILLED);
     }
 
     let transfer: IPayoutResponse | null = null;
@@ -794,19 +801,17 @@ export class OldIndividualPaymentsService {
 
     let taxInvoiceReceiptKey: string | null = null;
 
-    if (gstAmount !== 0) {
-      const taxInvoice = await this.pdfBuilderService.generateTaxInvoiceReceipt(interpreterPaymentInfo.payment.id);
+    const taxInvoice = await this.pdfBuilderService.generateTaxInvoiceReceipt(interpreterPaymentInfo.payment.id);
 
-      taxInvoiceReceiptKey = taxInvoice.receiptKey;
+    taxInvoiceReceiptKey = taxInvoice.receiptKey;
 
-      const taxInvoiceLink = `${this.BACK_END_URL}/v1/payments/download-receipt?receiptKey=${taxInvoice.receiptKey}`;
+    const taxInvoiceLink = `${this.BACK_END_URL}/v1/payments/download-receipt?receiptKey=${taxInvoice.receiptKey}`;
 
-      await this.emailsService.sendTaxInvoicePaymentReceipt(
-        interpreterPaymentInfo.profile.contactEmail,
-        taxInvoiceLink,
-        taxInvoice.receiptData,
-      );
-    }
+    await this.emailsService.sendTaxInvoicePaymentReceipt(
+      interpreterPaymentInfo.profile.contactEmail,
+      taxInvoiceLink,
+      taxInvoice.receiptData,
+    );
 
     await this.paymentRepository.update(
       { id: interpreterPaymentInfo.payment.id },
@@ -848,13 +853,7 @@ export class OldIndividualPaymentsService {
     );
 
     if (incomingPayment.items.length <= 0) {
-      throw new BadRequestException("Incoming Payment not have items");
-    }
-
-    for (const paymentItem of incomingPayment.items) {
-      if (paymentItem.status !== OldEPaymentStatus.CAPTURED) {
-        throw new BadRequestException(`One of Incoming Payment items have incorrect status (${paymentItem.status})`);
-      }
+      throw new BadRequestException(EOldPaymentsErrorCodes.INCOMING_PAYMENT_NO_ITEMS);
     }
 
     const existedOutcomingPayment = await this.paymentRepository.findOne({
@@ -863,19 +862,18 @@ export class OldIndividualPaymentsService {
     });
 
     if (existedOutcomingPayment && !isSecondAttempt) {
-      throw new BadRequestException("Outcoming Payment already exist!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.OUTCOMING_PAYMENT_ALREADY_EXISTS);
     }
 
     if (!appointment.interpreter) {
-      throw new BadRequestException("User role not exist!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.USER_ROLE_NOT_EXIST);
     }
 
-    if (!appointment.interpreter.paymentInformation) {
-      throw new BadRequestException("Payment info not filled!");
-    }
-
-    if (!appointment.interpreter.paymentInformation.interpreterSystemForPayout) {
-      throw new BadRequestException("Payment info not filled!");
+    if (
+      !appointment.interpreter.paymentInformation ||
+      !appointment.interpreter.paymentInformation.interpreterSystemForPayout
+    ) {
+      throw new BadRequestException(EOldPaymentsErrorCodes.PAYMENT_INFO_NOT_FILLED);
     }
 
     const fullAmount = amount + gstAmount;

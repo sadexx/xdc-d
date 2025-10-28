@@ -1,11 +1,12 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { DataSource, Repository } from "typeorm";
 import { Company } from "src/modules/companies/entities";
 import { EUserRoleName } from "src/modules/users/common/enums";
 import { EmailsService } from "src/modules/emails/services";
 import {
+  ECompaniesErrorCodes,
   ECompanyActivitySphere,
   ECompanyEmployeesNumber,
   ECompanyStatus,
@@ -35,12 +36,12 @@ import { ITokenUserData } from "src/modules/tokens/common/interfaces";
 import { HelperService } from "src/modules/helper/services";
 import { CompaniesQueryService } from "src/modules/companies/services";
 import { LokiLogger } from "src/common/logger";
-import { CompaniesDepositChargeService } from "src/modules/companies-deposit-charge/services";
 import { INewCompanyRequestDetails } from "src/modules/companies/common/interfaces";
 import { Role } from "src/modules/users/entities";
 import { findOneOrFail, isInRoles } from "src/common/utils";
 import { AccessControlService } from "src/modules/access-control/services";
 import { TokensService } from "src/modules/tokens/services";
+import { CompaniesDepositChargeManagementService } from "src/modules/companies-deposit-charge/services";
 
 @Injectable()
 export class CompaniesService {
@@ -57,28 +58,29 @@ export class CompaniesService {
     private readonly userRoleRepository: Repository<UserRole>,
     @InjectRepository(Role)
     private readonly roleRepository: Repository<Role>,
-    private readonly companiesDepositChargeService: CompaniesDepositChargeService,
+    private readonly companiesDepositChargeManagementService: CompaniesDepositChargeManagementService,
     private readonly companiesQueryService: CompaniesQueryService,
     private readonly configService: ConfigService,
     private readonly emailsService: EmailsService,
     private readonly tokensService: TokensService,
     private readonly helperService: HelperService,
     private readonly accessControlService: AccessControlService,
+    private readonly dataSource: DataSource,
   ) {}
 
   public async createCompanyRegistrationRequest(dto: CreateCompanyRegistrationRequestDto): Promise<CompanyIdOutput> {
     if (dto.companyType === ECompanyType.CORPORATE_CLIENTS && !dto.activitySphere) {
-      throw new BadRequestException("activitySphere is required for corporate clients");
+      throw new BadRequestException(ECompaniesErrorCodes.COMPANIES_ACTIVITY_SPHERE_REQUIRED);
     }
 
     if (RESTRICTED_COMPANY_NAMES.includes(dto.name.toUpperCase())) {
-      throw new BadRequestException("Reserved company name!");
+      throw new BadRequestException(ECompaniesErrorCodes.COMPANIES_RESERVED_COMPANY_NAME);
     }
 
     const existedCompany = await this.companiesQueryService.getCompanyByPhoneNumber(dto.phoneNumber);
 
     if (existedCompany) {
-      throw new BadRequestException("Company with such phone number already exists");
+      throw new BadRequestException(ECompaniesErrorCodes.COMPANIES_PHONE_NUMBER_EXISTS);
     }
 
     const lfhCompany = await findOneOrFail(COMPANY_LFH_ID, this.companyRepository, {
@@ -109,7 +111,7 @@ export class CompaniesService {
 
   public async updateCompanyRegistrationRequest(dto: UpdateCompanyRegistrationRequestDto): Promise<CompanyIdOutput> {
     if (dto.name && RESTRICTED_COMPANY_NAMES.includes(dto.name.toUpperCase())) {
-      throw new BadRequestException("Reserved company name!");
+      throw new BadRequestException(ECompaniesErrorCodes.COMPANIES_RESERVED_COMPANY_NAME);
     }
 
     let adminUserRole: EUserRoleName = EUserRoleName.CORPORATE_INTERPRETING_PROVIDERS_SUPER_ADMIN;
@@ -121,7 +123,7 @@ export class CompaniesService {
     }
 
     if (!companyRequest) {
-      throw new NotFoundException("Company with this id not found!");
+      throw new NotFoundException(ECompaniesErrorCodes.COMPANIES_COMMON_COMPANY_NOT_FOUND);
     }
 
     if (dto.companyType === ECompanyType.CORPORATE_CLIENTS) {
@@ -135,7 +137,7 @@ export class CompaniesService {
       const companyDuplicate = await this.companyRepository.findOne({ where: { adminEmail: dto.adminEmail } });
 
       if (companyDuplicate) {
-        throw new BadRequestException("Company with this admin email already exist!");
+        throw new BadRequestException(ECompaniesErrorCodes.COMPANIES_ADMIN_EMAIL_EXISTS);
       }
 
       let user = await this.userRepository.findOne({
@@ -207,14 +209,14 @@ export class CompaniesService {
 
   public async createCompany(dto: CreateCompanyDto, user: ITokenUserData): Promise<CompanyIdOutput> {
     if (RESTRICTED_COMPANY_NAMES.includes(dto.name.toUpperCase())) {
-      throw new BadRequestException("Reserved company name!");
+      throw new BadRequestException(ECompaniesErrorCodes.COMPANIES_RESERVED_COMPANY_NAME);
     }
 
     if (
       user.role === EUserRoleName.CORPORATE_INTERPRETING_PROVIDERS_SUPER_ADMIN &&
       dto.companyType !== ECompanyType.CORPORATE_INTERPRETING_PROVIDER_CORPORATE_CLIENTS
     ) {
-      throw new BadRequestException("Incorrect company type!");
+      throw new BadRequestException(ECompaniesErrorCodes.COMPANIES_INCORRECT_COMPANY_TYPE);
     }
 
     const existedCompany = await this.companyRepository.findOne({
@@ -222,7 +224,7 @@ export class CompaniesService {
     });
 
     if (existedCompany) {
-      throw new BadRequestException("Company with such phone number or email already exists");
+      throw new BadRequestException(ECompaniesErrorCodes.COMPANIES_PHONE_OR_EMAIL_EXISTS);
     }
 
     const lfhCompany = await findOneOrFail(COMPANY_LFH_ID, this.companyRepository, {
@@ -246,13 +248,13 @@ export class CompaniesService {
       adminUserRole = EUserRoleName.CORPORATE_INTERPRETING_PROVIDER_CORPORATE_CLIENTS_SUPER_ADMIN;
 
       if (!dto.operatedByMainCompanyId) {
-        throw new BadRequestException("operatedByMainCompanyId must been not empty for this role!");
+        throw new BadRequestException(ECompaniesErrorCodes.COMPANIES_OPERATED_BY_COMPANY_ID_REQUIRED);
       }
 
       const operatedByCompany = await this.companyRepository.findOne({ where: { id: dto.operatedByMainCompanyId } });
 
       if (!operatedByCompany) {
-        throw new BadRequestException("Operated company not found!");
+        throw new BadRequestException(ECompaniesErrorCodes.COMPANIES_COMMON_COMPANY_NOT_FOUND);
       }
 
       companyOperatedBy = operatedByCompany.id;
@@ -274,7 +276,7 @@ export class CompaniesService {
     });
 
     if (existedSuperAdmin && existedSuperAdmin.administratedCompany) {
-      throw new BadRequestException("Corporate client with this email already exist!");
+      throw new BadRequestException(ECompaniesErrorCodes.COMPANIES_CORPORATE_CLIENT_EMAIL_EXISTS);
     }
 
     const superAdmin = await this.createCompanyAdmin({
@@ -310,7 +312,14 @@ export class CompaniesService {
     }
 
     if (dto.depositDefaultChargeAmount) {
-      await this.companiesDepositChargeService.createOrUpdateDepositCharge(newCompany, dto.depositDefaultChargeAmount);
+      const depositDefaultChargeAmount = dto.depositDefaultChargeAmount;
+      await this.dataSource.transaction(async (manager) => {
+        await this.companiesDepositChargeManagementService.createOrUpdateDepositCharge(
+          manager,
+          newCompany,
+          depositDefaultChargeAmount,
+        );
+      });
     }
 
     return { id: newCompany.id };
@@ -346,14 +355,14 @@ export class CompaniesService {
     );
 
     if (!companyRequest) {
-      throw new NotFoundException("Company with id not found!");
+      throw new NotFoundException(ECompaniesErrorCodes.COMPANIES_COMMON_COMPANY_NOT_FOUND);
     }
 
     if (
       companyRequest.status !== ECompanyStatus.NEW_REQUEST &&
       companyRequest.status !== ECompanyStatus.INVITATION_LINK_SENT
     ) {
-      throw new BadRequestException("This request already accepted!");
+      throw new BadRequestException(ECompaniesErrorCodes.COMPANIES_REQUEST_ALREADY_ACCEPTED);
     }
 
     await this.companyRepository.delete({ id });
@@ -369,7 +378,7 @@ export class CompaniesService {
     const companyRequest = await this.companyRepository.findOne({ where: { id } });
 
     if (!companyRequest) {
-      throw new NotFoundException("Company with id not found!");
+      throw new NotFoundException(ECompaniesErrorCodes.COMPANIES_COMMON_COMPANY_NOT_FOUND);
     }
 
     await this.companyRepository.update({ id }, { subStatus });
@@ -384,24 +393,25 @@ export class CompaniesService {
     });
 
     if (!companyRequest) {
-      throw new NotFoundException("Company with this id not found!");
+      throw new NotFoundException(ECompaniesErrorCodes.COMPANIES_COMMON_COMPANY_NOT_FOUND);
     }
 
     if (!companyRequest.superAdmin) {
-      throw new BadRequestException(`Company with id ${companyRequest.id} does not have superAdmin!`);
+      this.lokiLogger.error(`Company ${id} does not have superAdmin.`);
+      throw new BadRequestException(ECompaniesErrorCodes.COMPANIES_COMMON_NO_SUPER_ADMIN);
     }
 
     await this.accessControlService.authorizeUserRoleForCompanyOperation(user, companyRequest);
 
     if (!companyRequest.adminName || !companyRequest.adminEmail) {
-      throw new ForbiddenException("Please, set admin name and email before sending link!");
+      throw new ForbiddenException(ECompaniesErrorCodes.COMPANIES_SET_ADMIN_INFO_FIRST);
     }
 
     if (
       companyRequest.status !== ECompanyStatus.NEW_REQUEST &&
       companyRequest.status !== ECompanyStatus.INVITATION_LINK_SENT
     ) {
-      throw new BadRequestException("This company already registered!");
+      throw new BadRequestException(ECompaniesErrorCodes.COMPANIES_COMPANY_ALREADY_REGISTERED);
     }
 
     if (companyRequest.invitationLinkCreationDate) {
@@ -412,7 +422,10 @@ export class CompaniesService {
       const sendingDifferent = now.getTime() - companyRequest.invitationLinkCreationDate.getTime();
 
       if (sendingDifferent < minTimeLimit) {
-        throw new BadRequestException(`Invitation link was sent less than ${MIN_TIME_LIMIT_MINUTES} minutes ago!`);
+        throw new BadRequestException({
+          message: ECompaniesErrorCodes.COMPANIES_INVITATION_LINK_TIME_LIMIT,
+          variables: { timeLimit: MIN_TIME_LIMIT_MINUTES },
+        });
       }
     }
 
@@ -431,7 +444,7 @@ export class CompaniesService {
     }
 
     if (!role) {
-      throw new BadRequestException("Incorrect company type!");
+      throw new BadRequestException(ECompaniesErrorCodes.COMPANIES_INCORRECT_COMPANY_TYPE);
     }
 
     const invitationToken = await this.tokensService.createRegistrationToken({
@@ -475,7 +488,7 @@ export class CompaniesService {
     );
 
     if (!company) {
-      throw new NotFoundException("Company not found!");
+      throw new NotFoundException(ECompaniesErrorCodes.COMPANIES_COMMON_COMPANY_NOT_FOUND);
     }
 
     if (
@@ -484,7 +497,7 @@ export class CompaniesService {
       user.role !== EUserRoleName.SUPER_ADMIN &&
       company.id !== COMPANY_LFH_ID
     ) {
-      throw new BadRequestException("Reserved company name!");
+      throw new BadRequestException(ECompaniesErrorCodes.COMPANIES_RESERVED_COMPANY_NAME);
     }
 
     if (
@@ -506,9 +519,7 @@ export class CompaniesService {
       const isCorporateInterpretingProvider = company.companyType === ECompanyType.CORPORATE_INTERPRETING_PROVIDERS;
 
       if (!isLfhAdmin && !isCorporateInterpretingProvider) {
-        throw new BadRequestException(
-          "Platform commission rate can be set only for corporate interpreting providers company type.",
-        );
+        throw new BadRequestException(ECompaniesErrorCodes.COMPANIES_COMMISSION_RATE_RESTRICTION);
       }
     }
 
@@ -531,7 +542,7 @@ export class CompaniesService {
         (dto.residentialAddress.country || dto.residentialAddress.state || dto.residentialAddress.suburb) &&
         !dto.residentialAddress.timezone
       ) {
-        throw new BadRequestException("Timezone must be provided when country or state or suburb is specified.");
+        throw new BadRequestException(ECompaniesErrorCodes.COMPANIES_TIMEZONE_REQUIRED);
       }
 
       let address: Address;
@@ -550,10 +561,14 @@ export class CompaniesService {
     await this.companyRepository.save(company);
 
     if (user.role === EUserRoleName.SUPER_ADMIN && dto.profileInformation.depositDefaultChargeAmount) {
-      await this.companiesDepositChargeService.createOrUpdateDepositCharge(
-        company,
-        dto.profileInformation.depositDefaultChargeAmount,
-      );
+      const depositDefaultChargeAmount = dto.profileInformation.depositDefaultChargeAmount;
+      await this.dataSource.transaction(async (manager) => {
+        await this.companiesDepositChargeManagementService.createOrUpdateDepositCharge(
+          manager,
+          company,
+          depositDefaultChargeAmount,
+        );
+      });
     }
 
     return;

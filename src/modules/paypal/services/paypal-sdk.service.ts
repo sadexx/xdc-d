@@ -14,10 +14,11 @@ import {
 } from "src/modules/paypal/common/interfaces";
 import { OldECurrencies } from "src/modules/payments/common/enums";
 import { LokiLogger } from "src/common/logger";
+import { EPaypalErrorCodes } from "src/modules/paypal/common/enums";
 
 @Injectable()
 export class PaypalSdkService {
-  private readonly logger = new LokiLogger(PaypalSdkService.name);
+  private readonly lokiLogger = new LokiLogger(PaypalSdkService.name);
   private baseUrl: string;
   private tokenType: string;
   private accessToken: string;
@@ -50,13 +51,12 @@ export class PaypalSdkService {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         responseMessage = await clonedResponse.json();
       } catch (error) {
-        this.logger.error(`Error in makeRequest: ${(error as Error).message}, ${(error as Error).stack}`);
+        this.lokiLogger.error(`Error in makeRequest: ${(error as Error).message}, ${(error as Error).stack}`);
         responseMessage = await response.text();
       }
 
-      throw new ServiceUnavailableException(
-        `HTTP error! Status: ${response.status}, error: ${JSON.stringify(responseMessage)}`,
-      );
+      this.lokiLogger.error(`HTTP error! Status: ${response.status}, error: ${responseMessage}`);
+      throw new ServiceUnavailableException(EPaypalErrorCodes.PAYPAL_HTTP_ERROR);
     }
 
     return response;
@@ -98,7 +98,8 @@ export class PaypalSdkService {
       this.accessToken = token.access_token;
       this.tokenExpires = Date.now() + Number(token.expires_in) * NUMBER_OF_MILLISECONDS_IN_SECOND;
     } catch (error) {
-      throw new ServiceUnavailableException(`Paypal auth error! Error: ${(error as Error).message}`);
+      this.lokiLogger.error(`PayPal authentication failed: ${(error as Error).message}`);
+      throw new ServiceUnavailableException(EPaypalErrorCodes.PAYPAL_AUTH_FAILED);
     }
   }
 
@@ -121,7 +122,8 @@ export class PaypalSdkService {
 
       return token;
     } catch (error) {
-      throw new ServiceUnavailableException(`Paypal client auth error! Error: ${(error as Error).message}`);
+      this.lokiLogger.error(`PayPal authentication failed: ${(error as Error).message}`);
+      throw new ServiceUnavailableException(EPaypalErrorCodes.PAYPAL_AUTH_FAILED);
     }
   }
 
@@ -143,7 +145,8 @@ export class PaypalSdkService {
 
       return profile;
     } catch (error) {
-      throw new ServiceUnavailableException(`Paypal client auth error! Error: ${(error as Error).message}`);
+      this.lokiLogger.error(`PayPal authentication failed: ${(error as Error).message}`);
+      throw new ServiceUnavailableException(EPaypalErrorCodes.PAYPAL_AUTH_FAILED);
     }
   }
 

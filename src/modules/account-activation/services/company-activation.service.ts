@@ -2,7 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { IStepInformation } from "src/modules/account-activation/common/interfaces";
 import { InjectRepository } from "@nestjs/typeorm";
 import { FindOptionsRelations, Repository } from "typeorm";
-import { EStepStatus } from "src/modules/account-activation/common/enums";
+import { EAccountActivationErrorCodes, EStepStatus } from "src/modules/account-activation/common/enums";
 import { AccountActivationQueryOptionsService, StepInfoService } from "src/modules/account-activation/services";
 import { Company } from "src/modules/companies/entities";
 import {
@@ -14,13 +14,14 @@ import { ECompanyStatus, ECompanyType } from "src/modules/companies/common/enums
 import { EAccountStatus } from "src/modules/users/common/enums";
 import { ITokenUserData } from "src/modules/tokens/common/interfaces";
 import { HelperService } from "src/modules/helper/services";
-import { CORPORATE_SUPER_ADMIN_ROLES } from "src/common/constants";
+import { CORPORATE_SUPER_ADMIN_ROLES, UNDEFINED_VALUE } from "src/common/constants";
 import { EmailsService } from "src/modules/emails/services";
 import { LokiLogger } from "src/common/logger";
 import { ConfigService } from "@nestjs/config";
 import { AccessControlService } from "src/modules/access-control/services";
 import { findOneOrFailTyped } from "src/common/utils";
 import { TCompanyActivation, TSendCompanyActivationEmail } from "src/modules/account-activation/common/types";
+import { localizeStepNames } from "src/modules/account-activation/common/helpers";
 
 @Injectable()
 export class CompanyActivationService {
@@ -59,7 +60,7 @@ export class CompanyActivationService {
     const company = await this.accessControlService.getCompanyByRole(user, relations, companyId);
 
     if (!company) {
-      throw new NotFoundException("Company with this id doesn`t exist");
+      throw new NotFoundException(EAccountActivationErrorCodes.COMPANY_NOT_EXIST);
     }
 
     let accountActivationSteps: ICompanyActivationStepsDataOutput | null = null;
@@ -73,7 +74,7 @@ export class CompanyActivationService {
     }
 
     if (!accountActivationSteps) {
-      throw new BadRequestException("Steps for this company not finded!");
+      throw new BadRequestException(EAccountActivationErrorCodes.COMPANY_STEPS_NOT_FOUND);
     }
 
     return accountActivationSteps;
@@ -84,13 +85,13 @@ export class CompanyActivationService {
     const company = await findOneOrFailTyped<TCompanyActivation>(companyId, this.companyRepository, queryOptions);
 
     if (!company.superAdmin) {
-      throw new BadRequestException(`Company with id ${company.id} does not have superAdmin`);
+      throw new BadRequestException(EAccountActivationErrorCodes.COMPANY_NO_SUPER_ADMIN);
     }
 
     await this.accessControlService.authorizeUserRoleForCompanyOperation(user, company);
 
     if (company.isActive) {
-      throw new BadRequestException("This company is already active");
+      throw new BadRequestException(EAccountActivationErrorCodes.COMPANY_ALREADY_ACTIVE);
     }
 
     const companyActivationSteps = await this.getActivationSteps(companyId, user);
@@ -132,13 +133,13 @@ export class CompanyActivationService {
     const company = await findOneOrFailTyped<TCompanyActivation>(companyId, this.companyRepository, queryOptions);
 
     if (!company.superAdmin) {
-      throw new BadRequestException(`Company with id ${company.id} does not have superAdmin`);
+      throw new BadRequestException(EAccountActivationErrorCodes.COMPANY_NO_SUPER_ADMIN);
     }
 
     await this.accessControlService.authorizeUserRoleForCompanyOperation(user, company);
 
     if (!company.isActive) {
-      throw new BadRequestException("This company is not active");
+      throw new BadRequestException(EAccountActivationErrorCodes.COMPANY_NOT_ACTIVE);
     }
 
     const superAdminRole = await this.helperService.getUserRoleByName<UserRole>(
@@ -163,14 +164,13 @@ export class CompanyActivationService {
   }
 
   public throwRequiredInfoException(criteria: { passed: string[]; failed: string[] }): void {
-    let message = `Required information wasn't provided.`;
+    const passedSteps = criteria.passed.length > 0 ? localizeStepNames(criteria.passed) : UNDEFINED_VALUE;
+    const failedSteps = criteria.failed.length > 0 ? localizeStepNames(criteria.failed) : UNDEFINED_VALUE;
 
-    if (criteria.passed.length > 0) {
-      message += ` Passed steps: ${criteria.passed.join(", ")}.`;
-    }
-
-    message += ` Missed steps: ${criteria.failed.join(", ")}`;
-    throw new ForbiddenException(message);
+    throw new ForbiddenException({
+      message: EAccountActivationErrorCodes.REQUIRED_INFO_NOT_PROVIDED,
+      variables: { passedSteps, failedSteps },
+    });
   }
 
   public checkActivationCriteria(

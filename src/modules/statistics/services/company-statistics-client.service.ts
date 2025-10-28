@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Between, FindOptionsWhere, In, Repository } from "typeorm";
-import { EChartLine, EChartsHomepageLine } from "src/modules/statistics/common/enums";
+import { EChartLine, EChartsHomepageLine, EStatisticsErrorCodes } from "src/modules/statistics/common/enums";
 import {
   GetAppointmentsByInterpretingTypeAndCompanyAndUserDto,
   GetAppointmentsByInterpretingTypeAndCompanyDto,
@@ -55,7 +55,7 @@ export class CompanyStatisticsClientService {
     const company = await this.accessControlService.getCompanyByRole(user, {}, dto.companyId);
 
     if (!company) {
-      throw new NotFoundException("Company not found!");
+      throw new NotFoundException(EStatisticsErrorCodes.COMPANY_NOT_FOUND);
     }
 
     const { dateFrom, dateTo } = this.statisticsService.getDates(dto.dateFrom, dto.dateTo);
@@ -121,7 +121,7 @@ export class CompanyStatisticsClientService {
     const company = await this.accessControlService.getCompanyByRole(user, {}, dto.companyId);
 
     if (!company) {
-      throw new NotFoundException("Company not found!");
+      throw new NotFoundException(EStatisticsErrorCodes.COMPANY_NOT_FOUND);
     }
 
     const { dateFrom, dateTo } = this.statisticsService.getDates(dto.dateFrom, dto.dateTo);
@@ -178,7 +178,7 @@ export class CompanyStatisticsClientService {
     const company = await this.accessControlService.getCompanyByRole(user, {}, dto.companyId);
 
     if (!company) {
-      throw new NotFoundException("Company not found!");
+      throw new NotFoundException(EStatisticsErrorCodes.COMPANY_NOT_FOUND);
     }
 
     const { dateFrom, dateTo } = this.statisticsService.getDates(dto.dateFrom, dto.dateTo);
@@ -244,7 +244,7 @@ export class CompanyStatisticsClientService {
     const company = await this.accessControlService.getCompanyByRole(user, {}, dto.companyId);
 
     if (!company) {
-      throw new NotFoundException("Company not found!");
+      throw new NotFoundException(EStatisticsErrorCodes.COMPANY_NOT_FOUND);
     }
 
     const { dateFrom, dateTo } = this.statisticsService.getDates(dto.dateFrom, dto.dateTo);
@@ -305,7 +305,7 @@ export class CompanyStatisticsClientService {
     const company = await this.accessControlService.getCompanyByRole(user, {}, dto.companyId);
 
     if (!company) {
-      throw new NotFoundException("Company not found!");
+      throw new NotFoundException(EStatisticsErrorCodes.COMPANY_NOT_FOUND);
     }
 
     const { dateFrom, dateTo } = this.statisticsService.getDates(dto.dateFrom, dto.dateTo);
@@ -359,7 +359,7 @@ export class CompanyStatisticsClientService {
     const company = await this.accessControlService.getCompanyByRole(user, {}, dto.companyId);
 
     if (!company) {
-      throw new NotFoundException("Company not found!");
+      throw new NotFoundException(EStatisticsErrorCodes.COMPANY_NOT_FOUND);
     }
 
     const { dateFrom, dateTo } = this.statisticsService.getDates(dto.dateFrom, dto.dateTo);
@@ -427,7 +427,7 @@ export class CompanyStatisticsClientService {
     const company = await this.accessControlService.getCompanyByRole(user, {}, dto.companyId);
 
     if (!company) {
-      throw new NotFoundException("Company not found!");
+      throw new NotFoundException(EStatisticsErrorCodes.COMPANY_NOT_FOUND);
     }
 
     const { dateFrom, dateTo } = this.statisticsService.getDates(dto.dateFrom, dto.dateTo);
@@ -487,7 +487,7 @@ export class CompanyStatisticsClientService {
     const company = await this.accessControlService.getCompanyByRole(user, {}, dto.companyId);
 
     if (!company) {
-      throw new NotFoundException("Company not found!");
+      throw new NotFoundException(EStatisticsErrorCodes.COMPANY_NOT_FOUND);
     }
 
     const { dateFrom, dateTo } = this.statisticsService.getDates(dto.dateFrom, dto.dateTo);
@@ -555,7 +555,7 @@ export class CompanyStatisticsClientService {
     const company = await this.accessControlService.getCompanyByRole(user, {}, dto.companyId);
 
     if (!company) {
-      throw new NotFoundException("Company not found!");
+      throw new NotFoundException(EStatisticsErrorCodes.COMPANY_NOT_FOUND);
     }
 
     const { dateFrom, dateTo } = this.statisticsService.getDates(dto.dateFrom, dto.dateTo);
@@ -608,7 +608,7 @@ export class CompanyStatisticsClientService {
     const company = await this.accessControlService.getCompanyByRole(user, {}, dto.companyId);
 
     if (!company) {
-      throw new NotFoundException("Company not found!");
+      throw new NotFoundException(EStatisticsErrorCodes.COMPANY_NOT_FOUND);
     }
 
     const { dateFrom, dateTo } = this.statisticsService.getDates(dto.dateFrom, dto.dateTo);
@@ -690,7 +690,7 @@ export class CompanyStatisticsClientService {
     const company = await this.accessControlService.getCompanyByRole(user, {}, dto.companyId);
 
     if (!company) {
-      throw new NotFoundException("Company not found!");
+      throw new NotFoundException(EStatisticsErrorCodes.COMPANY_NOT_FOUND);
     }
 
     const onDemandCount = await this.appointmentRepository.count({
@@ -760,7 +760,7 @@ export class CompanyStatisticsClientService {
     const company = await this.accessControlService.getCompanyByRole(user, {}, dto.companyId);
 
     if (!company) {
-      throw new NotFoundException("Company not found!");
+      throw new NotFoundException(EStatisticsErrorCodes.COMPANY_NOT_FOUND);
     }
 
     for (const [index, period] of dates.entries()) {
@@ -807,7 +807,7 @@ export class CompanyStatisticsClientService {
     const company = await this.accessControlService.getCompanyByRole(user, {}, dto.companyId);
 
     if (!company) {
-      throw new NotFoundException("Company not found!");
+      throw new NotFoundException(EStatisticsErrorCodes.COMPANY_NOT_FOUND);
     }
 
     const { dateFrom, dateTo } = this.statisticsService.getDates(dto.dateFrom, dto.dateTo);
@@ -856,7 +856,7 @@ export class CompanyStatisticsClientService {
     const company = await this.accessControlService.getCompanyByRole(user, {}, dto.companyId);
 
     if (!company) {
-      throw new NotFoundException("Company not found!");
+      throw new NotFoundException(EStatisticsErrorCodes.COMPANY_NOT_FOUND);
     }
 
     const { dateFrom, dateTo } = this.statisticsService.getDates(dto.dateFrom, dto.dateTo);

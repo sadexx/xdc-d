@@ -12,7 +12,10 @@ import {
   AttendeeManagementService,
   ChimeMeetingQueryOptionsService,
 } from "src/modules/chime-meeting-configuration/services";
-import { EBackgroundCallType } from "src/modules/chime-meeting-configuration/common/enums";
+import {
+  EBackgroundCallType,
+  EChimeMeetingConfigurationErrorCodes,
+} from "src/modules/chime-meeting-configuration/common/enums";
 import { CLIENT_ROLES, INTERPRETER_ROLES } from "src/common/constants";
 import {
   TMeetingConfigByChimeMeetingId,
@@ -48,7 +51,7 @@ export class SipMediaService {
     );
 
     if (!meetingConfig.chimeMeetingId || !meetingConfig.meetingLaunchTime) {
-      throw new BadRequestException("Meeting is not started");
+      throw new BadRequestException(EChimeMeetingConfigurationErrorCodes.SIP_MEDIA_MEETING_NOT_STARTED);
     }
 
     const attendee = await this.attendeeManagementService.addPstnParticipantToLiveMeeting(
@@ -81,13 +84,13 @@ export class SipMediaService {
 
     if (isInRoles(CLIENT_ROLES, user.role) && dto.callType === EBackgroundCallType.CALL_TO_EXTERNAL_PARTICIPANTS) {
       if (!dto.inActiveAttendeeIds || dto.inActiveAttendeeIds.length === 0) {
-        throw new BadRequestException("inActiveAttendeeIds is required for external participants calls");
+        throw new BadRequestException(EChimeMeetingConfigurationErrorCodes.SIP_MEDIA_ATTENDEE_IDS_REQUIRED);
       }
 
       return await this.createSipMediaApplicationCallForParticipants(chimeMeetingId, dto.inActiveAttendeeIds, user);
     }
 
-    throw new BadRequestException("Invalid call type for this role");
+    throw new BadRequestException(EChimeMeetingConfigurationErrorCodes.SIP_MEDIA_INVALID_CALL_TYPE);
   }
 
   private async createSipMediaApplicationCallToInterpreter(
@@ -102,11 +105,11 @@ export class SipMediaService {
     );
 
     if (!meetingConfig.appointment.interpreter || !meetingConfig.appointment.interpreter.user.phoneNumber) {
-      throw new BadRequestException("Interpreter information not found for call");
+      throw new BadRequestException(EChimeMeetingConfigurationErrorCodes.SIP_MEDIA_INTERPRETER_INFO_NOT_FOUND);
     }
 
     if (!meetingConfig.chimeMeetingId || !meetingConfig.meetingLaunchTime) {
-      throw new BadRequestException("Meeting is not started");
+      throw new BadRequestException(EChimeMeetingConfigurationErrorCodes.SIP_MEDIA_MEETING_NOT_STARTED);
     }
 
     const [interpreterAttendee] = meetingConfig.attendees;
@@ -139,11 +142,11 @@ export class SipMediaService {
     );
 
     if (!meetingConfig.appointment.client || !meetingConfig.appointment.client.user.phoneNumber) {
-      throw new BadRequestException("Client information not found for call");
+      throw new BadRequestException(EChimeMeetingConfigurationErrorCodes.SIP_MEDIA_CLIENT_INFO_NOT_FOUND);
     }
 
     if (!meetingConfig.chimeMeetingId || !meetingConfig.meetingLaunchTime) {
-      throw new BadRequestException("Meeting is not started");
+      throw new BadRequestException(EChimeMeetingConfigurationErrorCodes.SIP_MEDIA_MEETING_NOT_STARTED);
     }
 
     const [clientAttendee] = meetingConfig.attendees;
@@ -177,7 +180,7 @@ export class SipMediaService {
     );
 
     if (!meetingConfig.chimeMeetingId || !meetingConfig.meetingLaunchTime) {
-      throw new BadRequestException("Meeting is not started");
+      throw new BadRequestException(EChimeMeetingConfigurationErrorCodes.SIP_MEDIA_MEETING_NOT_STARTED);
     }
 
     const inActiveAttendeeIdsSet = new Set(inActiveAttendeeIds);
@@ -211,12 +214,12 @@ export class SipMediaService {
     );
 
     if (!meetingConfig.chimeMeetingId || !meetingConfig.meetingLaunchTime) {
-      throw new BadRequestException("Meeting is not started");
+      throw new BadRequestException(EChimeMeetingConfigurationErrorCodes.SIP_MEDIA_MEETING_NOT_STARTED);
     }
 
     if (meetingConfig.clientPstnCallCount >= this.MAX_PSTN_CALLS_FOR_CLIENT) {
       this.lokiLogger.error(`Meeting ${meetingConfig.id} PSTN calls limit exceeded`);
-      throw new BadRequestException("You have reached the maximum number of PSTN calls");
+      throw new BadRequestException(EChimeMeetingConfigurationErrorCodes.SIP_MEDIA_MAX_PSTN_CALLS_REACHED);
     }
 
     const attendee = await this.attendeeManagementService.addPstnParticipantToLiveMeeting(

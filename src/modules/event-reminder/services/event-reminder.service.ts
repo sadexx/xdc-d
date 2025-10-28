@@ -2,7 +2,6 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Between, In, Repository } from "typeorm";
 import { Appointment, AppointmentReminder } from "src/modules/appointments/appointment/entities";
 import { NotificationService } from "src/modules/notifications/services";
-
 import { EAppointmentStatus } from "src/modules/appointments/appointment/common/enums";
 import {
   NUMBER_OF_HOURS_IN_DAY,

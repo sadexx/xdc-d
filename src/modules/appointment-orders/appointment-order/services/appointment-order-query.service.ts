@@ -18,6 +18,7 @@ import { findOneOrFail, findOneOrFailTyped, isInRoles } from "src/common/utils";
 import { ITokenUserData } from "src/modules/tokens/common/interfaces";
 import { INTERPRETER_ROLES } from "src/common/constants";
 import { UserRole } from "src/modules/users/entities";
+import { EAppointmentOrderErrorCodes } from "src/modules/appointment-orders/appointment-order/common/enum";
 
 @Injectable()
 export class AppointmentOrderQueryService {
@@ -71,7 +72,7 @@ export class AppointmentOrderQueryService {
       return await this.getInterpreterMatchedAppointmentOrders(user.userRoleId, dto);
     } else {
       if (!dto.interpreterRoleId) {
-        throw new BadRequestException("Interpreter role id is required for this query");
+        throw new BadRequestException(EAppointmentOrderErrorCodes.INTERPRETER_ROLE_ID_REQUIRED);
       }
 
       return await this.getInterpreterMatchedAppointmentOrders(dto.interpreterRoleId, dto);
@@ -111,7 +112,7 @@ export class AppointmentOrderQueryService {
       return await this.getInterpreterRejectedAppointmentOrders(user.userRoleId, dto);
     } else {
       if (!dto.interpreterRoleId) {
-        throw new BadRequestException("Interpreter role id is required for this query");
+        throw new BadRequestException(EAppointmentOrderErrorCodes.INTERPRETER_ROLE_ID_REQUIRED);
       }
 
       return await this.getInterpreterRejectedAppointmentOrders(dto.interpreterRoleId, dto);
@@ -179,7 +180,7 @@ export class AppointmentOrderQueryService {
     return this.fetchInterpretersFromQuery(
       this.appointmentOrderRepository,
       queryOptions,
-      `List of ignored and declined interpreters not found for appointmentId: ${appointmentId}`,
+      EAppointmentOrderErrorCodes.INTERPRETERS_LIST_NOT_FOUND_FOR_APPOINTMENT,
       dto,
     );
   }
@@ -196,7 +197,7 @@ export class AppointmentOrderQueryService {
     return this.fetchInterpretersFromQuery(
       this.appointmentOrderGroupRepository,
       queryOptions,
-      `List of ignored and declined interpreters not found for appointmentGroupId: ${appointmentGroupId}`,
+      EAppointmentOrderErrorCodes.INTERPRETERS_LIST_NOT_FOUND_FOR_GROUP,
       dto,
     );
   }
@@ -204,7 +205,7 @@ export class AppointmentOrderQueryService {
   private async fetchInterpretersFromQuery(
     repository: Repository<AppointmentOrder | AppointmentOrderGroup>,
     queryOptions: { query: string; parameters: (string | number)[] },
-    notFoundMessage: string,
+    notFoundMessage: EAppointmentOrderErrorCodes,
     dto: GetAllListInterpretersDto,
   ): Promise<GetAllListInterpretersOutput> {
     const rawResult: IResultListInterpreters[] = await repository.query(queryOptions.query, queryOptions.parameters);

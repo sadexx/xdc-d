@@ -9,7 +9,7 @@ export const LiveAppointmentCacheQuery = {
     platformId: true,
     clientId: true,
     interpreterId: true,
-    interpreter: { timezone: true },
+    interpreter: { id: true, timezone: true },
     client: { id: true, operatedByCompanyId: true },
     scheduledStartTime: true,
     schedulingDurationMin: true,
@@ -23,6 +23,7 @@ export const LiveAppointmentCacheQuery = {
     internalEstimatedEndTime: true,
     acceptOvertimeRates: true,
     timezone: true,
+    alternativePlatform: true,
   } as const satisfies FindOptionsSelect<Appointment>,
   relations: { interpreter: true, client: true } as const satisfies FindOptionsRelations<Appointment>,
 };

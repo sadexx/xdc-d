@@ -6,6 +6,7 @@ import { LokiLogger } from "src/common/logger";
 import { NaatiCpnQueryDto } from "src/modules/naati/common/dto";
 import { INaatiApiResponseOutput } from "src/modules/naati/common/outputs";
 import { ErrorWithCause } from "src/modules/http-client/common/interfaces";
+import { EHttpClientErrorCodes } from "src/modules/http-client/common/enums";
 
 @Injectable()
 export class HttpRequestService {
@@ -79,7 +80,8 @@ export class HttpRequestService {
         );
       }
 
-      throw new ServiceUnavailableException(`Failed to send ${requestType} request`);
+      this.lokiLogger.error(`Failed to send ${requestType} request.`);
+      throw new ServiceUnavailableException(EHttpClientErrorCodes.REQUEST_SEND_FAILED);
     }
   }
 

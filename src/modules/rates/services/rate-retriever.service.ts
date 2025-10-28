@@ -2,7 +2,7 @@ import { Injectable, BadRequestException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Rate } from "src/modules/rates/entities";
 import { Repository, FindOptionsWhere } from "typeorm";
-import { ERateDetailsSequence, ERateQualifier } from "src/modules/rates/common/enums";
+import { ERateDetailsSequence, ERateQualifier, ERatesErrorCodes } from "src/modules/rates/common/enums";
 import { EAppointmentInterpreterType, EAppointmentTopic } from "src/modules/appointments/appointment/common/enums";
 import {
   CalculationConfig,
@@ -66,7 +66,7 @@ export class RateRetrieverService {
     });
 
     if (!rate) {
-      throw new BadRequestException("Rate not found for escort/simultaneous service for the given parameters");
+      throw new BadRequestException(ERatesErrorCodes.RATE_NOT_FOUND_ESCORT);
     }
 
     const standardHoursFirstMinutes = this.transformRateToNumbers(rate);
@@ -108,7 +108,7 @@ export class RateRetrieverService {
     });
 
     if (rates.length !== NUMBER_OF_REQUIRED_RATES) {
-      throw new BadRequestException("Not all required rates found for the given parameters");
+      throw new BadRequestException(ERatesErrorCodes.RATES_NOT_FOUND);
     }
 
     const transformedRates = rates.map((rate) => this.transformRateToNumbers(rate));
@@ -136,7 +136,7 @@ export class RateRetrieverService {
       !afterHoursFirstMinutes ||
       !afterHoursAdditionalBlock
     ) {
-      throw new BadRequestException("Not all required rates found for the given parameters");
+      throw new BadRequestException(ERatesErrorCodes.RATES_NOT_FOUND);
     }
 
     return {

@@ -13,7 +13,7 @@ import {
   DiscountResult,
   CalculationSingleDayResult,
 } from "src/modules/rates/common/interfaces";
-import { ECalculationType } from "src/modules/rates/common/enums";
+import { ECalculationType, ERatesErrorCodes } from "src/modules/rates/common/enums";
 import { EAppointmentInterpretingType } from "src/modules/appointments/appointment/common/enums";
 import { round2 } from "src/common/utils";
 import { GST_COEFFICIENT, UNDEFINED_VALUE } from "src/common/constants";
@@ -46,7 +46,7 @@ export class RateStepService {
       case ECalculationType.APPOINTMENT_START_PRICE || ECalculationType.APPOINTMENT_END_PRICE:
         return await this.calculateAppointmentPrice(config);
       default:
-        throw new BadRequestException("Invalid calculation type");
+        throw new BadRequestException(ERatesErrorCodes.INVALID_CALCULATION_TYPE);
     }
   }
 

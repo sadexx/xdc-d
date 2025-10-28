@@ -8,7 +8,7 @@ import {
   NUMBER_OF_SECONDS_IN_HOUR,
   UNDEFINED_VALUE,
 } from "src/common/constants";
-import { findOneOrFail, isInRoles } from "src/common/utils";
+import { findOneOrFailTyped, isInRoles } from "src/common/utils";
 import { ECompanyType } from "src/modules/companies/common/enums";
 import { Company } from "src/modules/companies/entities";
 import { ITokenUserData } from "src/modules/tokens/common/interfaces";
@@ -27,6 +27,7 @@ import {
 import { LokiLogger } from "src/common/logger";
 import { RedisService } from "src/modules/redis/services";
 import { ICorporateAdminCacheData } from "src/modules/access-control/common/interfaces";
+import { EAccessControlErrorCodes } from "src/modules/access-control/common/enums";
 
 @Injectable()
 export class AccessControlService {
@@ -55,7 +56,7 @@ export class AccessControlService {
     if (isAdminOperation) {
       if (!isInRoles(ADMIN_ROLES, user.role)) {
         this.lokiLogger.error(`Unauthorized access attempt by user: ${user.userRoleId}, role: ${user.role}`);
-        throw new ForbiddenException("Admin role required for this operation!");
+        throw new ForbiddenException(EAccessControlErrorCodes.ADMIN_ROLE_REQUIRED);
       }
     }
 
@@ -83,7 +84,7 @@ export class AccessControlService {
       this.lokiLogger.error(
         `Unauthorized access attempt by user: ${user.userRoleId}, role: ${user.role}, targetUserRole: ${targetUserRole.id}`,
       );
-      throw new ForbiddenException("Insufficient privileges for this operation!");
+      throw new ForbiddenException(EAccessControlErrorCodes.INSUFFICIENT_PRIVILEGES);
     }
   }
 
@@ -107,7 +108,7 @@ export class AccessControlService {
       this.lokiLogger.error(
         `Unauthorized access attempt by user: ${user.userRoleId}, role: ${user.role}, targetCompany: ${targetCompany.id}`,
       );
-      throw new ForbiddenException("Insufficient privileges for this operation!");
+      throw new ForbiddenException(EAccessControlErrorCodes.INSUFFICIENT_PRIVILEGES);
     }
   }
 
@@ -135,7 +136,7 @@ export class AccessControlService {
       this.lokiLogger.error(
         `Unauthorized access attempt by user: ${user.userRoleId}, role: ${user.role}, targetAppointment: ${targetAppointment.id}`,
       );
-      throw new ForbiddenException("Insufficient privileges for this operation!");
+      throw new ForbiddenException(EAccessControlErrorCodes.INSUFFICIENT_PRIVILEGES);
     }
   }
 
@@ -144,7 +145,7 @@ export class AccessControlService {
     let adminUserRole = await this.redisService.getJson<ICorporateAdminCacheData>(cacheKey);
 
     if (!adminUserRole) {
-      adminUserRole = await findOneOrFail(
+      adminUserRole = await findOneOrFailTyped<UserRole>(
         user.userRoleId,
         this.userRoleRepository,
         {
@@ -152,7 +153,6 @@ export class AccessControlService {
           where: { id: user.userRoleId },
         },
         "userRoleId",
-        "Company admin not found!",
       );
 
       await this.redisService.setJson(cacheKey, adminUserRole, NUMBER_OF_SECONDS_IN_HOUR);
@@ -178,7 +178,7 @@ export class AccessControlService {
     this.lokiLogger.error(
       `Attempt to access data from different company, Identified:${adminRole.id ?? adminRole.userRoleId}, RequestedId:${targetEntity.id}`,
     );
-    throw new BadRequestException("Cannot access data from different companies!");
+    throw new BadRequestException(EAccessControlErrorCodes.DIFFERENT_COMPANIES_ACCESS_DENIED);
   }
 
   public validateSameCompanyAccess(targetUserRole: TOperationExecutor, targetEntity: TCompanyOwned): void {
@@ -186,7 +186,7 @@ export class AccessControlService {
       this.lokiLogger.error(
         `Attempt to access data from different company, Identified:${targetUserRole.id ?? targetUserRole.userRoleId}, RequestedId:${targetEntity.id}`,
       );
-      throw new BadRequestException("Cannot access data from different companies!");
+      throw new BadRequestException(EAccessControlErrorCodes.DIFFERENT_COMPANIES_ACCESS_DENIED);
     }
   }
 
@@ -200,7 +200,7 @@ export class AccessControlService {
       this.lokiLogger.error(
         `Attempt to access data from different company, Identified:${targetUserRole.id ?? targetUserRole.userRoleId}, RequestedId:${targetEntity.id}`,
       );
-      throw new BadRequestException("Cannot access data from different companies!");
+      throw new BadRequestException(EAccessControlErrorCodes.DIFFERENT_COMPANIES_ACCESS_DENIED);
     }
   }
 
@@ -223,7 +223,7 @@ export class AccessControlService {
     companyId?: string,
   ): Promise<Company | null> {
     if (!companyId) {
-      throw new BadRequestException("Please, set company id!");
+      throw new BadRequestException(EAccessControlErrorCodes.COMPANY_ID_REQUIRED);
     }
 
     return await this.companyRepository.findOne({
@@ -247,33 +247,25 @@ export class AccessControlService {
   private async getCompanyByRoleCorporateInterpretingProviderCorporateClient(
     user: ITokenUserData,
     relations: FindOptionsRelations<Company>,
-    companyId?: string,
+    companyId: string,
   ): Promise<Company | null> {
-    const personalUserRole = await this.userRoleRepository.findOne({
+    const personalUserRole = await findOneOrFailTyped<UserRole>(user.userRoleId, this.userRoleRepository, {
       select: { id: true, operatedByCompanyId: true },
       where: { id: user.userRoleId },
     });
 
-    if (!personalUserRole) {
-      throw new BadRequestException("Operator company admin not exist!");
-    }
-
-    const company = await this.companyRepository.findOne({
+    const company = await findOneOrFailTyped<Company>(companyId, this.companyRepository, {
       where: { id: companyId },
       relations,
     });
 
-    if (!company) {
-      throw new BadRequestException("Company not exist!");
-    }
-
     if (company.companyType === ECompanyType.CORPORATE_INTERPRETING_PROVIDER_CORPORATE_CLIENTS) {
       if (company.operatedByMainCompanyId !== personalUserRole.operatedByCompanyId) {
-        throw new ForbiddenException("Forbidden request!");
+        throw new ForbiddenException(EAccessControlErrorCodes.INSUFFICIENT_PRIVILEGES);
       }
     } else {
       if (company.id !== personalUserRole.operatedByCompanyId) {
-        throw new ForbiddenException("Forbidden request!");
+        throw new ForbiddenException(EAccessControlErrorCodes.INSUFFICIENT_PRIVILEGES);
       }
     }
 
@@ -284,14 +276,10 @@ export class AccessControlService {
     user: ITokenUserData,
     relations: FindOptionsRelations<Company>,
   ): Promise<Company | null> {
-    const personalUserRole = await this.userRoleRepository.findOne({
+    const personalUserRole = await findOneOrFailTyped<UserRole>(user.userRoleId, this.userRoleRepository, {
       select: { id: true, operatedByCompanyId: true },
       where: { id: user.userRoleId },
     });
-
-    if (!personalUserRole) {
-      throw new BadRequestException("User not found!");
-    }
 
     return await this.companyRepository.findOne({
       where: { id: personalUserRole.operatedByCompanyId },

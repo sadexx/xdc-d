@@ -12,7 +12,7 @@ import {
 } from "src/modules/promo-campaigns/common/types";
 import { PromoCampaignQueryOptionsService } from "src/modules/promo-campaigns/services";
 import { findOneOrFailTyped } from "src/common/utils";
-import { TLiveAppointmentCache } from "src/modules/appointments/appointment/common/types";
+import { TApplyDiscountsForExtension } from "src/modules/discounts/common/types";
 
 @Injectable()
 export class PromoCampaignsUsageService {
@@ -58,7 +58,7 @@ export class PromoCampaignsUsageService {
 
   public async applyPromoCampaignUsageForExtension(
     manager: EntityManager,
-    appointment: TLiveAppointmentCache,
+    appointment: TApplyDiscountsForExtension,
     minutesToApply: number | null,
   ): Promise<void> {
     if (!appointment.clientId) {

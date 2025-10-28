@@ -14,6 +14,7 @@ import {
 } from "src/modules/appointment-orders/shared/common/types";
 import { InterpreterProfile } from "src/modules/interpreters/profile/entities";
 import { findOneOrFail } from "src/common/utils";
+import { EAppointmentOrderSharedErrorCodes } from "src/modules/appointment-orders/shared/common/enum";
 
 @Injectable()
 export class AppointmentOrderSharedLogicService {
@@ -49,7 +50,7 @@ export class AppointmentOrderSharedLogicService {
   ): Promise<void> {
     if (!appointment.isGroupAppointment) {
       if (!appointment.appointmentOrder) {
-        throw new BadRequestException("Appointment Order cannot be updated because it missing in Appointment");
+        throw new BadRequestException(EAppointmentOrderSharedErrorCodes.ORDER_MISSING_IN_APPOINTMENT);
       }
 
       await this.appointmentOrderRepository.update({ id: appointment.appointmentOrder.id }, orderUpdatePayload);
@@ -60,7 +61,7 @@ export class AppointmentOrderSharedLogicService {
       const appointmentOrderGroupId = appointment.appointmentOrder?.appointmentOrderGroup?.id;
 
       if (!groupId || !appointmentOrderGroupId) {
-        throw new BadRequestException("Group appointments cannot be updated; missing group IDs");
+        throw new BadRequestException(EAppointmentOrderSharedErrorCodes.GROUP_MISSING_IDS);
       }
 
       await this.appointmentOrderRepository.update(
@@ -77,7 +78,7 @@ export class AppointmentOrderSharedLogicService {
     appointmentOrders: { id: string }[];
   }): Promise<void> {
     if (!appointmentOrderGroup) {
-      throw new NotFoundException(`Appointment order group not found.`);
+      throw new NotFoundException(EAppointmentOrderSharedErrorCodes.ORDER_GROUP_NOT_FOUND);
     }
 
     await this.removeAppointmentOrderBatch(appointmentOrderGroup.appointmentOrders);
@@ -97,13 +98,13 @@ export class AppointmentOrderSharedLogicService {
   public async removeAppointmentOrderBatch(appointmentOrder: { id: string } | { id: string }[]): Promise<void> {
     if (Array.isArray(appointmentOrder)) {
       if (appointmentOrder.length === 0) {
-        throw new NotFoundException(`Appointment order not found.`);
+        throw new NotFoundException(EAppointmentOrderSharedErrorCodes.ORDER_NOT_FOUND);
       }
 
       await this.appointmentOrderRepository.remove(appointmentOrder as AppointmentOrder[]);
     } else {
       if (!appointmentOrder) {
-        throw new NotFoundException(`Appointment order not found.`);
+        throw new NotFoundException(EAppointmentOrderSharedErrorCodes.ORDER_NOT_FOUND);
       }
 
       await this.appointmentOrderRepository.remove(appointmentOrder as AppointmentOrder);
@@ -141,11 +142,11 @@ export class AppointmentOrderSharedLogicService {
 
   public async checkIfInterpreterIsBlocked(interpreter: TCheckIfInterpreterIsBlocked): Promise<void> {
     if (!interpreter.interpreterProfile) {
-      throw new BadRequestException("Interpreter profile not found.");
+      throw new BadRequestException(EAppointmentOrderSharedErrorCodes.INTERPRETER_PROFILE_NOT_FOUND);
     }
 
     if (interpreter.interpreterProfile.isTemporaryBlocked) {
-      throw new BadRequestException("This profile is temporarily blocked, please wait when block will be removed.");
+      throw new BadRequestException(EAppointmentOrderSharedErrorCodes.INTERPRETER_TEMPORARILY_BLOCKED);
     }
 
     return;

@@ -1,0 +1,20 @@
+export const enum EStatisticsErrorCodes {
+  /*
+   * Statistics operations
+   */
+  STATISTICS_EMPTY = "STATISTICS.STATISTIC.STATISTICS_EMPTY",
+  DATE_RANGE_TOO_LONG = "STATISTICS.STATISTIC.DATE_RANGE_TOO_LONG",
+  INCORRECT_STATISTIC_TYPE = "STATISTICS.STATISTIC.INCORRECT_STATISTIC_TYPE",
+  /*
+   * Individual statistic operations
+   */
+  INCORRECT_ROLE = "STATISTICS.INDIVIDUAL.INCORRECT_ROLE",
+  /*
+   * Company statistic operations
+   */
+  COMPANY_NOT_FOUND = "STATISTICS.COMPANY.NOT_FOUND",
+  /*
+   * Company interpreter operations
+   */
+  COMPANY_NOT_FOUND_INTERPRETER = "STATISTICS.COMPANY_INTERPRETER.COMPANY_NOT_FOUND",
+}

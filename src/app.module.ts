@@ -76,6 +76,9 @@ import { UrlShortenerModule } from "src/modules/url-shortener/url-shortener.modu
 import { AccessControlModule } from "src/modules/access-control/access-control.module";
 import { OldRatesModule } from "src/modules/rates-old/old-rates.module";
 import { SettingsModule } from "src/modules/settings/settings.module";
+import { PaymentAnalysisModule } from "src/modules/payment-analysis/payment-analysis.module";
+import { PaymentsModule } from "src/modules/payments-new/payments.module";
+import { PdfModuleNew } from "src/modules/pdf-new/pdf.module";
 
 const configModuleOptions: ConfigModuleOptions = {
   envFilePath: [".env"],
@@ -156,6 +159,9 @@ const configModuleOptions: ConfigModuleOptions = {
     DataTransferModule,
     UrlShortenerModule,
     OldRatesModule,
+    PaymentAnalysisModule,
+    PaymentsModule,
+    PdfModuleNew,
   ],
   providers: [
     {
@@ -174,6 +180,6 @@ const configModuleOptions: ConfigModuleOptions = {
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(MetricsMiddleware).forRoutes("*");
+    consumer.apply(MetricsMiddleware).forRoutes("*splat");
   }
 }

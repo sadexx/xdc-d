@@ -22,8 +22,7 @@ import {
 } from "src/modules/search-engine-logic/common/enum";
 import { IGroupSearchContext, ISearchContextBase } from "src/modules/search-engine-logic/common/interface";
 import { LokiLogger } from "src/common/logger";
-import { ENVIRONMENT, UNDEFINED_VALUE } from "src/common/constants";
-import { EEnvironment } from "src/common/enums";
+import { IS_PRODUCTION, UNDEFINED_VALUE } from "src/common/constants";
 import {
   IAppointmentOrderInvitationOutput,
   IOnDemandInvitationOutput,
@@ -515,7 +514,7 @@ export class SearchEngineStepService {
     const count = await query.getCount();
 
     if (count === 0) {
-      if (ENVIRONMENT !== EEnvironment.PRODUCTION && errorMessage) {
+      if (!IS_PRODUCTION && errorMessage) {
         this.lokiLogger.warn(errorMessage);
       }
 

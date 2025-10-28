@@ -32,7 +32,7 @@ export function IsValidScheduledStartTimeFaceToFace(validationOptions?: Validati
           if (schedulingType === EAppointmentSchedulingType.ON_DEMAND) {
             return diffInMinutes >= NUMBER_OF_MINUTES_IN_TWO_HOURS && diffInMinutes < NUMBER_OF_MINUTES_IN_THREE_HOURS;
           } else if (schedulingType === EAppointmentSchedulingType.PRE_BOOKED) {
-            return diffInMinutes > NUMBER_OF_MINUTES_IN_THREE_HOURS;
+            return diffInMinutes > NUMBER_OF_MINUTES_IN_TWO_HOURS;
           }
 
           return false;
@@ -45,7 +45,7 @@ export function IsValidScheduledStartTimeFaceToFace(validationOptions?: Validati
           if (schedulingType === EAppointmentSchedulingType.ON_DEMAND) {
             return "For on-demand scheduling, the start time must be at least 2 hours from now. And less than 3 hours from now.";
           } else if (schedulingType === EAppointmentSchedulingType.PRE_BOOKED) {
-            return "For pre-booked or special scheduling, the start time must be at least 3 hours from now.";
+            return "For pre-booked or special scheduling, the start time must be at least 2 hours from now.";
           }
 
           return "Invalid scheduling type or scheduled start time.";

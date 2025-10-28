@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Between, FindOptionsWhere, In, Repository } from "typeorm";
-import { EChartLine, EChartsHomepageLine } from "src/modules/statistics/common/enums";
+import { EChartLine, EChartsHomepageLine, EStatisticsErrorCodes } from "src/modules/statistics/common/enums";
 import {
   GetAppointmentsByInterpretingTypeAndClientDto,
   GetAppointmentsByLanguageAndClientDto,
@@ -26,7 +26,7 @@ import {
 } from "src/modules/statistics/common/constants/constants";
 import { UserRole } from "src/modules/users/entities";
 import { INTERPRETER_ROLES, CLIENT_ROLES, UNDEFINED_VALUE } from "src/common/constants";
-import { isInRoles, round2 } from "src/common/utils";
+import { findOneOrFailTyped, isInRoles, round2 } from "src/common/utils";
 import {
   IChartHomepageLineDataOutput,
   IChartLineDataOutput,
@@ -418,14 +418,10 @@ export class IndividualStatisticsService {
       `WHERE appointments.status IN ('${EAppointmentStatus.COMPLETED}') ` +
       `AND appointments.updating_date BETWEEN '${dateFrom.toISOString()}' AND '${dateTo.toISOString()}' `;
 
-    const userRole = await this.userRoleRepository.findOne({
+    const userRole = await findOneOrFailTyped<UserRole>(dto.userRoleId, this.userRoleRepository, {
       where: { id: dto.userRoleId },
       relations: { role: true },
     });
-
-    if (!userRole) {
-      throw new BadRequestException("This user role not exist!");
-    }
 
     if (isInRoles(CLIENT_ROLES, userRole.role.name)) {
       appointmentCountWhere.clientId = dto.userRoleId;
@@ -434,7 +430,7 @@ export class IndividualStatisticsService {
       appointmentCountWhere.interpreterId = dto.userRoleId;
       appointmentDurationQuery += `AND appointments.interpreter_id = '${dto.userRoleId}' `;
     } else {
-      throw new BadRequestException("Incorrect role!");
+      throw new BadRequestException(EStatisticsErrorCodes.INCORRECT_ROLE);
     }
 
     const onDemandCount = await this.appointmentRepository.count({
@@ -497,21 +493,17 @@ export class IndividualStatisticsService {
       status: In([EAppointmentStatus.COMPLETED]),
     };
 
-    const userRole = await this.userRoleRepository.findOne({
+    const userRole = await findOneOrFailTyped<UserRole>(dto.userRoleId, this.userRoleRepository, {
       where: { id: dto.userRoleId },
       relations: { role: true },
     });
-
-    if (!userRole) {
-      throw new BadRequestException("This user role not exist!");
-    }
 
     if (isInRoles(CLIENT_ROLES, userRole.role.name)) {
       appointmentCountWhere.clientId = dto.userRoleId;
     } else if (isInRoles(INTERPRETER_ROLES, userRole.role.name)) {
       appointmentCountWhere.interpreterId = dto.userRoleId;
     } else {
-      throw new BadRequestException("Incorrect role!");
+      throw new BadRequestException(EStatisticsErrorCodes.INCORRECT_ROLE);
     }
 
     for (const [index, period] of dates.entries()) {

@@ -33,6 +33,7 @@ import { randomUUID } from "node:crypto";
 import { Channel } from "src/modules/chime-messaging-configuration/entities";
 import { LokiLogger } from "src/common/logger";
 import { AwsConfigService } from "src/modules/aws/config/services";
+import { EAwsMessagingSdkErrorCodes } from "src/modules/aws/messaging-sdk/common/enums";
 
 @Injectable()
 export class AwsMessagingSdkService {
@@ -72,7 +73,7 @@ export class AwsMessagingSdkService {
       return response;
     } catch (error) {
       this.lokiLogger.error(`Failed to create AppInstance: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Unable to create AppInstance");
+      throw new ServiceUnavailableException(EAwsMessagingSdkErrorCodes.MESSAGING_SDK_CREATE_APP_INSTANCE_FAILED);
     }
   }
 
@@ -88,7 +89,7 @@ export class AwsMessagingSdkService {
       return response;
     } catch (error) {
       this.lokiLogger.error(`Failed to create AppInstanceUser: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Unable to create AppInstanceUser");
+      throw new ServiceUnavailableException(EAwsMessagingSdkErrorCodes.MESSAGING_SDK_CREATE_APP_INSTANCE_USER_FAILED);
     }
   }
 
@@ -104,7 +105,7 @@ export class AwsMessagingSdkService {
       return response;
     } catch (error) {
       this.lokiLogger.error(`Failed to create AppInstanceAdmin: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Unable to create AppInstanceAdmin");
+      throw new ServiceUnavailableException(EAwsMessagingSdkErrorCodes.MESSAGING_SDK_CREATE_APP_INSTANCE_ADMIN_FAILED);
     }
   }
 
@@ -126,7 +127,7 @@ export class AwsMessagingSdkService {
       return response;
     } catch (error) {
       this.lokiLogger.error(`Failed to list channel messages: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Unable to list channel messages");
+      throw new ServiceUnavailableException(EAwsMessagingSdkErrorCodes.MESSAGING_SDK_LIST_CHANNEL_MESSAGES_FAILED);
     }
   }
 
@@ -146,7 +147,7 @@ export class AwsMessagingSdkService {
       return response;
     } catch (error) {
       this.lokiLogger.error(`Failed to delete channel message: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Unable to delete channel message");
+      throw new ServiceUnavailableException(EAwsMessagingSdkErrorCodes.MESSAGING_SDK_DELETE_CHANNEL_MESSAGE_FAILED);
     }
   }
 
@@ -170,7 +171,7 @@ export class AwsMessagingSdkService {
       return response;
     } catch (error) {
       this.lokiLogger.error(`Failed to create channel: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Unable to create channel");
+      throw new ServiceUnavailableException(EAwsMessagingSdkErrorCodes.MESSAGING_SDK_CREATE_CHANNEL_FAILED);
     }
   }
 
@@ -191,7 +192,7 @@ export class AwsMessagingSdkService {
       return response;
     } catch (error) {
       this.lokiLogger.error(`Failed to add member to channel: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Unable to add member to channel");
+      throw new ServiceUnavailableException(EAwsMessagingSdkErrorCodes.MESSAGING_SDK_ADD_MEMBER_TO_CHANNEL_FAILED);
     }
   }
 
@@ -206,7 +207,7 @@ export class AwsMessagingSdkService {
       return response;
     } catch (error) {
       this.lokiLogger.error(`Failed to delete channel: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Unable to delete channel");
+      throw new ServiceUnavailableException(EAwsMessagingSdkErrorCodes.MESSAGING_SDK_DELETE_CHANNEL_FAILED);
     }
   }
 }

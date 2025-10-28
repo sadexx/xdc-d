@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, UnprocessableEntityException } from "@nestjs/common";
 import { IDiscountRate } from "src/modules/discounts/common/interfaces";
 import {
+  EOldPaymentsErrorCodes,
   OldECurrencies,
   OldECustomerType,
   OldEPaymentDirection,
@@ -12,7 +13,7 @@ import { OldPayment, OldPaymentItem } from "src/modules/payments/entities";
 import { denormalizedAmountToNormalized, findOneOrFail, round2 } from "src/common/utils";
 import { Appointment } from "src/modules/appointments/appointment/entities";
 import { EAppointmentStatus } from "src/modules/appointments/appointment/common/enums";
-import { In, Repository } from "typeorm";
+import { DataSource, In, Repository } from "typeorm";
 import { PdfBuilderService } from "src/modules/pdf/services";
 import { EmailsService } from "src/modules/emails/services";
 import { ConfigService } from "@nestjs/config";
@@ -20,7 +21,6 @@ import { NotificationService } from "src/modules/notifications/services";
 import { Company } from "src/modules/companies/entities";
 import { InjectRepository } from "@nestjs/typeorm";
 import { LokiLogger } from "src/common/logger";
-import { EPaymentSystem } from "src/modules/payment-information/common/enums";
 import {
   FIFTEEN_PERCENT_MULTIPLIER,
   GST_COEFFICIENT,
@@ -28,12 +28,11 @@ import {
   TEN_PERCENT_MULTIPLIER,
   UNDEFINED_VALUE,
 } from "src/common/constants";
-import { CompaniesDepositChargeService } from "src/modules/companies-deposit-charge/services";
 import { OldICreateTransfer } from "src/modules/payments/common/interfaces/old-create-transfer.interface";
 import Stripe from "stripe";
 import { IPayoutResponse } from "src/modules/paypal/common/interfaces";
 import { PaypalSdkService } from "src/modules/paypal/services";
-import { StripeService } from "src/modules/stripe/services";
+import { StripeConnectService } from "src/modules/stripe/services";
 import { PaymentInformation } from "src/modules/payment-information/entities";
 import {
   OldICreateCorporatePayoutByStripe,
@@ -46,6 +45,10 @@ import { format } from "date-fns";
 import { MINIMUM_DEPOSIT_CHARGE_AMOUNT } from "src/modules/companies-deposit-charge/common/constants";
 import { EUserRoleName } from "src/modules/users/common/enums";
 import { HelperService } from "src/modules/helper/services";
+import { EPaymentSystem } from "src/modules/payments-new/common/enums";
+import { CompaniesDepositChargeManagementService } from "src/modules/companies-deposit-charge/services";
+import { ICreateTransfer } from "src/modules/stripe/common/interfaces";
+import { IPayInReceipt } from "src/modules/pdf-new/common/interfaces";
 
 @Injectable()
 export class OldCorporatePaymentsService {
@@ -67,11 +70,12 @@ export class OldCorporatePaymentsService {
     private readonly pdfBuilderService: PdfBuilderService,
     private readonly configService: ConfigService,
     private readonly notificationService: NotificationService,
-    private readonly companiesDepositChargeService: CompaniesDepositChargeService,
-    private readonly stripeService: StripeService,
+    private readonly companiesDepositChargeManagementService: CompaniesDepositChargeManagementService,
+    private readonly stripeConnectService: StripeConnectService,
     private readonly paypalSdkService: PaypalSdkService,
     private readonly paymentsHelperService: OldPaymentsHelperService,
     private readonly helperService: HelperService,
+    private readonly dataSource: DataSource,
   ) {
     this.BACK_END_URL = this.configService.getOrThrow<string>("appUrl");
   }
@@ -108,7 +112,7 @@ export class OldCorporatePaymentsService {
 
     if (!appointment.client) {
       await this.changeAppointmentStatusToCancelledBySystem(appointment.id);
-      throw new BadRequestException("User role not exist!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.USER_ROLE_NOT_EXIST);
     }
 
     if (company.companyType === ECompanyType.CORPORATE_INTERPRETING_PROVIDER_CORPORATE_CLIENTS) {
@@ -168,9 +172,7 @@ export class OldCorporatePaymentsService {
         } catch (error) {
           this.lokiLogger.error(`Error in chargeFromDeposit: ${(error as Error).message}, ${(error as Error).stack}`);
         }
-        throw new BadRequestException(
-          "New payment item currency must been the same like other payment items currencies",
-        );
+        throw new BadRequestException(EOldPaymentsErrorCodes.CURRENCY_MISMATCH);
       }
     }
 
@@ -233,7 +235,7 @@ export class OldCorporatePaymentsService {
         await this.changeAppointmentStatusToCancelledBySystem(appointment.id);
 
         if (!company.superAdminId) {
-          throw new BadRequestException(`Company ${company.id} does not have superAdminId`);
+          throw new BadRequestException(EOldPaymentsErrorCodes.COMPANY_NO_SUPER_ADMIN_ID);
         }
 
         const superAdmin = await findOneOrFail(company.superAdminId, this.userRepository, {
@@ -248,7 +250,7 @@ export class OldCorporatePaymentsService {
         );
 
         if (!superAdminRole) {
-          throw new BadRequestException("Super admin role not found!");
+          throw new BadRequestException(EOldPaymentsErrorCodes.SUPER_ADMIN_ROLE_NOT_FOUND);
         }
 
         await this.emailsService.sendDepositBalanceInsufficientFundNotification(company.contactEmail, {
@@ -280,25 +282,25 @@ export class OldCorporatePaymentsService {
     );
 
     if (payment.system !== EPaymentSystem.DEPOSIT) {
-      throw new BadRequestException("Incorrect payment system!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.INCORRECT_PAYMENT_SYSTEM);
     }
 
     if (payment.direction !== OldEPaymentDirection.INCOMING) {
-      throw new BadRequestException("Incorrect payment direction!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.INCORRECT_PAYMENT_DIRECTION);
     }
 
     if (!appointment.client) {
-      throw new BadRequestException("Client not exist!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.CLIENT_NOT_EXIST);
     }
 
     if (!appointment.client.profile) {
       this.sendAuthorizationPaymentFailedNotification(appointment, OldEPaymentFailedReason.PROFILE_NOT_FILLED);
-      throw new BadRequestException("Client profile not fill!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.CLIENT_PROFILE_NOT_FILLED);
     }
 
     if (!appointment.client.profile.contactEmail) {
       this.sendAuthorizationPaymentFailedNotification(appointment, OldEPaymentFailedReason.PROFILE_NOT_FILLED);
-      throw new BadRequestException("Client contact email not fill!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.CLIENT_CONTACT_EMAIL_NOT_FILLED);
     }
 
     const company = await findOneOrFail(appointment.client.operatedByCompanyId, this.companyRepository, {
@@ -306,6 +308,7 @@ export class OldCorporatePaymentsService {
     });
 
     let isFirstItem = true;
+    let totalCapturedAmount: number = 0;
 
     for (const paymentItem of payment.items) {
       if (
@@ -320,17 +323,25 @@ export class OldCorporatePaymentsService {
         continue;
       }
 
+      let actualCapturedAmount: number = Number(paymentItem.fullAmount);
+
       if (isFirstItem) {
         isFirstItem = false;
-        await this.recalculateFinalPrice(appointment, paymentItem, company);
+        const finalPrice = await this.recalculateFinalPrice(appointment, paymentItem, company);
+
+        if (finalPrice) {
+          actualCapturedAmount = finalPrice;
+        }
       }
 
       await this.paymentItemRepository.update({ id: paymentItem.id }, { status: OldEPaymentStatus.CAPTURED });
+
+      totalCapturedAmount += actualCapturedAmount;
     }
 
     await this.appointmentRepository.update(
       { id: appointment.id },
-      { paidByClient: payment.totalFullAmount, clientCurrency: payment.currency },
+      { paidByClient: round2(totalCapturedAmount), clientCurrency: payment.currency },
     );
 
     try {
@@ -345,7 +356,11 @@ export class OldCorporatePaymentsService {
 
       const receiptLink = `${this.BACK_END_URL}/v1/payments/download-receipt?receiptKey=${receipt.receiptKey}`;
 
-      await this.emailsService.sendIncomingPaymentReceipt(company.contactEmail, receiptLink, receipt.receiptData);
+      await this.emailsService.sendIncomingPaymentReceipt(
+        company.contactEmail,
+        receiptLink,
+        receipt.receiptData as unknown as IPayInReceipt,
+      );
     } catch (error) {
       this.lokiLogger.error(
         `Error in corporate capturePayment: ${(error as Error).message}, ${(error as Error).stack}`,
@@ -368,7 +383,7 @@ export class OldCorporatePaymentsService {
     );
 
     if (!payment.company) {
-      throw new BadRequestException("Company payment information not found!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.COMPANY_PAYMENT_INFO_NOT_FOUND);
     }
 
     const company = await findOneOrFail(payment.company.id, this.companyRepository, {
@@ -378,7 +393,7 @@ export class OldCorporatePaymentsService {
     const commissionRatePercent = company.platformCommissionRate;
 
     if (!commissionRatePercent) {
-      throw new BadRequestException("Commission rate are not set!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.COMMISSION_RATE_NOT_SET);
     }
 
     const commissionRate = commissionRatePercent / ONE_HUNDRED;
@@ -456,7 +471,11 @@ export class OldCorporatePaymentsService {
 
       const receiptLink = `${this.BACK_END_URL}/v1/payments/download-receipt?receiptKey=${receipt.receiptKey}`;
 
-      await this.emailsService.sendIncomingPaymentReceipt(company.contactEmail, receiptLink, receipt.receiptData);
+      await this.emailsService.sendIncomingPaymentReceipt(
+        company.contactEmail,
+        receiptLink,
+        receipt.receiptData as unknown as IPayInReceipt,
+      );
     } catch (error) {
       this.lokiLogger.error(
         `Failed to process same company commission for appointment ${appointment.id}: ${(error as Error).message},`,
@@ -477,11 +496,11 @@ export class OldCorporatePaymentsService {
     );
 
     if (payment.system !== EPaymentSystem.DEPOSIT) {
-      throw new BadRequestException("Incorrect payment system!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.INCORRECT_PAYMENT_SYSTEM);
     }
 
     if (payment.direction !== OldEPaymentDirection.INCOMING) {
-      throw new BadRequestException("Incorrect payment direction!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.INCORRECT_PAYMENT_DIRECTION);
     }
 
     for (const paymentItem of payment.items) {
@@ -519,18 +538,18 @@ export class OldCorporatePaymentsService {
     appointment: Appointment,
     paymentItem: OldPaymentItem,
     company: Company,
-  ): Promise<void> {
+  ): Promise<number | null> {
     let finalPrice: number | null = null;
 
     if (!appointment.client) {
-      throw new BadRequestException("Client not exist!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.CLIENT_NOT_EXIST);
     }
 
     const isCorporate: boolean = true;
     const country = company.country;
 
     if (!country) {
-      throw new BadRequestException("Country not filled!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.COUNTRY_NOT_FILLED);
     }
 
     let date: Date;
@@ -606,6 +625,8 @@ export class OldCorporatePaymentsService {
         await this.companyRepository.update({ id: company.id }, { depositAmount: round2(depositAmount) });
       }
     }
+
+    return finalPrice;
   }
 
   /*
@@ -631,12 +652,13 @@ export class OldCorporatePaymentsService {
     );
 
     if (incomingPayment.items.length <= 0) {
-      throw new BadRequestException("Incoming Payment not have items");
+      throw new BadRequestException(EOldPaymentsErrorCodes.INCOMING_PAYMENT_NO_ITEMS);
     }
 
     for (const paymentItem of incomingPayment.items) {
       if (paymentItem.status !== OldEPaymentStatus.CAPTURED) {
-        throw new BadRequestException(`One of Incoming Payment items have incorrect status (${paymentItem.status})`);
+        this.lokiLogger.error(`One of the incoming payment items has an incorrect status: ${paymentItem.status}.`);
+        throw new BadRequestException(EOldPaymentsErrorCodes.INCOMING_PAYMENT_ITEM_INCORRECT_STATUS);
       }
     }
 
@@ -817,11 +839,11 @@ export class OldCorporatePaymentsService {
     currency: OldECurrencies = OldECurrencies.AUD,
   ): Promise<void> {
     if (!company) {
-      throw new BadRequestException("Company not exist!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.COMPANY_NOT_FOUND);
     }
 
     if (!company.paymentInformation || !company.paymentInformation.interpreterSystemForPayout) {
-      throw new BadRequestException("Payment info not filled!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.PAYMENT_INFO_NOT_FILLED);
     }
 
     const transferResultInfo = await this.createTransfer(
@@ -887,7 +909,7 @@ export class OldCorporatePaymentsService {
     currency: OldECurrencies = OldECurrencies.AUD,
   ): Promise<OldICreateCorporateTransferResult> {
     if (!companyPaymentInfo.interpreterSystemForPayout) {
-      throw new BadRequestException("Payment info not filled!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.PAYMENT_INFO_NOT_FILLED);
     }
 
     let transferResult: OldICreateTransfer | null = null;
@@ -933,22 +955,22 @@ export class OldCorporatePaymentsService {
     stripeInterpreterAccountId: string | null,
   ): Promise<OldICreateTransfer> {
     if (!stripeInterpreterAccountId) {
-      throw new BadRequestException("Stripe payment info not filled!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.STRIPE_PAYMENT_INFO_NOT_FILLED);
     }
 
-    let transfer: Stripe.Response<Stripe.Transfer> | null = null;
+    let transfer: ICreateTransfer | null = null;
     let paymentStatus: OldEPaymentStatus = OldEPaymentStatus.TRANSFERED;
     let paymentNote: string | null | undefined = null;
 
     try {
-      transfer = await this.stripeService.createTransfer(fullAmount, currency, stripeInterpreterAccountId);
+      transfer = await this.stripeConnectService.createTransfer(fullAmount, currency, stripeInterpreterAccountId);
     } catch (error) {
       paymentStatus = OldEPaymentStatus.TRANSFER_FAILED;
       paymentNote = (error as Stripe.Response<Stripe.StripeRawError>).message ?? null;
     }
 
     return {
-      transferId: transfer?.id,
+      transferId: transfer?.transferId,
       paymentStatus,
       paymentNote,
     };
@@ -967,7 +989,7 @@ export class OldCorporatePaymentsService {
       !companyPaymentInfo.stripeInterpreterCardBrand ||
       !companyPaymentInfo.stripeInterpreterCardLast4
     ) {
-      throw new BadRequestException("Stripe card payment info not filled!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.STRIPE_CARD_PAYMENT_INFO_NOT_FILLED);
     }
 
     if (paymentStatus !== OldEPaymentStatus.TRANSFERED) {
@@ -984,14 +1006,14 @@ export class OldCorporatePaymentsService {
     let paymentNote: string | null = null;
 
     try {
-      const payout = await this.stripeService.createPayout(
+      const payout = await this.stripeConnectService.createPayout(
         totalAmount,
         currency,
         companyPaymentInfo.stripeInterpreterAccountId,
       );
 
       paymentStatus = OldEPaymentStatus.PAYOUT_SUCCESS;
-      externalId = payout.id;
+      externalId = payout.payoutId;
 
       // TODO R: check stripe payout receipt, if exist -- save
     } catch (error) {
@@ -1013,7 +1035,7 @@ export class OldCorporatePaymentsService {
     companyPlatformId: string,
   ): Promise<OldICreateTransfer> {
     if (!paypalPayerId) {
-      throw new BadRequestException("Stripe payment info not filled!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.PAYPAL_PAYMENT_INFO_NOT_FILLED);
     }
 
     let transfer: IPayoutResponse | null = null;
@@ -1086,7 +1108,13 @@ export class OldCorporatePaymentsService {
       company.depositDefaultChargeAmount * TEN_PERCENT_MULTIPLIER;
 
     if (companyNewDepositAmount <= tenPercentFromDepositDefaultChargeAmount) {
-      await this.companiesDepositChargeService.createOrUpdateDepositCharge(company, company.depositDefaultChargeAmount);
+      await this.dataSource.transaction(async (manager) => {
+        await this.companiesDepositChargeManagementService.createOrUpdateDepositCharge(
+          manager,
+          company,
+          company.depositDefaultChargeAmount!,
+        );
+      });
 
       return;
     }
@@ -1096,7 +1124,7 @@ export class OldCorporatePaymentsService {
 
     if (companyNewDepositAmount <= fifteenPercentFromDepositDefaultChargeAmount) {
       if (!company.superAdminId) {
-        throw new BadRequestException(`Company ${company.id} does not have superAdminId`);
+        throw new BadRequestException(EOldPaymentsErrorCodes.COMPANY_NO_SUPER_ADMIN_ID);
       }
 
       const superAdmin = await findOneOrFail(company.superAdminId, this.userRepository, {
@@ -1111,7 +1139,7 @@ export class OldCorporatePaymentsService {
       );
 
       if (!superAdminRole) {
-        throw new BadRequestException("Super admin role not found!");
+        throw new BadRequestException(EOldPaymentsErrorCodes.SUPER_ADMIN_ROLE_NOT_FOUND);
       }
 
       await this.emailsService.sendDepositLowBalanceNotification(company.contactEmail, {

@@ -21,6 +21,7 @@ import { randomUUID } from "node:crypto";
 import { ITokenUserData } from "src/modules/tokens/common/interfaces";
 import { LokiLogger } from "src/common/logger";
 import {
+  EChimeMeetingConfigurationErrorCodes,
   EExternalVideoResolution,
   EExtMediaCapabilities,
   EExtVideoContentResolution,
@@ -161,7 +162,7 @@ export class AttendeeManagementService {
     );
 
     if (meetingConfig.attendees.length === 0) {
-      throw new BadRequestException("No attendees found for this meeting.");
+      throw new BadRequestException(EChimeMeetingConfigurationErrorCodes.ATTENDEE_MANAGEMENT_NO_ATTENDEES_FOUND);
     }
 
     await this.verifyMeetingConfigCapabilities(meetingConfig, dto);
@@ -298,7 +299,10 @@ export class AttendeeManagementService {
     const maxAttendees = await this.attendeeRepository.count(maxAttendeesQueryOptions);
 
     if (maxAttendees >= this.DEFAULT_ANONYMOUS_GUEST) {
-      throw new BadRequestException(`Maximum ${this.DEFAULT_ANONYMOUS_GUEST} anonymous guests allowed`);
+      throw new BadRequestException({
+        message: EChimeMeetingConfigurationErrorCodes.ATTENDEE_MANAGEMENT_MAX_ANONYMOUS_GUESTS,
+        variables: { maxGuests: this.DEFAULT_ANONYMOUS_GUEST },
+      });
     }
 
     const queryOptions = this.chimeMeetingQueryService.getAddExtraAttendeeInLiveMeetingOptions(
@@ -350,7 +354,9 @@ export class AttendeeManagementService {
     const [attendee] = meetingConfig.attendees;
 
     if (isInRoles(LFH_ADMIN_ROLES, attendee.roleName) || isInRoles(CLIENT_ROLES, attendee.roleName)) {
-      throw new BadRequestException("You cannot disable admin or client from the meeting.");
+      throw new BadRequestException(
+        EChimeMeetingConfigurationErrorCodes.ATTENDEE_MANAGEMENT_CANNOT_DISABLE_ADMIN_CLIENT,
+      );
     }
 
     await this.verifyRolePermissionsForDisable(attendee.roleName, user);
@@ -389,16 +395,14 @@ export class AttendeeManagementService {
       meetingConfig.maxVideoResolution === EExternalVideoResolution.NONE &&
       dto.videoCapabilities !== EExtMediaCapabilities.NONE
     ) {
-      throw new BadRequestException("Video capabilities must be set to None for a meeting that does not support video");
+      throw new BadRequestException(EChimeMeetingConfigurationErrorCodes.ATTENDEE_MANAGEMENT_VIDEO_CAPABILITIES_NONE);
     }
 
     if (
       meetingConfig.maxContentResolution === EExtVideoContentResolution.NONE &&
       dto.contentCapabilities !== EExtMediaCapabilities.NONE
     ) {
-      throw new BadRequestException(
-        "Content sharing capabilities must be set to None for a meeting that does not support content sharing",
-      );
+      throw new BadRequestException(EChimeMeetingConfigurationErrorCodes.ATTENDEE_MANAGEMENT_CONTENT_CAPABILITIES_NONE);
     }
   }
 
@@ -407,37 +411,37 @@ export class AttendeeManagementService {
     user: ITokenUserData,
   ): Promise<void> {
     if (isInRoles(LFH_ADMIN_ROLES, attendeeRoleName)) {
-      throw new BadRequestException("You cannot update admin attendee capabilities.");
+      throw new BadRequestException(EChimeMeetingConfigurationErrorCodes.ATTENDEE_MANAGEMENT_CANNOT_UPDATE_ADMIN);
     }
 
     if (isInRoles(COMPANY_ADMIN_ROLES, user.role) && isInRoles(COMPANY_ADMIN_ROLES, attendeeRoleName)) {
-      throw new BadRequestException("You cannot update admin attendee capabilities.");
+      throw new BadRequestException(EChimeMeetingConfigurationErrorCodes.ATTENDEE_MANAGEMENT_CANNOT_UPDATE_ADMIN);
     }
 
     if (isInRoles(CLIENT_ROLES, user.role) && isInRoles(COMPANY_ADMIN_ROLES, attendeeRoleName)) {
-      throw new BadRequestException("You cannot update admin attendee capabilities.");
+      throw new BadRequestException(EChimeMeetingConfigurationErrorCodes.ATTENDEE_MANAGEMENT_CANNOT_UPDATE_ADMIN);
     }
 
     if (isInRoles(CLIENT_ROLES, user.role) && isInRoles(CLIENT_ROLES, attendeeRoleName)) {
-      throw new BadRequestException("You cannot update your own capabilities.");
+      throw new BadRequestException(EChimeMeetingConfigurationErrorCodes.ATTENDEE_MANAGEMENT_CANNOT_UPDATE_OWN);
     }
   }
 
   private async verifyRolePermissionsForDisable(attendeeRoleName: EUserRoleName, user: ITokenUserData): Promise<void> {
     if (isInRoles(LFH_ADMIN_ROLES, attendeeRoleName)) {
-      throw new BadRequestException("You cannot disable admin attendee.");
+      throw new BadRequestException(EChimeMeetingConfigurationErrorCodes.ATTENDEE_MANAGEMENT_CANNOT_DISABLE_ADMIN);
     }
 
     if (isInRoles(COMPANY_ADMIN_ROLES, user.role) && isInRoles(COMPANY_ADMIN_ROLES, attendeeRoleName)) {
-      throw new BadRequestException("You cannot disable admin attendee.");
+      throw new BadRequestException(EChimeMeetingConfigurationErrorCodes.ATTENDEE_MANAGEMENT_CANNOT_DISABLE_ADMIN);
     }
 
     if (isInRoles(CLIENT_ROLES, user.role) && isInRoles(COMPANY_ADMIN_ROLES, attendeeRoleName)) {
-      throw new BadRequestException("You cannot disable admin attendee.");
+      throw new BadRequestException(EChimeMeetingConfigurationErrorCodes.ATTENDEE_MANAGEMENT_CANNOT_DISABLE_ADMIN);
     }
 
     if (isInRoles(CLIENT_ROLES, attendeeRoleName)) {
-      throw new BadRequestException("You cannot disable client attendee.");
+      throw new BadRequestException(EChimeMeetingConfigurationErrorCodes.ATTENDEE_MANAGEMENT_CANNOT_DISABLE_CLIENT);
     }
   }
 
@@ -526,7 +530,9 @@ export class AttendeeManagementService {
       this.lokiLogger.error(
         `Failed to instant add attendee to live meeting. Response:${JSON.stringify(attendeeResponse)}`,
       );
-      throw new ServiceUnavailableException("Unable to join meeting");
+      throw new ServiceUnavailableException(
+        EChimeMeetingConfigurationErrorCodes.ATTENDEE_MANAGEMENT_UNABLE_JOIN_MEETING,
+      );
     }
 
     return {

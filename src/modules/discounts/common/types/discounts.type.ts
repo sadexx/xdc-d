@@ -9,6 +9,8 @@ import { DiscountAssociation } from "src/modules/discounts/entities";
 
 export type TApplyDiscountsForAppointmentValidated = NonNullableProperties<TApplyDiscountsForAppointment, "client">;
 
+export type TApplyDiscountsForExtension = Pick<Appointment, "id" | "clientId" | "schedulingType">;
+
 /**
  ** Query types
  */

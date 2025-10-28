@@ -58,6 +58,7 @@ export const NUMBER_OF_MINUTES_IN_TEN_MINUTES: number = 10;
 export const NUMBER_OF_MINUTES_IN_FIVE_MINUTES: number = 5;
 export const NUMBER_OF_MINUTES_IN_THREE_MINUTES: number = 3;
 export const NUMBER_OF_MINUTES_IN_TWO_MINUTES: number = 2;
+export const NUMBER_OF_SECONDS_IN_HALF_MINUTE: number = 30;
 export const NUMBER_OF_SECONDS_IN_MINUTE: number = 60;
 /**
  ** In seconds
@@ -78,6 +79,8 @@ export const NUMBER_OF_MILLISECONDS_IN_HOUR =
  ** Other
  */
 export const ENVIRONMENT = process.env.NODE_ENV as EEnvironment;
+export const IS_LOCAL: boolean = ENVIRONMENT === EEnvironment.LOCAL;
+export const IS_PRODUCTION: boolean = ENVIRONMENT === EEnvironment.PRODUCTION;
 export const SEND_LOG_TO_LOKI: boolean = envStringToBoolean(process.env.SEND_LOG_TO_LOKI as string);
 export const MOCK_ENABLED: boolean = envStringToBoolean(process.env.MOCK_ENABLED as string);
 export const LOKI_URL: string = process.env.LOKI_URL as string;

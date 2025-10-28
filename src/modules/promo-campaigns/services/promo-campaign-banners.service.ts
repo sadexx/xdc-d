@@ -6,7 +6,7 @@ import { PromoCampaignBanner } from "src/modules/promo-campaigns/entities";
 import { IFile } from "src/modules/file-management/common/interfaces";
 import { UploadPromoCampaignBannerDto } from "src/modules/promo-campaigns/common/dto";
 import { AwsS3Service } from "src/modules/aws/s3/aws-s3.service";
-import { EPromoCampaignBannerType } from "src/modules/promo-campaigns/common/enums";
+import { EPromoCampaignBannerType, EPromoCampaignsErrorCodes } from "src/modules/promo-campaigns/common/enums";
 import { IS_MEDIA_BUCKET } from "src/common/constants";
 import { IUploadPromoCampaignBannerOutput } from "src/modules/promo-campaigns/common/outputs";
 import { IPromoCampaignBanner } from "src/modules/promo-campaigns/common/interfaces";
@@ -18,6 +18,7 @@ import {
   TUpdatePromoCampaignBannerDto,
 } from "src/modules/promo-campaigns/common/types";
 import { findManyTyped, findOneTyped } from "src/common/utils";
+import { ECommonErrorCodes } from "src/common/enums";
 
 @Injectable()
 export class PromoCampaignBannersService {
@@ -35,7 +36,7 @@ export class PromoCampaignBannersService {
     dto: UploadPromoCampaignBannerDto,
   ): Promise<IUploadPromoCampaignBannerOutput> {
     if (!file) {
-      throw new BadRequestException("File not received.");
+      throw new BadRequestException(ECommonErrorCodes.FILE_NOT_RECEIVED);
     }
 
     if (dto.bannerId) {
@@ -58,7 +59,7 @@ export class PromoCampaignBannersService {
 
     if (!promoCampaignBanner) {
       await this.awsS3Service.deleteObject(file.key, IS_MEDIA_BUCKET);
-      throw new NotFoundException("Promo campaign banner not found.");
+      throw new NotFoundException(EPromoCampaignsErrorCodes.BANNER_NOT_FOUND);
     }
 
     const promoCampaignBannerDto = this.constructPromoCampaignBannerDto(file, dto.promoBannerType);

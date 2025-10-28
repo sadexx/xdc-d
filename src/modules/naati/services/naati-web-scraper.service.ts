@@ -16,6 +16,7 @@ import {
   EExtNaatiContactTypes,
   EExtNaatiInterpreterType,
   EExtNaatiLanguages,
+  ENaatiErrorCodes,
 } from "src/modules/naati/common/enum";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
@@ -102,7 +103,8 @@ export class NaatiWebScraperService {
       });
 
       if (!response.ok) {
-        throw new ServiceUnavailableException(`HTTP error! status: ${response.statusText}`);
+        this.lokiLogger.error(`HTTP error! status: ${response.statusText}`);
+        throw new ServiceUnavailableException(ENaatiErrorCodes.WEB_SCRAPER_HTTP_ERROR);
       }
 
       const html = await response.text();
@@ -110,7 +112,7 @@ export class NaatiWebScraperService {
       const nonceValue = await this.extractNonce(html);
 
       if (!nonceValue) {
-        throw new NotFoundException("Nonce value not found in HTML.");
+        throw new NotFoundException(ENaatiErrorCodes.WEB_SCRAPER_NONCE_NOT_FOUND);
       }
 
       this.DIRECTORY_NONCE_TOKEN = nonceValue;
@@ -119,7 +121,7 @@ export class NaatiWebScraperService {
       return { message: "Nonce value extracted successfully" };
     } catch (error) {
       this.lokiLogger.error(`Failed to extract nonce value: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Failed to extract nonce value.");
+      throw new ServiceUnavailableException(ENaatiErrorCodes.WEB_SCRAPER_NONCE_EXTRACTION_FAILED);
     }
   }
 
@@ -251,7 +253,8 @@ export class NaatiWebScraperService {
     });
 
     if (!response.ok) {
-      throw new ServiceUnavailableException(`Error from NAATI: ${response.statusText}`);
+      this.lokiLogger.error(`Error from NAATI: ${response.statusText}`);
+      throw new ServiceUnavailableException(ENaatiErrorCodes.WEB_SCRAPER_API_ERROR);
     }
 
     const naatiResponse = (await response.json()) as INaatiAllLanguagesInterpretersResponse;
@@ -324,7 +327,8 @@ export class NaatiWebScraperService {
       });
 
       if (!response.ok) {
-        throw new ServiceUnavailableException(`Error from NAATI: ${response.statusText}`);
+        this.lokiLogger.error(`Error from NAATI: ${response.statusText}`);
+        throw new ServiceUnavailableException(ENaatiErrorCodes.WEB_SCRAPER_API_ERROR);
       }
 
       const naatiResponse = (await response.json()) as INaatiInterpretersResponse;
@@ -336,7 +340,8 @@ export class NaatiWebScraperService {
         (error as Error).stack,
       );
       this.totalErrors++;
-      throw new ServiceUnavailableException(`Error from NAATI: ${(error as Error).message}`);
+      this.lokiLogger.error(`Error from NAATI: ${(error as Error).message}`);
+      throw new ServiceUnavailableException(ENaatiErrorCodes.WEB_SCRAPER_API_ERROR);
     }
   }
 

@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { AwsS3Service } from "src/modules/aws/s3/aws-s3.service";
-import { EPossibleUiLanguage } from "src/modules/ui-languages/common/enums";
+import { EPossibleUiLanguage, EUiLanguagesErrorCodes } from "src/modules/ui-languages/common/enums";
 import { UiLanguage } from "src/modules/ui-languages/entities";
 import { Repository } from "typeorm";
 import { IFile } from "src/modules/file-management/common/interfaces";
@@ -51,7 +51,7 @@ export class UiLanguagesService {
     const uiLanguage = await this.uiLanguagesRepository.findOneBy({ language });
 
     if (!uiLanguage || uiLanguage.version === 0 || !uiLanguage.file) {
-      throw new NotFoundException("Can't find json file for that language");
+      throw new NotFoundException(EUiLanguagesErrorCodes.LANGUAGE_FILE_NOT_FOUND);
     }
 
     return uiLanguage.file;
@@ -67,7 +67,7 @@ export class UiLanguagesService {
     const uiLanguage = await this.uiLanguagesRepository.findOneBy({ language });
 
     if (!uiLanguage) {
-      throw new NotFoundException("Can't find json file for that language");
+      throw new NotFoundException(EUiLanguagesErrorCodes.LANGUAGE_FILE_NOT_FOUND);
     }
 
     if (uiLanguage.version !== 0 && uiLanguage.file) {

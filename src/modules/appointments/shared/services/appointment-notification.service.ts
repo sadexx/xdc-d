@@ -15,6 +15,7 @@ import { TCancelAppointment, TUpdateAppointment } from "src/modules/appointments
 import { AwsPinpointService } from "src/modules/aws/pinpoint/services";
 import { MultiWayParticipant } from "src/modules/multi-way-participant/entities";
 import { isInRoles } from "src/common/utils";
+import { TSendClientCanceledAppointmentNotification } from "src/modules/appointments/shared/common/types";
 
 @Injectable()
 export class AppointmentNotificationService {
@@ -111,7 +112,7 @@ export class AppointmentNotificationService {
   }
 
   public async sendClientCanceledAppointmentNotification(
-    userRole: UserRole,
+    userRole: TSendClientCanceledAppointmentNotification,
     platformId: string,
     isCancellationRestrictedByTimeLimits: boolean,
     appointmentDetails: IAppointmentDetailsOutput,

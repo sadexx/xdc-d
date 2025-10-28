@@ -1,7 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { NodeHttpHandler } from "@smithy/node-http-handler";
-import { AWS_MAX_ATTEMPTS, ENVIRONMENT } from "src/common/constants";
-import { EEnvironment } from "src/common/enums";
+import { AWS_MAX_ATTEMPTS, IS_LOCAL } from "src/common/constants";
 import { AwsCredentialIdentity, AwsCredentialIdentityProvider } from "@aws-sdk/types";
 
 @Injectable()
@@ -23,7 +22,7 @@ export class AwsConfigService {
       region: region,
     } as T;
 
-    if (ENVIRONMENT === EEnvironment.LOCAL) {
+    if (IS_LOCAL) {
       return {
         ...config,
         credentials: credentials,

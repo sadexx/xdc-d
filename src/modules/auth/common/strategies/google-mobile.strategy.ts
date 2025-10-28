@@ -2,7 +2,7 @@ import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PassportStrategy } from "@nestjs/passport";
 import { OAuth2Client, TokenPayload } from "google-auth-library";
-import { Strategy, VerifiedCallback } from "passport-custom";
+import { Strategy } from "passport-custom";
 import { AuthStrategies } from "src/config/strategies";
 import { Request } from "express";
 import { LokiLogger } from "src/common/logger";
@@ -12,20 +12,20 @@ const lokiLogger = new LokiLogger("GoogleMobileStrategy");
 @Injectable()
 export class GoogleMobileStrategy extends PassportStrategy(Strategy, AuthStrategies.GOOGLE_MOBILE_STRATEGY) {
   constructor(private readonly configService: ConfigService) {
-    super((req: Request, done: VerifiedCallback) => this.validate(req, done));
+    super();
   }
 
-  async validate(req: Request, done: VerifiedCallback): Promise<void> {
+  async validate(req: Request): Promise<unknown> {
     const idToken = req.body?.idToken as string;
 
     if (!idToken) {
-      return done(new UnauthorizedException("Body doesn't include idToken field"), null);
+      throw new UnauthorizedException("Body doesn't include idToken field");
     }
 
     const payload = await this.verifyToken(idToken);
 
     if (!payload) {
-      return done(new UnauthorizedException("Can't verify idToken"), null);
+      throw new UnauthorizedException("Can't verify idToken");
     }
 
     const user = {
@@ -33,7 +33,7 @@ export class GoogleMobileStrategy extends PassportStrategy(Strategy, AuthStrateg
       fullName: payload.name,
     };
 
-    done(null, user);
+    return user;
   }
 
   async verifyToken(idToken: string): Promise<false | TokenPayload | undefined> {

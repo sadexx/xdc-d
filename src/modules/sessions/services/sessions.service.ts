@@ -26,6 +26,7 @@ import {
   UpdateSessionQuery,
   VerifySessionQuery,
 } from "src/modules/sessions/common/types";
+import { ESessionsErrorCodes } from "src/modules/sessions/common/enum";
 
 @Injectable()
 export class SessionsService {
@@ -89,7 +90,7 @@ export class SessionsService {
       }
     }
 
-    throw new NotFoundException("Your token is out of date");
+    throw new NotFoundException(ESessionsErrorCodes.TOKEN_OUT_OF_DATE);
   }
 
   private async selectTokens(data: IStartSessionData): Promise<OneRoleLoginOutput> {

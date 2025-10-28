@@ -44,7 +44,7 @@ import { ConfigService } from "@nestjs/config";
 import { randomUUID } from "crypto";
 import { getCurrentDateParts } from "src/common/utils";
 import { IAwsConfigChimeSdk } from "src/modules/aws/chime-sdk/common/interfaces";
-import { ERecordDirectory } from "src/modules/aws/chime-sdk/common/enum";
+import { EAwsChimeSdkErrorCodes, ERecordDirectory } from "src/modules/aws/chime-sdk/common/enum";
 import {
   ChimeSDKVoiceClient,
   ChimeSDKVoiceClientConfig,
@@ -128,7 +128,7 @@ export class AwsChimeSdkService {
       return meetingResponse;
     } catch (error) {
       this.lokiLogger.error(`Failed to create meeting: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Unable to create meeting");
+      throw new ServiceUnavailableException(EAwsChimeSdkErrorCodes.CHIME_SDK_CREATE_MEETING_FAILED);
     }
   }
 
@@ -145,7 +145,7 @@ export class AwsChimeSdkService {
         return null;
       } else {
         this.lokiLogger.error(`Failed to get meeting: ${(error as Error).message}`, (error as Error).stack);
-        throw new ServiceUnavailableException("Unable to get meeting");
+        throw new ServiceUnavailableException(EAwsChimeSdkErrorCodes.CHIME_SDK_GET_MEETING_FAILED);
       }
     }
   }
@@ -158,7 +158,7 @@ export class AwsChimeSdkService {
       return deleteMeetingResponse;
     } catch (error) {
       this.lokiLogger.error(`Failed to delete meeting: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Unable to delete meeting");
+      throw new ServiceUnavailableException(EAwsChimeSdkErrorCodes.CHIME_SDK_DELETE_MEETING_FAILED);
     }
   }
 
@@ -170,7 +170,7 @@ export class AwsChimeSdkService {
       return attendeesResponse;
     } catch (error) {
       this.lokiLogger.error(`Failed to list attendees: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Unable to list attendees");
+      throw new ServiceUnavailableException(EAwsChimeSdkErrorCodes.CHIME_SDK_LIST_ATTENDEES_FAILED);
     }
   }
 
@@ -182,7 +182,7 @@ export class AwsChimeSdkService {
       return attendeeResponse;
     } catch (error) {
       this.lokiLogger.error(`Failed to get attendee: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Unable to get attendee");
+      throw new ServiceUnavailableException(EAwsChimeSdkErrorCodes.CHIME_SDK_GET_ATTENDEE_FAILED);
     }
   }
 
@@ -202,7 +202,7 @@ export class AwsChimeSdkService {
       return attendeeResponse;
     } catch (error) {
       this.lokiLogger.error(`Failed to create attendee: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Unable to create attendee");
+      throw new ServiceUnavailableException(EAwsChimeSdkErrorCodes.CHIME_SDK_CREATE_ATTENDEE_FAILED);
     }
   }
 
@@ -222,7 +222,7 @@ export class AwsChimeSdkService {
       return attendeeResponse;
     } catch (error) {
       this.lokiLogger.error(`Failed to update attendee: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Unable to update attendee");
+      throw new ServiceUnavailableException(EAwsChimeSdkErrorCodes.CHIME_SDK_UPDATE_ATTENDEE_FAILED);
     }
   }
 
@@ -242,7 +242,7 @@ export class AwsChimeSdkService {
       return attendeeResponse;
     } catch (error) {
       this.lokiLogger.error(`Failed to update attendees: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Unable to update attendees");
+      throw new ServiceUnavailableException(EAwsChimeSdkErrorCodes.CHIME_SDK_UPDATE_ATTENDEES_FAILED);
     }
   }
 
@@ -254,7 +254,7 @@ export class AwsChimeSdkService {
       return deleteAttendeeResponse;
     } catch (error) {
       this.lokiLogger.error(`Failed to delete attendee: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Unable to delete attendee");
+      throw new ServiceUnavailableException(EAwsChimeSdkErrorCodes.CHIME_SDK_DELETE_ATTENDEE_FAILED);
     }
   }
 
@@ -289,7 +289,7 @@ export class AwsChimeSdkService {
         `Failed to start media capture pipeline: ${(error as Error).message}`,
         (error as Error).stack,
       );
-      throw new ServiceUnavailableException("Unable to start media capture pipeline");
+      throw new ServiceUnavailableException(EAwsChimeSdkErrorCodes.CHIME_SDK_START_CAPTURE_PIPELINE_FAILED);
     }
   }
 
@@ -352,7 +352,7 @@ export class AwsChimeSdkService {
         `Failed to create media concatenation pipeline: ${(error as Error).message}`,
         (error as Error).stack,
       );
-      throw new ServiceUnavailableException("Unable to create media concatenation pipeline");
+      throw new ServiceUnavailableException(EAwsChimeSdkErrorCodes.CHIME_SDK_CREATE_CONCATENATION_PIPELINE_FAILED);
     }
   }
 
@@ -381,7 +381,7 @@ export class AwsChimeSdkService {
         `Failed to create sip media application call: ${(error as Error).message}`,
         (error as Error).stack,
       );
-      throw new ServiceUnavailableException("Unable to create sip media application call");
+      throw new ServiceUnavailableException(EAwsChimeSdkErrorCodes.CHIME_SDK_CREATE_SIP_CALL_FAILED);
     }
   }
 }

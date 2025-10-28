@@ -20,6 +20,7 @@ import { IAwsConfigPinpoint } from "src/modules/aws/pinpoint/common/interfaces";
 import { IAppointmentParticipantInvitationOutput } from "src/modules/appointments/appointment/common/outputs";
 import { format } from "date-fns";
 import { COMPANY_LFH_NAME } from "src/modules/companies/common/constants/constants";
+import { EAwsPinpointErrorCodes } from "src/modules/aws/pinpoint/common/enums";
 
 @Injectable()
 export class AwsPinpointService {
@@ -60,7 +61,7 @@ export class AwsPinpointService {
       return response;
     } catch (error) {
       this.lokiLogger.error(`Error sending push notification: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Failed to send push notification");
+      throw new ServiceUnavailableException(EAwsPinpointErrorCodes.PINPOINT_SEND_PUSH_NOTIFICATION_FAILED);
     }
   }
 
@@ -75,7 +76,7 @@ export class AwsPinpointService {
       await this.pinpointSmsV2Client.send(command);
     } catch (error) {
       this.lokiLogger.error(`Error sending SMS: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Failed to send SMS");
+      throw new ServiceUnavailableException(EAwsPinpointErrorCodes.PINPOINT_SEND_SMS_FAILED);
     }
   }
 

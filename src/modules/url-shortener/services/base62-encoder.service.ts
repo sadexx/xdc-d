@@ -1,5 +1,6 @@
 import { Injectable, InternalServerErrorException } from "@nestjs/common";
 import { randomBytes } from "node:crypto";
+import { EUrlShortenerErrorCodes } from "src/modules/url-shortener/common/enums";
 
 @Injectable()
 export class Base62EncoderService {
@@ -8,7 +9,7 @@ export class Base62EncoderService {
 
   public generateRandom(length: number): string {
     if (!Number.isInteger(length) || length < 0) {
-      throw new InternalServerErrorException("Length must be a non-negative integer.");
+      throw new InternalServerErrorException(EUrlShortenerErrorCodes.INVALID_LENGTH);
     }
 
     if (length === 0) {

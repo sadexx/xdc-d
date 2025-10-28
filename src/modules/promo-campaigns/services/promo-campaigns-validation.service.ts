@@ -12,6 +12,7 @@ import {
   EPromoCampaignTarget,
   EPromoCampaignStatus,
   EPromoCampaignApplication,
+  EPromoCampaignsErrorCodes,
 } from "src/modules/promo-campaigns/common/enums";
 import { ITokenUserData } from "src/modules/tokens/common/interfaces";
 import { AccessControlService } from "src/modules/access-control/services";
@@ -74,7 +75,7 @@ export class PromoCampaignsValidationService {
     promoCampaign: TUpdatePromoCampaign,
   ): Promise<void> {
     if (promoCampaign.status === EPromoCampaignStatus.COMPLETED) {
-      throw new BadRequestException("Promo campaign cannot be updated in its current state.");
+      throw new BadRequestException(EPromoCampaignsErrorCodes.CAMPAIGN_NOT_UPDATABLE);
     }
 
     this.validateUpdateRestrictions(dto, promoCampaign);
@@ -117,7 +118,7 @@ export class PromoCampaignsValidationService {
 
   private async validateUpdateData(dto: UpdatePromoCampaignDto, promoCampaign: TUpdatePromoCampaign): Promise<void> {
     if (dto.status && !isAfter(new Date(), promoCampaign.startDate)) {
-      throw new BadRequestException("You cannot change the status before the start date.");
+      throw new BadRequestException(EPromoCampaignsErrorCodes.STATUS_CHANGE_BEFORE_START);
     }
 
     await this.validateBasicConstraints(
@@ -153,7 +154,7 @@ export class PromoCampaignsValidationService {
 
   private validateCompanyType(companyType: ECompanyType): void {
     if (companyType === ECompanyType.CORPORATE_INTERPRETING_PROVIDERS) {
-      throw new BadRequestException("You can create a promo campaign for corporate clients only.");
+      throw new BadRequestException(EPromoCampaignsErrorCodes.CORPORATE_PROVIDER_NOT_ALLOWED);
     }
   }
 
@@ -163,7 +164,7 @@ export class PromoCampaignsValidationService {
 
     if (isAlreadyAssigned) {
       throw new BadRequestException({
-        message: "This company has already assigned promo campaign.",
+        message: EPromoCampaignsErrorCodes.COMPANY_ALREADY_ASSIGNED,
         isPromoAssigned: true,
       });
     }
@@ -174,9 +175,11 @@ export class PromoCampaignsValidationService {
     const changedFields = restrictedFields.filter((field) => dto[field] !== UNDEFINED_VALUE);
 
     if (changedFields.length > 0) {
-      throw new BadRequestException(
-        `Cannot update the following fields for corporate promo campaigns: ${changedFields.join(", ")}`,
-      );
+      throw new BadRequestException({
+        message: EPromoCampaignsErrorCodes.CORPORATE_FIELDS_NOT_UPDATABLE,
+        isPromoAssigned: true,
+        variables: { fields: changedFields.join(", ") },
+      });
     }
   }
 
@@ -192,9 +195,11 @@ export class PromoCampaignsValidationService {
     );
 
     if (restrictedFields.length > 0) {
-      throw new BadRequestException(
-        `Only ${allowedFields.join(", ")} can be updated for on-going or terminated promo campaigns.`,
-      );
+      throw new BadRequestException({
+        message: EPromoCampaignsErrorCodes.RESTRICTED_STATUS_FIELDS,
+        isPromoAssigned: true,
+        variables: { fields: allowedFields.join(", ") },
+      });
     }
   }
 
@@ -224,7 +229,7 @@ export class PromoCampaignsValidationService {
     const existingPromo = await this.promoCampaignRepository.exists(queryOptions);
 
     if (existingPromo) {
-      throw new BadRequestException("A promo campaign with this name or promo code already exists.");
+      throw new BadRequestException(EPromoCampaignsErrorCodes.NAME_OR_CODE_EXISTS);
     }
   }
 
@@ -241,7 +246,7 @@ export class PromoCampaignsValidationService {
     const conflictingPromo = await this.promoCampaignRepository.exists(queryOptions);
 
     if (conflictingPromo) {
-      throw new BadRequestException("Only one all-new-personal campaign can be active for this time period.");
+      throw new BadRequestException(EPromoCampaignsErrorCodes.ALL_NEW_PERSONAL_CONFLICT);
     }
   }
 
@@ -250,13 +255,13 @@ export class PromoCampaignsValidationService {
     const isPromoCampaignBannerExist = await this.promoCampaignBannerRepository.exists(queryOptions);
 
     if (!isPromoCampaignBannerExist) {
-      throw new NotFoundException("Promo campaign banner not found.");
+      throw new NotFoundException(EPromoCampaignsErrorCodes.BANNER_NOT_FOUND);
     }
   }
 
   private validateDateSequence(startDate: Date, endDate?: Date | null): void {
     if (endDate && !isBefore(startDate, endDate)) {
-      throw new BadRequestException("The start date must be before the end date.");
+      throw new BadRequestException(EPromoCampaignsErrorCodes.START_DATE_AFTER_END_DATE);
     }
   }
 
@@ -276,7 +281,7 @@ export class PromoCampaignsValidationService {
       promoCampaign.target === EPromoCampaignTarget.ALL_NEW_PERSONAL ||
       promoCampaign.status !== EPromoCampaignStatus.ON_GOING
     ) {
-      throw new BadRequestException("Invalid promo code.");
+      throw new BadRequestException(EPromoCampaignsErrorCodes.INVALID_PROMO_CODE);
     }
 
     if (promoCampaign.target === EPromoCampaignTarget.PERSONAL) {
@@ -287,7 +292,7 @@ export class PromoCampaignsValidationService {
       const isAlreadyAssigned = await this.promoCampaignAssignmentRepository.exists(queryOptions);
 
       if (isAlreadyAssigned) {
-        throw new BadRequestException("Personal promo campaign is already assigned to another user.");
+        throw new BadRequestException(EPromoCampaignsErrorCodes.PERSONAL_ALREADY_ASSIGNED);
       }
     }
   }
@@ -391,9 +396,10 @@ export class PromoCampaignsValidationService {
     }
 
     if (conditionsUrlProvided && !ALLOWED_TARGETS.includes(target)) {
-      throw new BadRequestException(
-        `conditionsUrl can only be created/updated for promo campaigns with targets: ${ALLOWED_TARGETS.join(", ")}.`,
-      );
+      throw new BadRequestException({
+        message: EPromoCampaignsErrorCodes.CONDITIONS_URL_TARGET_INVALID,
+        variables: { fields: ALLOWED_TARGETS.join(", ") },
+      });
     }
 
     if (bannerDisplayProvided) {
@@ -404,15 +410,15 @@ export class PromoCampaignsValidationService {
           const finalBannerId = dto.bannerId !== UNDEFINED_VALUE ? dto.bannerId : existingCampaign?.banner;
 
           if (!finalBannerId) {
-            throw new BadRequestException("bannerDisplay cannot be true when bannerId is not set.");
+            throw new BadRequestException(EPromoCampaignsErrorCodes.BANNER_DISPLAY_WITHOUT_BANNER);
           }
         }
       } else {
         if (bannerDisplayValue === true) {
-          throw new BadRequestException(
-            "bannerDisplay can only be set to true for promo campaigns with targets: " +
-              `${ALLOWED_TARGETS.join(", ")}.`,
-          );
+          throw new BadRequestException({
+            message: EPromoCampaignsErrorCodes.BANNER_DISPLAY_TARGET_INVALID,
+            variables: { fields: ALLOWED_TARGETS.join(", ") },
+          });
         }
       }
     }

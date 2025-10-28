@@ -17,7 +17,7 @@ import { INaatiApiResponseOutput } from "src/modules/naati/common/outputs";
 import { UserRole } from "src/modules/users/entities";
 import { TokensService } from "src/modules/tokens/services";
 import { TMockParams, TMockResult, TMockTypeResultMap } from "src/modules/mock/common/types";
-import { EMockType } from "src/modules/mock/common/enums";
+import { EMockErrorCodes, EMockType } from "src/modules/mock/common/enums";
 import {
   IMockCreateAndSendContract,
   IMockData,
@@ -100,7 +100,7 @@ export class MockService {
         result = await this.mockCreateAndSendContract(params.data);
         break;
       default:
-        throw new BadRequestException(`Unsupported mock type.`);
+        throw new BadRequestException(EMockErrorCodes.SERVICE_UNSUPPORTED_TYPE);
     }
 
     return result as TMockTypeResultMap[T["type"]];

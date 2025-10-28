@@ -14,7 +14,11 @@ import { findManyTyped, findOneOrFailTyped } from "src/common/utils";
 import { OldEPayInStatus, OldEPaymentFailedReason } from "src/modules/payments/common/enums";
 import { ITokenUserData } from "src/modules/tokens/common/interfaces";
 import { IWebSocketUserData } from "src/modules/web-socket-gateway/common/interfaces";
-import { EAppointmentInterpretingType, EAppointmentStatus } from "src/modules/appointments/appointment/common/enums";
+import {
+  EAppointmentErrorCodes,
+  EAppointmentInterpretingType,
+  EAppointmentStatus,
+} from "src/modules/appointments/appointment/common/enums";
 import { ILiveAppointmentCacheData } from "src/modules/appointments/appointment/common/interfaces";
 import { Appointment } from "src/modules/appointments/appointment/entities";
 import { LokiLogger } from "src/common/logger";
@@ -58,7 +62,7 @@ export class AppointmentExtensionService {
     const liveAppointmentCacheData = await this.redisService.getJson<ILiveAppointmentCacheData>(cacheKey);
 
     if (!liveAppointmentCacheData) {
-      throw new BadRequestException("Invalid data.");
+      throw new BadRequestException(EAppointmentErrorCodes.INVALID_DATA);
     }
 
     const { appointment } = liveAppointmentCacheData;
@@ -109,14 +113,14 @@ export class AppointmentExtensionService {
     }
 
     if (rates.length !== NUMBER_OF_REQUIRED_RATES) {
-      throw new NotFoundException("Rate for business extension not found");
+      throw new NotFoundException(EAppointmentErrorCodes.RATE_FOR_BUSINESS_EXTENSION_NOT_FOUND);
     }
 
     const standardRate = rates.find((rate) => rate.qualifier === ERateQualifier.STANDARD_HOURS);
     const afterHoursRate = rates.find((rate) => rate.qualifier === ERateQualifier.AFTER_HOURS);
 
     if (!standardRate || !afterHoursRate) {
-      throw new NotFoundException("Standard or After Hours rate not found");
+      throw new NotFoundException(EAppointmentErrorCodes.STANDARD_OR_AFTER_HOURS_RATE_NOT_FOUND);
     }
 
     const timezone = appointment.interpreter?.timezone ?? appointment.timezone;
@@ -144,10 +148,10 @@ export class AppointmentExtensionService {
     cacheKey: string,
     discounts?: IDiscountRate,
   ): Promise<void> {
-    const { appointment } = liveAppointmentCacheData;
+    const { appointment, extensionPeriodStart } = liveAppointmentCacheData;
 
     const paymentStatus = await this.generalPaymentsService
-      .makePayInAuthByAdditionalBlock(liveAppointmentCacheData, businessExtensionTime, discounts)
+      .makePayInAuthByAdditionalBlock(appointment, businessExtensionTime, extensionPeriodStart, discounts)
       .catch(async (error: Error) => {
         this.lokiLogger.error(`Failed to make payin: ${error.message}, appointmentId: ${appointment.id}`, error.stack);
 
@@ -202,7 +206,7 @@ export class AppointmentExtensionService {
     isViewConfirmed?: boolean,
   ): Promise<IAppointmentEndingMessageOutput | IMessageOutput> {
     if (!isUUID(id)) {
-      throw new BadRequestException("Invalid appointment id.");
+      throw new BadRequestException(EAppointmentErrorCodes.INVALID_APPOINTMENT_ID);
     }
 
     await this.appointmentRepository.update(

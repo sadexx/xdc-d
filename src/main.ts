@@ -8,30 +8,29 @@ import session from "express-session";
 import { join } from "path";
 import { AppModule } from "src/app.module";
 import { CustomSerializerInterceptor } from "src/common/interceptors";
-import { API_PREFIX, ENVIRONMENT } from "src/common/constants";
-import { EEnvironment } from "src/common/enums";
+import { API_PREFIX, ENVIRONMENT, IS_LOCAL } from "src/common/constants";
 import { setupGracefulShutdown } from "src/common/lifecycle";
 import { SingleLokiLogger } from "src/common/logger";
+import { ExpressAdapter } from "@nestjs/platform-express";
 
-export let app: INestApplication;
+export let httpServer: INestApplication<ExpressAdapter>;
 
 async function bootstrap(): Promise<void> {
-  app = await NestFactory.create(AppModule);
-  app.enableShutdownHooks();
+  httpServer = await NestFactory.create(AppModule);
+  httpServer.enableShutdownHooks();
 
-  const configService = app.get(ConfigService);
+  const configService = httpServer.get(ConfigService);
   const allowedOrigins = configService.getOrThrow<string>("FRONTEND_URIS_CORS").split(",");
-  const isProduction = ENVIRONMENT !== EEnvironment.LOCAL;
 
-  app.enableCors({
+  httpServer.enableCors({
     credentials: true,
     origin: allowedOrigins,
     methods: ["HEAD", "OPTIONS", "GET", "POST", "PUT", "PATCH", "DELETE"],
     allowedHeaders: ["Authorization", "Origin", "X-Requested-With", "Content-Type", "Accept"],
     exposedHeaders: ["ETag"],
   });
-  app.use(cookieParser());
-  app.use(
+  httpServer.use(cookieParser());
+  httpServer.use(
     session({
       secret: configService.getOrThrow("AUTH_SESSION_SECRET"),
       resave: false,
@@ -40,27 +39,28 @@ async function bootstrap(): Promise<void> {
     }),
   );
 
-  app.useGlobalPipes(
+  httpServer.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
     }),
   );
-  app.useGlobalInterceptors(new CustomSerializerInterceptor(app.get(Reflector)));
-  app.setGlobalPrefix(API_PREFIX);
-  app.use(express.static(join(__dirname, "modules", "deep-link", "common")));
+  httpServer.useGlobalInterceptors(new CustomSerializerInterceptor(httpServer.get(Reflector)));
+  httpServer.setGlobalPrefix(API_PREFIX);
+  httpServer.use(express.static(join(__dirname, "modules", "deep-link", "common")));
 
-  app.useWebSocketAdapter(new IoAdapter(app));
+  httpServer.useWebSocketAdapter(new IoAdapter(httpServer));
 
-  await app.listen(configService.getOrThrow("APP_PORT"));
+  await httpServer.listen(configService.getOrThrow("APP_PORT"));
 
   SingleLokiLogger.log(
-    `You can access server on ${configService.getOrThrow("APP_URL")}:${configService.getOrThrow("APP_PORT")}/${API_PREFIX}`,
+    `You can access server on ${configService.getOrThrow("APP_URL")}:${configService.getOrThrow("APP_PORT")}/${API_PREFIX}` +
+      `\nServer is running in ${ENVIRONMENT} mode.`,
   );
 
-  if (isProduction) {
-    setupGracefulShutdown(app);
+  if (!IS_LOCAL) {
+    setupGracefulShutdown(httpServer);
   }
 }
 

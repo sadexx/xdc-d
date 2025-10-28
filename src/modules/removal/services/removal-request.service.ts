@@ -23,6 +23,8 @@ import { IRestorationConfig } from "src/modules/removal/common/interfaces";
 import { AccessControlService } from "src/modules/access-control/services";
 import { TRemoveUserRequest, TRemoveUserRoleRequest } from "src/modules/removal/common/types";
 import { RemoveCompanyDto } from "src/modules/removal/common/dto";
+import { ECommonErrorCodes } from "src/common/enums";
+import { ERemovalErrorCodes } from "src/modules/removal/common/enums";
 
 @Injectable()
 export class RemovalRequestService {
@@ -50,12 +52,10 @@ export class RemovalRequestService {
     const targetUser = await findOneOrFailTyped<TRemoveUserRequest>(id, this.userRepository, queryOptions);
 
     if (targetUser.id !== user.id && user.role !== EUserRoleName.SUPER_ADMIN) {
-      throw new ForbiddenException("Forbidden request.");
+      throw new ForbiddenException(ECommonErrorCodes.ACCESS_FORBIDDEN_REQUEST);
     }
 
-    for (const userRole of targetUser.userRoles) {
-      await this.removalSharedService.checkIfUserHasUncompletedAppointmentsBeforeDelete(userRole.id);
-    }
+    await this.checkUserUncompletedAppointments(targetUser);
 
     const rolesToMarkForRemove = targetUser.userRoles.filter(
       (role) => !ACCOUNT_STATUSES_ALLOWED_TO_IMMEDIATELY_DELETING.includes(role.accountStatus),
@@ -69,11 +69,11 @@ export class RemovalRequestService {
     const emailToSendRestorationLink = await this.removalSharedService.resolveEmailRecipient(targetUserRole, user);
 
     if (!emailToSendRestorationLink) {
-      throw new BadRequestException("Fill email, please.");
+      throw new BadRequestException(ERemovalErrorCodes.EMAIL_NOT_FILLED);
     }
 
     const restorationConfig = this.removalSharedService.constructRestorationConfig();
-    await this.markUserForRemove(targetUser.id, restorationConfig);
+    await this.markUserForRemove(targetUser, restorationConfig);
 
     const isSelfDeleting = targetUser.id === user.id;
     await this.removalNotificationService.sendUserRemovalRequestEmail(
@@ -84,28 +84,40 @@ export class RemovalRequestService {
     );
   }
 
-  private async handleUserImmediateRemoval(targetUser: TRemoveUserRequest): Promise<void> {
-    const hasCompanySuperAdminRole = targetUser.userRoles.some((userRole) =>
-      isInRoles(CORPORATE_SUPER_ADMIN_ROLES, userRole.role.name),
-    );
+  private async checkUserUncompletedAppointments(targetUser: TRemoveUserRequest): Promise<void> {
+    for (const userRole of targetUser.userRoles) {
+      await this.removalSharedService.checkIfUserHasUncompletedAppointmentsBeforeDelete(userRole.id);
+    }
 
-    if (targetUser.administratedCompany && hasCompanySuperAdminRole) {
+    if (targetUser.administratedCompany) {
+      await this.removalSharedService.checkIfCompanyHasUncompletedAppointmentsBeforeDelete(
+        targetUser.administratedCompany.id,
+      );
+    }
+  }
+
+  private async handleUserImmediateRemoval(targetUser: TRemoveUserRequest): Promise<void> {
+    if (targetUser.administratedCompany) {
       await this.removalService.removeCompany(targetUser.administratedCompany);
     } else {
       await this.removalService.removeUser(targetUser.id);
     }
   }
 
-  private async markUserForRemove(userId: string, restorationConfig: IRestorationConfig): Promise<void> {
-    await this.userRoleRepository.update({ user: { id: userId } }, { isInDeleteWaiting: true });
+  private async markUserForRemove(user: TRemoveUserRequest, restorationConfig: IRestorationConfig): Promise<void> {
+    await this.userRoleRepository.update({ user: { id: user.id } }, { isInDeleteWaiting: true });
     await this.userRepository.update(
-      { id: userId },
+      { id: user.id },
       {
         isInDeleteWaiting: true,
         deletingDate: restorationConfig.deletingDate,
         restorationKey: restorationConfig.restorationKey,
       },
     );
+
+    if (user.administratedCompany) {
+      await this.markCompanyForRemove(user.administratedCompany.id, { removeAllAdminRoles: true }, restorationConfig);
+    }
   }
 
   /**
@@ -120,7 +132,7 @@ export class RemovalRequestService {
       queryOptions,
     );
 
-    await this.removalSharedService.checkIfUserHasUncompletedAppointmentsBeforeDelete(targetUserRole.id);
+    await this.checkUserRoleUncompletedAppointments(targetUserRole);
 
     if (ACCOUNT_STATUSES_ALLOWED_TO_IMMEDIATELY_DELETING.includes(targetUserRole.accountStatus)) {
       return this.handleUserRoleImmediateRemoval(targetUserRole);
@@ -129,30 +141,20 @@ export class RemovalRequestService {
     const emailToSendRestorationLink = await this.removalSharedService.resolveEmailRecipient(targetUserRole, user);
 
     if (!emailToSendRestorationLink) {
-      throw new BadRequestException("Fill email, please.");
+      throw new BadRequestException(ERemovalErrorCodes.EMAIL_NOT_FILLED);
     }
 
     if (
       !isInRoles([EUserRoleName.SUPER_ADMIN, ...CORPORATE_SUPER_ADMIN_ROLES, ...CORPORATE_ADMIN_ROLES], user.role) &&
       targetUserRole.userId !== user.id
     ) {
-      throw new ForbiddenException("Forbidden request.");
+      throw new ForbiddenException(ECommonErrorCodes.ACCESS_FORBIDDEN_REQUEST);
     }
 
     await this.accessControlService.authorizeUserRoleForOperation(user, targetUserRole);
 
-    if (ACCOUNT_STATUSES_ALLOWED_TO_IMMEDIATELY_DELETING.includes(targetUserRole.accountStatus)) {
-      if (targetUserRole.user.userRoles.length > 1) {
-        await this.removalService.removeUserRole(targetUserRole.id);
-      } else {
-        await this.removalService.removeUser(targetUserRole.user.id);
-      }
-
-      return;
-    }
-
     const restorationConfig = this.removalSharedService.constructRestorationConfig();
-    await this.markUserRoleForRemove(targetUserRole.id, restorationConfig);
+    await this.markUserRoleForRemove(targetUserRole, restorationConfig);
 
     const isSelfDeleting = targetUserRole.id === user.userRoleId;
     await this.removalNotificationService.sendUserRemovalRequestEmail(
@@ -164,8 +166,18 @@ export class RemovalRequestService {
     );
   }
 
+  private async checkUserRoleUncompletedAppointments(targetUserRole: TRemoveUserRoleRequest): Promise<void> {
+    await this.removalSharedService.checkIfUserHasUncompletedAppointmentsBeforeDelete(targetUserRole.id);
+
+    if (isInRoles(CORPORATE_SUPER_ADMIN_ROLES, targetUserRole.role.name) && targetUserRole.user.administratedCompany) {
+      await this.removalSharedService.checkIfCompanyHasUncompletedAppointmentsBeforeDelete(
+        targetUserRole.user.administratedCompany.id,
+      );
+    }
+  }
+
   private async handleUserRoleImmediateRemoval(targetUserRole: TRemoveUserRoleRequest): Promise<void> {
-    if (targetUserRole.user.administratedCompany && isInRoles(CORPORATE_SUPER_ADMIN_ROLES, targetUserRole.role.name)) {
+    if (isInRoles(CORPORATE_SUPER_ADMIN_ROLES, targetUserRole.role.name) && targetUserRole.user.administratedCompany) {
       await this.removalService.removeCompany(targetUserRole.user.administratedCompany);
     } else {
       if (targetUserRole.user.userRoles.length > 1) {
@@ -176,15 +188,26 @@ export class RemovalRequestService {
     }
   }
 
-  private async markUserRoleForRemove(userRoleId: string, restorationConfig: IRestorationConfig): Promise<void> {
+  private async markUserRoleForRemove(
+    targetUserRole: TRemoveUserRoleRequest,
+    restorationConfig: IRestorationConfig,
+  ): Promise<void> {
     await this.userRoleRepository.update(
-      { id: userRoleId },
+      { id: targetUserRole.id },
       {
         isInDeleteWaiting: true,
         deletingDate: restorationConfig.deletingDate,
         restorationKey: restorationConfig.restorationKey,
       },
     );
+
+    if (isInRoles(CORPORATE_SUPER_ADMIN_ROLES, targetUserRole.role.name) && targetUserRole.user.administratedCompany) {
+      await this.markCompanyForRemove(
+        targetUserRole.user.administratedCompany.id,
+        { removeAllAdminRoles: false },
+        restorationConfig,
+      );
+    }
   }
 
   /**
@@ -199,17 +222,17 @@ export class RemovalRequestService {
     );
 
     if (!company) {
-      throw new NotFoundException("Company not found!");
+      throw new NotFoundException(ERemovalErrorCodes.COMPANY_NOT_FOUND);
     }
 
     if (!company.adminEmail || !company.adminName || !company.superAdmin) {
-      throw new BadRequestException("Fill admin email and name, please! Or user delete request endpoint");
+      throw new BadRequestException(ERemovalErrorCodes.ADMIN_DATA_NOT_FILLED);
     }
 
     await this.removalSharedService.checkIfCompanyHasUncompletedAppointmentsBeforeDelete(company.id);
 
     const restorationConfig = this.removalSharedService.constructRestorationConfig();
-    await this.markCompanyForRemove(company, dto, restorationConfig);
+    await this.markCompanyForRemove(company.id, dto, restorationConfig);
 
     const superAdminRole = await this.helperService.getUserRoleByName<UserRole>(
       company.superAdmin,
@@ -225,12 +248,12 @@ export class RemovalRequestService {
   }
 
   private async markCompanyForRemove(
-    company: Company,
+    companyId: string,
     dto: RemoveCompanyDto,
     restorationConfig: IRestorationConfig,
   ): Promise<void> {
     await this.companyRepository.update(
-      { id: company.id },
+      { id: companyId },
       {
         removeAllAdminRoles: dto.removeAllAdminRoles,
         isInDeleteWaiting: true,
@@ -238,7 +261,7 @@ export class RemovalRequestService {
       },
     );
     await this.companyRepository.update(
-      { operatedByMainCompanyId: company.id },
+      { operatedByMainCompanyId: companyId },
       {
         removeAllAdminRoles: dto.removeAllAdminRoles,
         isInDeleteWaiting: true,

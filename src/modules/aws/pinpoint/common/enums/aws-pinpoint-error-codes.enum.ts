@@ -1,0 +1,7 @@
+export const enum EAwsPinpointErrorCodes {
+  /**
+   * Pinpoint operations
+   */
+  PINPOINT_SEND_PUSH_NOTIFICATION_FAILED = "AWS.PINPOINT.SEND_PUSH_NOTIFICATION_FAILED",
+  PINPOINT_SEND_SMS_FAILED = "AWS.PINPOINT.SEND_SMS_FAILED",
+}

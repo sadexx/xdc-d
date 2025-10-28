@@ -19,7 +19,7 @@ import { findOneOrFail, round2 } from "src/common/utils";
 import { MembershipPaymentsService } from "src/modules/memberships/services";
 import { LokiLogger } from "src/common/logger";
 import { NotificationService } from "src/modules/notifications/services";
-import { EPaymentSystem } from "src/modules/payment-information/common/enums";
+import { EPaymentSystem } from "src/modules/payments-new/common/enums";
 import { OldPayment, OldPaymentItem } from "src/modules/payments/entities";
 import { randomUUID } from "node:crypto";
 import { AwsS3Service } from "src/modules/aws/s3/aws-s3.service";
@@ -28,6 +28,7 @@ import { EmailsService } from "src/modules/emails/services";
 import { PdfBuilderService } from "src/modules/pdf/services";
 import { ConfigService } from "@nestjs/config";
 import { NUMBER_OF_MILLISECONDS_IN_TEN_SECONDS, UNDEFINED_VALUE } from "src/common/constants";
+import { EUserRoleName } from "src/modules/users/common/enums";
 
 @Injectable()
 export class WebhookStripeService {
@@ -476,7 +477,7 @@ export class WebhookStripeService {
       },
       relations: {
         payment: {
-          company: true,
+          company: { superAdmin: { userRoles: { role: true } } },
         },
       },
       select: {
@@ -491,6 +492,12 @@ export class WebhookStripeService {
             superAdminId: true,
             contactEmail: true,
             depositAmount: true,
+            superAdmin: {
+              userRoles: {
+                id: true,
+                role: { name: true },
+              },
+            },
           },
         },
       },
@@ -651,19 +658,27 @@ export class WebhookStripeService {
   }
 
   private sendDepositChargeSuccessNotification(company: Company): void {
-    if (!company.superAdminId) {
+    if (!company.superAdmin) {
       this.lokiLogger.error(`Company ${company.id} does not have superAdminId`);
 
       return;
     }
 
-    this.notificationService
-      .sendDepositChargeSucceededNotification(company.superAdminId, company.platformId, { companyId: company.id })
-      .catch((error: Error) => {
-        this.lokiLogger.error(
-          `Failed to send deposit charge success notification for userRoleId: ${company.superAdminId}`,
-          error.stack,
-        );
-      });
+    const superAdminRole = company.superAdmin.userRoles.find(
+      (userRole) =>
+        userRole.role.name === EUserRoleName.CORPORATE_CLIENTS_SUPER_ADMIN ||
+        userRole.role.name === EUserRoleName.CORPORATE_INTERPRETING_PROVIDERS_SUPER_ADMIN,
+    );
+
+    if (superAdminRole) {
+      this.notificationService
+        .sendDepositChargeSucceededNotification(superAdminRole.id, company.platformId, { companyId: company.id })
+        .catch((error: Error) => {
+          this.lokiLogger.error(
+            `Failed to send deposit charge success notification for userRoleId: ${superAdminRole.id}`,
+            error.stack,
+          );
+        });
+    }
   }
 }

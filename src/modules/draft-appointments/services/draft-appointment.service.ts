@@ -34,6 +34,7 @@ import {
 } from "src/modules/draft-appointments/common/outputs";
 import { CLIENT_ROLES } from "src/common/constants";
 import { LokiLogger } from "src/common/logger";
+import { EDraftAppointmentsErrorCodes } from "src/modules/draft-appointments/common/enums";
 
 @Injectable()
 export class DraftAppointmentService {
@@ -283,7 +284,7 @@ export class DraftAppointmentService {
     const result = await this.draftAppointmentRepository.delete(queryOptions);
 
     if (!result.affected || result.affected === 0) {
-      throw new NotFoundException(`Draft Appointment with Id: ${id} not found.`);
+      throw new NotFoundException(EDraftAppointmentsErrorCodes.APPOINTMENT_NOT_FOUND);
     }
 
     return { message: "Successfully deleted draft appointment" };

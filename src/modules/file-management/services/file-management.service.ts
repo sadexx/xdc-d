@@ -6,6 +6,7 @@ import { ELandingPart } from "src/modules/content-management/common/enums";
 import {
   EContentType,
   EFileExtension,
+  EFileManagementErrorCodes,
   EFileType,
   EFileUploadSizeLimitMB,
   EFolderPath,
@@ -13,6 +14,7 @@ import {
 import { IAllowedParams, IFile, IFolderAdditionalParams } from "src/modules/file-management/common/interfaces";
 import { EUserRoleName } from "src/modules/users/common/enums";
 import { Readable } from "stream";
+import { ECommonErrorCodes } from "src/common/enums";
 
 @Injectable()
 export class FileManagementService {
@@ -20,11 +22,11 @@ export class FileManagementService {
 
   public async uploadTerms(roleName: EUserRoleName, file: IFile): Promise<void> {
     if (!file) {
-      throw new BadRequestException("File must not be empty");
+      throw new BadRequestException(ECommonErrorCodes.FILE_NOT_RECEIVED);
     }
 
     if (isInRoles(TERMS_UPLOAD_EXEMPTION_ROLES, roleName)) {
-      throw new BadRequestException(`Role must not be ${EUserRoleName.SUPER_ADMIN} or ${EUserRoleName.INVITED_GUEST}`);
+      throw new BadRequestException(EFileManagementErrorCodes.VALIDATION_ROLE_NOT_ALLOWED);
     }
 
     const lastSlashIndex = file.key.lastIndexOf("/");
@@ -40,7 +42,7 @@ export class FileManagementService {
 
   public async downloadTerms(roleName: EUserRoleName): Promise<string[]> {
     if (isInRoles(TERMS_UPLOAD_EXEMPTION_ROLES, roleName)) {
-      throw new BadRequestException(`Role must not be ${EUserRoleName.SUPER_ADMIN} or ${EUserRoleName.INVITED_GUEST}`);
+      throw new BadRequestException(EFileManagementErrorCodes.VALIDATION_ROLE_NOT_ALLOWED);
     }
 
     const keyList = await this.awsS3Service.getMediaListObjectKeys(`${EFolderPath.UPLOAD_TERMS}/${roleName}/`);
@@ -58,18 +60,21 @@ export class FileManagementService {
     const { fileSizeLimitMB, possibleContentTypes } = this.getAllowedParams(fileType);
 
     if (contentLength > fileSizeLimitMB * NUMBER_BYTES_IN_MEGABYTE) {
-      throw new BadRequestException(`File largest than limit: ${fileSizeLimitMB} MB!`);
+      throw new BadRequestException({
+        message: EFileManagementErrorCodes.UPLOAD_FILE_SIZE_EXCEEDED,
+        variables: { fileSize: fileSizeLimitMB },
+      });
     }
 
     if (!possibleContentTypes.includes(contentType)) {
-      throw new BadRequestException("Incorrect content type!");
+      throw new BadRequestException(EFileManagementErrorCodes.UPLOAD_INCORRECT_CONTENT_TYPE);
     }
 
     const fileExtension = this.getFileExtension(contentType);
 
     const key = `${folder}/${new Date().getTime()}.${fileExtension}`;
 
-    await this.awsS3Service.uploadObject(key, data, contentType, IS_MEDIA_BUCKET);
+    await this.awsS3Service.uploadObject(key, data, contentType);
 
     return key;
   }
@@ -183,7 +188,7 @@ export class FileManagementService {
     ];
 
     if (fileTypeWhichRoleIsRequired.includes(fileType) && !roleName) {
-      throw new ForbiddenException("Role not specified!");
+      throw new ForbiddenException(EFileManagementErrorCodes.VALIDATION_ROLE_NOT_SPECIFIED);
     }
 
     if (fileType === EFileType.CONTRACT) {
@@ -212,7 +217,7 @@ export class FileManagementService {
 
     if (fileType === EFileType.UPLOAD_TERMS) {
       if (!additionalParams?.role || !additionalParams?.documentType) {
-        throw new BadRequestException("role and documentType must not be empty!");
+        throw new BadRequestException(EFileManagementErrorCodes.VALIDATION_ROLE_AND_DOCUMENT_TYPE_REQUIRED);
       }
 
       folderPath = `${EFolderPath.UPLOAD_TERMS}/${additionalParams.role}/${additionalParams.documentType}`;
@@ -249,7 +254,7 @@ export class FileManagementService {
     }
 
     if (!folderPath) {
-      throw new BadRequestException("Unknown file type!");
+      throw new BadRequestException(EFileManagementErrorCodes.VALIDATION_UNKNOWN_FILE_TYPE);
     }
 
     return folderPath;
@@ -311,7 +316,7 @@ export class FileManagementService {
     }
 
     if (!fileExtension) {
-      throw new BadRequestException("Unknown file type!");
+      throw new BadRequestException(EFileManagementErrorCodes.VALIDATION_UNKNOWN_FILE_TYPE);
     }
 
     return fileExtension;

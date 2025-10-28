@@ -1643,13 +1643,23 @@ export class AppointmentQueryOptionsService {
         platformId: true,
         interpreterId: true,
       },
-      where: {
-        status: EAppointmentStatus.LIVE,
-        schedulingType: EAppointmentSchedulingType.PRE_BOOKED,
-        communicationType: In(AUDIO_VIDEO_COMMUNICATION_TYPES),
-        scheduledStartTime: LessThanOrEqual(lateThreshold),
-        chimeMeetingConfiguration: { isInterpreterWasOnlineInBooking: IsNull() },
-      },
+      where: [
+        {
+          status: EAppointmentStatus.LIVE,
+          schedulingType: EAppointmentSchedulingType.PRE_BOOKED,
+          communicationType: In(AUDIO_VIDEO_COMMUNICATION_TYPES),
+          scheduledStartTime: LessThanOrEqual(lateThreshold),
+          chimeMeetingConfiguration: { isInterpreterWasOnlineInBooking: IsNull() },
+        },
+        {
+          status: EAppointmentStatus.LIVE,
+          schedulingType: EAppointmentSchedulingType.PRE_BOOKED,
+          communicationType: In(AUDIO_VIDEO_COMMUNICATION_TYPES),
+          alternativePlatform: true,
+          scheduledStartTime: LessThanOrEqual(lateThreshold),
+          appointmentExternalSession: { id: IsNull() },
+        },
+      ],
     };
   }
 

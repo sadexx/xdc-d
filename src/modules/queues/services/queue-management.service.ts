@@ -81,6 +81,22 @@ export class QueueManagementService implements OnModuleInit, OnModuleDestroy {
           },
         };
 
+      case EQueueType.PAYMENTS_EXECUTION_QUEUE:
+        return {
+          queueName: EQueueType.PAYMENTS_EXECUTION_QUEUE,
+          queueOptions: {
+            defaultJobOptions: DEFAULT_JOB_OPTIONS,
+          },
+        };
+
+      case EQueueType.PDF_GENERATION_QUEUE:
+        return {
+          queueName: EQueueType.PDF_GENERATION_QUEUE,
+          queueOptions: {
+            defaultJobOptions: DEFAULT_JOB_OPTIONS,
+          },
+        };
+
       case EQueueType.NOTIFICATIONS_QUEUE:
         return {
           queueName: EQueueType.NOTIFICATIONS_QUEUE,
@@ -89,17 +105,17 @@ export class QueueManagementService implements OnModuleInit, OnModuleDestroy {
           },
         };
 
-      case EQueueType.WEBHOOKS_QUEUE:
+      case EQueueType.APPOINTMENTS_QUEUE:
         return {
-          queueName: EQueueType.WEBHOOKS_QUEUE,
+          queueName: EQueueType.APPOINTMENTS_QUEUE,
           queueOptions: {
             defaultJobOptions: DEFAULT_JOB_OPTIONS,
           },
         };
 
-      case EQueueType.APPOINTMENTS_QUEUE:
+      case EQueueType.WEBHOOKS_QUEUE:
         return {
-          queueName: EQueueType.APPOINTMENTS_QUEUE,
+          queueName: EQueueType.WEBHOOKS_QUEUE,
           queueOptions: {
             defaultJobOptions: DEFAULT_JOB_OPTIONS,
           },

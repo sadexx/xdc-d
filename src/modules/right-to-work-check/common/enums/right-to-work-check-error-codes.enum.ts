@@ -1,0 +1,15 @@
+export const enum ERightToWorkCheckErrorCodes {
+  /*
+   * File operations
+   */
+  FILE_UPLOAD_NOT_ALLOWED = "RIGHT_TO_WORK_CHECK.FILE.UPLOAD_NOT_ALLOWED",
+  FILE_NOT_UPLOADED = "RIGHT_TO_WORK_CHECK.FILE.NOT_UPLOADED",
+  /*
+   * Edit operations
+   */
+  REQUEST_NOT_EDITABLE = "RIGHT_TO_WORK_CHECK.EDIT.REQUEST_NOT_EDITABLE",
+  /*
+   * Delete operations
+   */
+  REQUEST_NOT_DELETABLE = "RIGHT_TO_WORK_CHECK.DELETE.REQUEST_NOT_DELETABLE",
+}

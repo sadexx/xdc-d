@@ -20,7 +20,16 @@
                   <img
                     src="https://{{mediaBucket}}.s3.ap-southeast-2.amazonaws.com/email-templates/logo-with-name.png"
                     alt="Labeled Logo"
-                    style="width: 140px"
+                    width="140"
+                    style="
+                      display:block;          
+                      width:140px;            
+                      max-width:100%;          
+                      height:auto;             
+                      border:0; outline:none; text-decoration:none;
+                      -ms-interpolation-mode:bicubic; 
+                    "
+                    class="logo"
                   />
                 </td>
                 <td style="text-align: right">
@@ -40,7 +49,7 @@
                       <td style="padding-bottom: 20px">Dated: {{invoiceDate}}</td>
                     </tr>
                     <tr>
-                      <td style="font-weight: bold">FROM: {{fromCompanyName}}</td>
+                      <td style="font-weight: bold">From: {{fromCompanyName}}</td>
                     </tr>
                     <tr>
                       <td>(Company ID {{fromCompanyId}})</td>
@@ -54,7 +63,7 @@
                       <td>{{fromCompanyAddress}}</td>
                     </tr>
                     <tr>
-                      <td style="padding-top: 20px; font-weight: bold">TO: {{toCompanyName}}</td>
+                      <td style="padding-top: 20px; font-weight: bold">To: {{toCompanyName}}</td>
                     </tr>
                     <tr>
                       <td>ABN {{toCompanyABNNumber}}</td>

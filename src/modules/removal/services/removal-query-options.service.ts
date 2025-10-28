@@ -13,6 +13,7 @@ import {
   ResolveEmailRecipientAdminQuery,
   ResolveEmailRecipientCompanyQuery,
   RestoreByRestorationKeyUserQuery,
+  RestoreByRestorationKeyUserRoleQuery,
   RestoreCompanyEntityQuery,
 } from "src/modules/removal/common/types";
 import { Company } from "src/modules/companies/entities";
@@ -71,8 +72,13 @@ export class RemovalQueryOptionsService {
       user: {
         select: RestoreByRestorationKeyUserQuery.select,
         where: { restorationKey },
+        relations: RestoreByRestorationKeyUserQuery.relations,
       },
-      userRole: { select: RestoreByRestorationKeyUserQuery.select, where: { restorationKey } },
+      userRole: {
+        select: RestoreByRestorationKeyUserRoleQuery.select,
+        where: { restorationKey },
+        relations: RestoreByRestorationKeyUserRoleQuery.relations,
+      },
     };
   }
 

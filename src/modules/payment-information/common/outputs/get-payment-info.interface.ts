@@ -1,4 +1,4 @@
-import { EPaymentSystem } from "src/modules/payment-information/common/enums";
+import { EPaymentSystem } from "src/modules/payments-new/common/enums";
 import { EOnboardingStatus } from "src/modules/stripe/common/enums";
 
 export interface IGetPaymentInfoOutput {

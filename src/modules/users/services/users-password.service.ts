@@ -13,6 +13,7 @@ import { StartPasswordResetDto, VerifyPasswordResetCodeDto } from "src/modules/u
 import { ICurrentClientData } from "src/modules/sessions/common/interfaces";
 import { TSendRequestToChangePassword, TVerifyPasswordResetCode } from "src/modules/users/common/types";
 import { TokensService } from "src/modules/tokens/services";
+import { EUsersErrorCodes } from "src/modules/users/common/enums";
 
 @Injectable()
 export class UsersPasswordService {
@@ -44,7 +45,7 @@ export class UsersPasswordService {
     );
 
     if (!user.password) {
-      throw new BadRequestException("Can't find password. Try to login with third party auth");
+      throw new BadRequestException(EUsersErrorCodes.PASSWORD_NOT_FOUND_TRY_THIRD_PARTY);
     }
 
     if (isPhoneNumber(dto.identification)) {
@@ -58,7 +59,7 @@ export class UsersPasswordService {
 
   private async processPhoneNumberPasswordReset(user: TSendRequestToChangePassword): Promise<void> {
     if (!user.phoneNumber) {
-      throw new NotFoundException("User does not have a phone number associated with their account");
+      throw new NotFoundException(EUsersErrorCodes.USER_NO_PHONE_NUMBER);
     }
 
     await this.usersRegistrationStepsService.sendPhoneNumberVerificationCode(user.phoneNumber, user.id);

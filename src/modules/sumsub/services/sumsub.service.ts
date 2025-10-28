@@ -9,6 +9,7 @@ import {
   EExtSumSubReviewAnswer,
   EExtSumSubReviewStatus,
   EExtSumSubWebhookType,
+  ESumSubErrorCodes,
 } from "src/modules/sumsub/common/enums";
 import { ActivationTrackingService } from "src/modules/activation-tracking/services";
 import { randomUUID } from "node:crypto";
@@ -88,7 +89,7 @@ export class SumSubService {
     const userRole = await this.userRoleRepository.findOneOrFail(queryOptions);
 
     if (userRole.isActive) {
-      throw new BadRequestException("User role or profile status does not permit this operation.");
+      throw new BadRequestException(ESumSubErrorCodes.OPERATION_NOT_PERMITTED);
     }
 
     const sumSubCheck = this.sumSubCheckRepository.create({

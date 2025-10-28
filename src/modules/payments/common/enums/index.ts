@@ -8,3 +8,4 @@ export * from "src/modules/payments/common/enums/old-payment-failed-reason.enum"
 export * from "src/modules/payments/common/enums/old-customer-type.enum";
 export * from "src/modules/payments/common/enums/old-receipt-type.enum";
 export * from "src/modules/payments/common/enums/old-payment-method.enum";
+export * from "src/modules/payments/common/enums/old-payments-error-codes.enum";

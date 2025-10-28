@@ -1,9 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { IeltsSdkService } from "src/modules/ielts/services";
 import { InjectRepository } from "@nestjs/typeorm";
 import { IeltsCheck } from "src/modules/ielts/entities";
 import { FindOptionsWhere, Repository } from "typeorm";
-import { EIeltsMessage, EIeltsStatus } from "src/modules/ielts/common/enums";
+import { EIeltsErrorCodes, EIeltsMessage, EIeltsStatus } from "src/modules/ielts/common/enums";
 import { IResultVerification } from "src/modules/ielts/common/interfaces";
 import { ActivationTrackingService } from "src/modules/activation-tracking/services";
 import { UserRole } from "src/modules/users/entities";
@@ -23,7 +23,7 @@ import { IeltsVerificationDto } from "src/modules/ielts/common/dto";
 import { OptionalUUIDParamDto } from "src/common/dto";
 import { ITokenUserData } from "src/modules/tokens/common/interfaces";
 import { InterpreterBadgeService } from "src/modules/interpreters/badge/services";
-import { findOneOrFail } from "src/common/utils";
+import { findOneOrFail, findOneOrFailTyped } from "src/common/utils";
 import { EmailsService } from "src/modules/emails/services";
 import { LokiLogger } from "src/common/logger";
 import { IIeltsVerificationOutput } from "src/modules/ielts/common/outputs";
@@ -56,20 +56,16 @@ export class IeltsService {
     const isAdminOperation = this.accessControlService.checkAdminRoleForOperation(dto, user);
     const whereCondition = isAdminOperation ? { id: dto.userRoleId } : { id: user.userRoleId };
 
-    const userRole = await this.userRoleRepository.findOne({
+    const userRole = await findOneOrFailTyped<UserRole>(dto.userRoleId ?? user.userRoleId, this.userRoleRepository, {
       where: whereCondition,
       relations: { profile: true, languageDocChecks: true, ieltsCheck: true, role: true, user: true },
     });
-
-    if (!userRole) {
-      throw new NotFoundException("User not found.");
-    }
 
     await this.validateIeltsRequest(userRole, dto);
     await this.accessControlService.authorizeUserRoleForOperation(user, userRole);
 
     if (!userRole.profile.nativeLanguage) {
-      throw new BadRequestException("Please, set up your native language.");
+      throw new BadRequestException(EIeltsErrorCodes.VERIFICATION_NATIVE_LANGUAGE_NOT_SET);
     }
 
     let ieltsCheck: IeltsCheck;
@@ -94,7 +90,7 @@ export class IeltsService {
         finalStatus = EIeltsStatus.FAIL;
         finalMessage = EIeltsMessage.RESULTS_NOT_FOUND;
 
-        throw new BadRequestException("Incorrect number of certificate.");
+        throw new BadRequestException(EIeltsErrorCodes.VERIFICATION_INCORRECT_CERTIFICATE_NUMBER);
       }
 
       if (
@@ -104,7 +100,7 @@ export class IeltsService {
         finalStatus = EIeltsStatus.FAIL;
         finalMessage = EIeltsMessage.NAME_DOES_NOT_MATCH;
 
-        throw new BadRequestException("FirstName or lastName does not match.");
+        throw new BadRequestException(EIeltsErrorCodes.VERIFICATION_NAME_MISMATCH);
       }
 
       const minOverallScore = Number(this.configService.getOrThrow<string>("ielts.minOverallScore"));
@@ -113,7 +109,7 @@ export class IeltsService {
         finalStatus = EIeltsStatus.FAIL;
         finalMessage = EIeltsMessage.SCORE_NOT_ENOUGH;
 
-        throw new BadRequestException("Certificate score is not enough.");
+        throw new BadRequestException(EIeltsErrorCodes.VERIFICATION_INSUFFICIENT_SCORE);
       }
 
       await this.ieltsCheckRepository.update({ id: newIeltsCheck.id }, { status: EIeltsStatus.SUCCESS });
@@ -233,7 +229,7 @@ export class IeltsService {
 
   private async validateIeltsRequest(userRole: UserRole, dto: IeltsVerificationDto): Promise<void> {
     if (userRole.isActive) {
-      throw new BadRequestException("User role or profile status does not permit this operation.");
+      throw new BadRequestException(EIeltsErrorCodes.VERIFICATION_INVALID_USER_STATUS);
     }
 
     if (
@@ -242,11 +238,11 @@ export class IeltsService {
         (docCheck) => docCheck.status !== ELanguageDocCheckRequestStatus.DOCUMENT_VERIFICATION_FAILS,
       )
     ) {
-      throw new BadRequestException("This user already have other language doc check.");
+      throw new BadRequestException(EIeltsErrorCodes.VERIFICATION_OTHER_LANGUAGE_CHECK_EXISTS);
     }
 
     if (userRole.ieltsCheck && userRole.ieltsCheck.status !== EIeltsStatus.FAIL) {
-      throw new BadRequestException("IELTS verification for this user already exists.");
+      throw new BadRequestException(EIeltsErrorCodes.VERIFICATION_EXISTS_FOR_USER);
     }
 
     const existingCertificateIeltsCheck = await this.ieltsCheckRepository.findOne({
@@ -254,7 +250,7 @@ export class IeltsService {
     });
 
     if (existingCertificateIeltsCheck && existingCertificateIeltsCheck.status !== EIeltsStatus.FAIL) {
-      throw new BadRequestException("IELTS verification for this certificate already exists.");
+      throw new BadRequestException(EIeltsErrorCodes.VERIFICATION_EXISTS_FOR_CERTIFICATE);
     }
   }
 }

@@ -4,11 +4,16 @@ import { Action, ChannelType, MessageRequest } from "@aws-sdk/client-pinpoint";
 import { Repository } from "typeorm";
 import { Notification } from "src/modules/notifications/entities";
 import { AwsPinpointService } from "src/modules/aws/pinpoint/services";
-import { ENVIRONMENT, NUMBER_OF_SECONDS_IN_MINUTE } from "src/common/constants";
-import { EEnvironment } from "src/common/enums";
+import {
+  IS_LOCAL,
+  NUMBER_OF_MINUTES_IN_TWO_HOURS,
+  NUMBER_OF_SECONDS_IN_HALF_MINUTE,
+  NUMBER_OF_SECONDS_IN_MINUTE,
+} from "src/common/constants";
 import {
   ENotificationDataType,
   ENotificationPlatformType,
+  ENotificationsErrorCodes,
   ENotificationType,
   ENotificationUserTarget,
 } from "src/modules/notifications/common/enum";
@@ -48,7 +53,7 @@ export class NotificationDeliveryService {
     await this.saveNotification(userRoleId, title, message, notificationData);
 
     if (pushNotifications.length > 0) {
-      if (ENVIRONMENT === EEnvironment.LOCAL) {
+      if (IS_LOCAL) {
         this.lokiLogger.log(`Push Notifications: ${JSON.stringify(pushNotifications)}`);
       } else {
         await this.sendPushNotifications(pushNotifications);
@@ -222,7 +227,7 @@ export class NotificationDeliveryService {
     const { userDevices, title, message, notificationData } = dto;
 
     if (!notificationData.data) {
-      throw new BadRequestException("InvitationLink is required for phone call notification");
+      throw new BadRequestException(ENotificationsErrorCodes.DELIVERY_INVITATION_LINK_REQUIRED);
     }
 
     const constructedAdditionalInfo = await this.constructAdditionalInfo(notificationData.data);
@@ -458,6 +463,7 @@ export class NotificationDeliveryService {
           Body: message,
           Title: title,
           Data: notificationInfo,
+          TimeToLive: NUMBER_OF_MINUTES_IN_TWO_HOURS * NUMBER_OF_SECONDS_IN_MINUTE,
         },
       },
     };
@@ -488,6 +494,7 @@ export class NotificationDeliveryService {
           Sound: "default",
           Priority: "10",
           Data: notificationInfo,
+          TimeToLive: NUMBER_OF_SECONDS_IN_HALF_MINUTE,
         },
       },
     };
@@ -512,6 +519,7 @@ export class NotificationDeliveryService {
           SilentPush: true,
           Data: notificationInfo,
           Priority: "5",
+          TimeToLive: NUMBER_OF_SECONDS_IN_HALF_MINUTE,
         },
       },
     };
@@ -539,6 +547,7 @@ export class NotificationDeliveryService {
           Body: message,
           Title: title,
           Data: notificationInfo,
+          TimeToLive: NUMBER_OF_MINUTES_IN_TWO_HOURS * NUMBER_OF_SECONDS_IN_MINUTE,
         },
       },
     };
@@ -567,7 +576,7 @@ export class NotificationDeliveryService {
           Title: title,
           SilentPush: true,
           Data: notificationInfo,
-          TimeToLive: NUMBER_OF_SECONDS_IN_MINUTE,
+          TimeToLive: NUMBER_OF_SECONDS_IN_HALF_MINUTE,
         },
       },
     };

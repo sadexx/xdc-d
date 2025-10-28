@@ -53,6 +53,6 @@ export class RemovalController {
   @UseGuards(JwtRestorationGuard)
   @Post("restore/company")
   public async restoreCompany(@CurrentUser() user: ITokenUserData): Promise<void> {
-    return await this.removalRestorationService.restoreCompanyEntity(user);
+    return await this.removalRestorationService.restoreCompany(user);
   }
 }

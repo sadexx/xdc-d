@@ -23,6 +23,7 @@ import { findOneOrFail, findOneOrFailQueryBuilder } from "src/common/utils";
 import { ESortOrder } from "src/common/enums";
 import { LokiLogger } from "src/common/logger";
 import { RedisService } from "src/modules/redis/services";
+import { ESearchEngineLogicErrorCodes } from "src/modules/search-engine-logic/common/enum";
 
 @Injectable()
 export class SearchEngineLogicService {
@@ -78,7 +79,7 @@ export class SearchEngineLogicService {
       appointmentOrder.isCompanyHasInterpreters === null
     ) {
       this.lokiLogger.error(`Failed to start search. Order with Id: ${id} has null flags.`);
-      throw new BadRequestException(`Failed to start search. Flags are not set.`);
+      throw new BadRequestException(ESearchEngineLogicErrorCodes.FLAGS_NOT_SET);
     }
 
     const query = this.searchEngineStepService.initializeQuery();
@@ -152,7 +153,7 @@ export class SearchEngineLogicService {
       this.lokiLogger.error(
         `Failed to start search. Appointment orders not found in the AppointmentOrderGroup with Id: ${id}`,
       );
-      throw new BadRequestException("Failed to start search. Appointment orders not found.");
+      throw new BadRequestException(ESearchEngineLogicErrorCodes.ORDERS_NOT_FOUND_IN_GROUP);
     }
 
     const [firstClosestOrder] = appointmentOrderGroup.appointmentOrders;

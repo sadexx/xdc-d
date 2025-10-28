@@ -15,6 +15,7 @@ import { INTERPRETER_ROLES } from "src/common/constants";
 import { EUserRoleName } from "src/modules/users/common/enums";
 import { LokiLogger } from "src/common/logger";
 import { AppointmentQueryService } from "src/modules/appointments/appointment/services";
+import { EAppointmentOrderWorkflowErrorCodes } from "src/modules/appointment-orders/workflow/common/enums";
 
 @Injectable()
 export class AppointmentOrderCreateService {
@@ -210,7 +211,7 @@ export class AppointmentOrderCreateService {
       );
 
     if (!nextRepeatTime) {
-      throw new BadRequestException("Unable to calculate next repeat time for appointment order group");
+      throw new BadRequestException(EAppointmentOrderWorkflowErrorCodes.UNABLE_TO_CALCULATE_NEXT_REPEAT_TIME);
     }
 
     await this.appointmentOrderGroupRepository.update(id, {

@@ -6,12 +6,13 @@ import { AdminController } from "src/modules/admin/controllers";
 import { UserRole } from "src/modules/users/entities";
 import { AccountActivationModule } from "src/modules/account-activation/account-activation.module";
 import { InterpreterProfile } from "src/modules/interpreters/profile/entities";
-import { OldPayment } from "src/modules/payments/entities";
+import { OldPayment, OldPaymentItem } from "src/modules/payments/entities";
 import { AccessControlModule } from "src/modules/access-control/access-control.module";
+import { Appointment } from "src/modules/appointments/appointment/entities";
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, UserRole, InterpreterProfile, OldPayment]),
+    TypeOrmModule.forFeature([User, UserRole, InterpreterProfile, OldPayment, OldPaymentItem, Appointment]),
     AccountActivationModule,
     AccessControlModule,
   ],

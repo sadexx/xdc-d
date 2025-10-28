@@ -24,9 +24,12 @@ import {
   TAcceptAppointmentOrder,
   TAcceptAppointmentOrderGroup,
 } from "src/modules/appointment-orders/appointment-order/common/types";
+import { EAppointmentOrderErrorCodes } from "src/modules/appointment-orders/appointment-order/common/enum";
+import { LokiLogger } from "src/common/logger";
 
 @Injectable()
 export class AppointmentOrderCommandService {
+  private readonly lokiLogger = new LokiLogger(AppointmentOrderCommandService.name);
   constructor(
     @InjectRepository(AppointmentOrder)
     private readonly appointmentOrderRepository: Repository<AppointmentOrder>,
@@ -58,11 +61,12 @@ export class AppointmentOrderCommandService {
     )) as TAcceptAppointmentOrder;
 
     if (!appointmentOrder.appointment.clientId) {
-      throw new NotFoundException(`Client not found in Appointment Order with Id: ${id}.`);
+      this.lokiLogger.error(`Client not found for Appointment Order with Id: ${id}.`);
+      throw new NotFoundException(EAppointmentOrderErrorCodes.CLIENT_NOT_FOUND_FOR_ORDER);
     }
 
     if (appointmentOrder.appointmentOrderGroup && appointmentOrder.appointmentOrderGroup.sameInterpreter) {
-      throw new BadRequestException("Cannot accept a single order. The entire appointment group must be accepted.");
+      throw new BadRequestException(EAppointmentOrderErrorCodes.CANNOT_ACCEPT_SINGLE_ORDER);
     }
 
     await this.checkConflictingAppointmentsBeforeAccept(user, [appointmentOrder.appointment], dto?.ignoreConflicts);
@@ -97,7 +101,8 @@ export class AppointmentOrderCommandService {
     )) as TAcceptAppointmentOrder;
 
     if (!appointmentOrder.appointment.clientId) {
-      throw new NotFoundException(`Client not found in Appointment Order with Id: ${id}.`);
+      this.lokiLogger.error(`Client not found for Appointment Order with Id: ${id}.`);
+      throw new NotFoundException(EAppointmentOrderErrorCodes.CLIENT_NOT_FOUND_FOR_ORDER);
     }
 
     await this.appointmentOrderSharedLogicService.removeAppointmentOrderBatch(appointmentOrder);
@@ -132,11 +137,13 @@ export class AppointmentOrderCommandService {
     )) as TAcceptAppointmentOrderGroup;
 
     if (appointmentOrderGroup.appointmentOrders.length === 0) {
-      throw new NotFoundException(`No appointment orders found in Appointment Order Group with Id: ${id}.`);
+      this.lokiLogger.error(`No appointment orders found in Appointment Order Group with Id: ${id}.`);
+      throw new NotFoundException(EAppointmentOrderErrorCodes.NO_ORDERS_FOUND_IN_GROUP);
     }
 
     if (!appointmentOrderGroup.appointmentOrders[0].appointment.clientId) {
-      throw new NotFoundException(`Client not found in Appointment Order with Id: ${id}.`);
+      this.lokiLogger.error(`Client not found for Appointment Order with Id: ${id}.`);
+      throw new NotFoundException(EAppointmentOrderErrorCodes.CLIENT_NOT_FOUND_FOR_ORDER);
     }
 
     const appointments = appointmentOrderGroup.appointmentOrders.map((order) => order.appointment);
@@ -265,7 +272,7 @@ export class AppointmentOrderCommandService {
     const appointmentOrder = await findOneOrFail(id, this.appointmentOrderRepository, queryOptions);
 
     if (appointmentOrder.schedulingType === EAppointmentSchedulingType.ON_DEMAND) {
-      throw new BadRequestException("The appointment on-demand scheduling type is not repeatable.");
+      throw new BadRequestException(EAppointmentOrderErrorCodes.ON_DEMAND_NOT_REPEATABLE);
     }
 
     if (dto.interpreterRoleId) {
@@ -331,7 +338,7 @@ export class AppointmentOrderCommandService {
 
   private async checkIfInterpreterExistsInOrder(matchedInterpreterIds: string[], interpreterId: string): Promise<void> {
     if (!matchedInterpreterIds.includes(interpreterId)) {
-      throw new BadRequestException("Interpreter not added. Please add interpreter first.");
+      throw new BadRequestException(EAppointmentOrderErrorCodes.INTERPRETER_NOT_IN_ORDER);
     }
 
     return;
@@ -354,7 +361,7 @@ export class AppointmentOrderCommandService {
 
     if (!ignoreConflicts) {
       throw new BadRequestException({
-        message: "The time you have selected is already reserved.",
+        message: EAppointmentOrderErrorCodes.TIME_ALREADY_RESERVED,
         conflictingAppointments: conflictingAppointments,
       });
     }

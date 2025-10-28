@@ -2,8 +2,9 @@ import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from
 import { Request, Response } from "express";
 import { PrometheusService } from "src/modules/prometheus/services";
 import { QueryFailedError } from "typeorm";
-import { IErrorResponse } from "src/common/interfaces";
+import { IErrorMessageVariables, IErrorResponse } from "src/common/interfaces";
 import { LokiLogger } from "src/common/logger";
+import { ECommonErrorCodes } from "src/common/enums";
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
@@ -15,18 +16,15 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const request = ctx.getRequest<Request>();
     const response = ctx.getResponse<Response>();
     let status: HttpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
-    let defaultMessage: string = "Unexpected error occurred";
+    const defaultMessage: string = ECommonErrorCodes.UNEXPECTED_ERROR;
     let exceptionResponse: unknown;
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
       exceptionResponse = exception.getResponse();
-    }
-
-    if (exception instanceof QueryFailedError) {
+    } else if (exception instanceof QueryFailedError) {
       status = HttpStatus.INTERNAL_SERVER_ERROR;
       this.lokiLogger.error(`Database error: ${exception.message}`, exception.stack);
-      defaultMessage = "Database Error";
     }
 
     const responseErrorBody = this.buildErrorResponse(status, request.url, defaultMessage, exceptionResponse);
@@ -86,6 +84,10 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
       if (typeof responseObj.isPromoAssigned === "boolean") {
         baseResponse.isPromoAssigned = responseObj.isPromoAssigned;
+      }
+
+      if (typeof responseObj.variables === "object") {
+        baseResponse.variables = responseObj.variables as IErrorMessageVariables;
       }
     } else if (typeof exceptionResponse === "string") {
       baseResponse.message = exceptionResponse;

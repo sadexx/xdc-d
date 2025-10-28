@@ -7,10 +7,11 @@ import {
 } from "src/common/constants";
 import { LokiLogger } from "src/common/logger";
 import { IIeltsApiData, IResultVerification, ITokenResponse } from "src/modules/ielts/common/interfaces";
+import { EIeltsErrorCodes } from "src/modules/ielts/common/enums";
 
 @Injectable()
 export class IeltsSdkService {
-  private readonly logger = new LokiLogger(IeltsSdkService.name);
+  private readonly lokiLogger = new LokiLogger(IeltsSdkService.name);
   private baseUrl: string;
   private tokenType: string;
   private accessToken: string;
@@ -42,13 +43,12 @@ export class IeltsSdkService {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         responseMessage = await response.json();
       } catch (error) {
-        this.logger.error(`Error in makeRequest: ${(error as Error).message}, ${(error as Error).stack}`);
+        this.lokiLogger.error(`Error in makeRequest: ${(error as Error).message}, ${(error as Error).stack}`);
         responseMessage = await response.text();
       }
 
-      throw new ServiceUnavailableException(
-        `HTTP error! Status: ${response.status}, error: ${JSON.stringify(responseMessage)}`,
-      );
+      this.lokiLogger.error(`HTTP error! Status: ${response.status}, error: ${responseMessage}`);
+      throw new ServiceUnavailableException(EIeltsErrorCodes.SDK_HTTP_ERROR);
     }
 
     return response;
@@ -90,7 +90,8 @@ export class IeltsSdkService {
       this.accessToken = token.access_token;
       this.tokenExpires = Date.now() + Number(token.expires_in) * NUMBER_OF_MILLISECONDS_IN_SECOND;
     } catch (error) {
-      throw new ServiceUnavailableException(`IELTS auth error! Error: ${(error as Error).message}`);
+      this.lokiLogger.error(`IELTS auth error! Error: ${(error as Error).message}`);
+      throw new ServiceUnavailableException(EIeltsErrorCodes.SDK_AUTH_ERROR);
     }
   }
 

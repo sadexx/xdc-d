@@ -43,6 +43,7 @@ export const DataTransferFromExistingRolesToNewRoleQuery = {
       userId: true,
       isActive: true,
       country: true,
+      timezone: true,
       role: { name: true },
       profile: {
         title: true,

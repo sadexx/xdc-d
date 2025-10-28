@@ -37,7 +37,7 @@ import { findOneOrFailTyped, findOneTyped } from "src/common/utils";
 import { HelperService } from "src/modules/helper/services";
 import { SessionsService } from "src/modules/sessions/services";
 import { ICurrentClientData } from "src/modules/sessions/common/interfaces";
-import { ERegistrationStep } from "src/modules/auth/common/enums";
+import { EAuthErrorCodes, ERegistrationStep } from "src/modules/auth/common/enums";
 import {
   TFinishRegistration,
   TFinishRegistrationUserRole,
@@ -105,14 +105,14 @@ export class AuthRegistrationService {
     const allowedSuperAdminEmails = this.configService.getOrThrow<string[]>("superAdminAllowedEmails");
 
     if (!allowedSuperAdminEmails.includes(dto.email)) {
-      throw new ForbiddenException("Email is not authorized for super admin registration.");
+      throw new ForbiddenException(EAuthErrorCodes.REGISTRATION_EMAIL_NOT_AUTHORIZED);
     }
 
     const queryOptions = this.authQueryOptionsService.startSuperAdminRegistrationOptions(dto.email);
     const existingUser = await findOneTyped<TStartSuperAdminRegistration>(this.userRepository, queryOptions);
 
     if (existingUser) {
-      throw new ForbiddenException("This email is already registered. Log in to your account.");
+      throw new ForbiddenException(EAuthErrorCodes.REGISTRATION_EMAIL_ALREADY_EXISTS);
     }
 
     const newUser = await this.usersRegistrationService.registerUser(dto.email, EUserRoleName.SUPER_ADMIN);
@@ -218,7 +218,7 @@ export class AuthRegistrationService {
     currentClient: ICurrentClientData,
   ): Promise<RegistrationTokenOutput> {
     if (currentUser.isInvitation) {
-      throw new BadRequestException("Proceed to phone verification, as your email is already verified.");
+      throw new BadRequestException(EAuthErrorCodes.REGISTRATION_EMAIL_ALREADY_VERIFIED);
     }
 
     const user = await this.usersRegistrationStepsService.verifyEmail(
@@ -240,7 +240,7 @@ export class AuthRegistrationService {
 
   public async createPassword(dto: CreatePasswordDto, currentUser: ICurrentUserData): Promise<IMessageOutput> {
     if (currentUser.isOauth) {
-      throw new BadRequestException("Password creation is not allowed for OAuth users.");
+      throw new BadRequestException(EAuthErrorCodes.REGISTRATION_PASSWORD_NOT_ALLOWED_OAUTH);
     }
 
     if (currentUser.isInvitation) {
@@ -338,25 +338,25 @@ export class AuthRegistrationService {
     isOauth?: boolean,
   ): void {
     if (userRole.isRegistrationFinished) {
-      throw new ForbiddenException("Registration is already finished.");
+      throw new ForbiddenException(EAuthErrorCodes.REGISTRATION_ALREADY_FINISHED);
     }
 
     if (!isOauth) {
       if (!user.isEmailVerified) {
-        throw new ForbiddenException("Verify your email address.");
+        throw new ForbiddenException(EAuthErrorCodes.REGISTRATION_EMAIL_NOT_VERIFIED);
       }
 
       if (!user.password) {
-        throw new ForbiddenException("Set up a password.");
+        throw new ForbiddenException(EAuthErrorCodes.REGISTRATION_PASSWORD_NOT_SET);
       }
     }
 
     if (!user.phoneNumber) {
-      throw new ForbiddenException("Verify your phone number.");
+      throw new ForbiddenException(EAuthErrorCodes.REGISTRATION_PHONE_NOT_VERIFIED);
     }
 
     if (!userRole.isUserAgreedToTermsAndConditions) {
-      throw new ForbiddenException("Please agree to the terms and conditions.");
+      throw new ForbiddenException(EAuthErrorCodes.REGISTRATION_TERMS_NOT_AGREED);
     }
   }
 
@@ -377,7 +377,7 @@ export class AuthRegistrationService {
       const expirationDate = addDays(userRole.invitationLinkCreationDate, NUMBER_OF_DAYS_IN_WEEK);
 
       if (!userRole || isBefore(expirationDate, currentTime)) {
-        throw new BadRequestException("Registration link has expired.");
+        throw new BadRequestException(EAuthErrorCodes.REGISTRATION_LINK_EXPIRED);
       }
     }
   }

@@ -9,12 +9,15 @@ import {
   TimeAnalysis,
   TimeBoundaryResult,
 } from "src/modules/rates/common/interfaces";
-import { ECalculationType, ETimeCalculationMode } from "src/modules/rates/common/enums";
+import { ECalculationType, ERatesErrorCodes, ETimeCalculationMode } from "src/modules/rates/common/enums";
 import { applyRateTimeToDate, determineTimeCalculationMode } from "src/modules/rates/common/utils";
 import { TRateCollection, TimeString } from "src/modules/rates/common/types";
+import { LokiLogger } from "src/common/logger";
 
 @Injectable()
 export class TimeBoundaryAnalyzerService {
+  private readonly lokiLogger = new LokiLogger(TimeBoundaryAnalyzerService.name);
+
   public analyzeTimeScenario(config: CalculationConfig, rates: TRateCollection): TimeBoundaryResult {
     const { normalHoursStart, normalHoursEnd } = this.extractAndValidateNormalHours(rates);
 
@@ -169,9 +172,10 @@ export class TimeBoundaryAnalyzerService {
       return this.createCombinedScenario(interpreterAutoMode, interpreterAutoMode, false);
     }
 
-    throw new InternalServerErrorException(
-      `Unhandled dual timezone scenario: acceptedOvertime=${config.acceptedOvertime}, interpreterMode=${interpreterAutoMode}`,
+    this.lokiLogger.error(
+      `Unhandled dual timezone scenario: acceptedOvertime=${config.acceptedOvertime}, interpreterMode=${interpreterAutoMode}.`,
     );
+    throw new InternalServerErrorException(ERatesErrorCodes.UNHANDLED_DUAL_TIMEZONE_SCENARIO);
   }
 
   private createCombinedScenario(

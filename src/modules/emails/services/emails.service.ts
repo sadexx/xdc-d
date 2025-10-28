@@ -3,11 +3,11 @@ import { ConfigService } from "@nestjs/config";
 import { EUserRoleName } from "src/modules/users/common/enums";
 import {
   IDepositChargeReceipt,
-  IPayInReceipt,
   IPayOutReceipt,
   ITaxInvoiceCorporateReceipt,
   ITaxInvoiceReceipt,
 } from "src/modules/pdf/common/interfaces";
+import { IPayInReceipt } from "src/modules/pdf-new/common/interfaces";
 import { EMembershipType } from "src/modules/memberships/common/enums";
 import { format } from "date-fns";
 import { OldECurrencies } from "src/modules/payments/common/enums";

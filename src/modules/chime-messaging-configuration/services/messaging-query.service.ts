@@ -10,7 +10,11 @@ import {
   GetChannelMessagesDto,
   GetUserChannelsDto,
 } from "src/modules/chime-messaging-configuration/common/dto";
-import { EChannelStatus, EChannelType } from "src/modules/chime-messaging-configuration/common/enums";
+import {
+  EChannelStatus,
+  EChannelType,
+  EChimeMessagingConfigurationErrorCodes,
+} from "src/modules/chime-messaging-configuration/common/enums";
 import {
   GetAdminChannelsOutput,
   GetChannelMessagesOutput,
@@ -176,7 +180,7 @@ export class MessagingQueryService {
       return appointment;
     }
 
-    throw new NotFoundException("No appointment information found for the channel.");
+    throw new NotFoundException(EChimeMessagingConfigurationErrorCodes.MESSAGING_QUERY_NO_APPOINTMENT_INFO);
   }
 
   public async getExistingChannelForUser(

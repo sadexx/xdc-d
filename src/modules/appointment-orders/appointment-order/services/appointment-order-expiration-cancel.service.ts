@@ -20,6 +20,7 @@ import { AUDIO_VIDEO_COMMUNICATION_TYPES } from "src/modules/appointments/shared
 import { LokiLogger } from "src/common/logger";
 import { OldGeneralPaymentsService } from "src/modules/payments/services";
 import { AppointmentSharedService } from "src/modules/appointments/shared/services";
+import { EAppointmentOrderErrorCodes } from "src/modules/appointment-orders/appointment-order/common/enum";
 
 export class AppointmentOrderExpirationCancelService {
   private readonly lokiLogger = new LokiLogger(AppointmentOrderExpirationCancelService.name);
@@ -47,7 +48,8 @@ export class AppointmentOrderExpirationCancelService {
     const client = appointment.client;
 
     if (!client) {
-      throw new NotFoundException(`Client not found for appointment with id: ${appointmentId}.`);
+      this.lokiLogger.error(`Client not found for Appointment with Id ${appointmentId}.`);
+      throw new NotFoundException(EAppointmentOrderErrorCodes.CLIENT_NOT_FOUND_FOR_APPOINTMENT);
     }
 
     appointment.appointmentOrder = appointmentOrder;
@@ -92,7 +94,8 @@ export class AppointmentOrderExpirationCancelService {
     const client = firstAppointment.client;
 
     if (!client) {
-      throw new NotFoundException(`Client not found for appointment with id: ${firstAppointment.id}.`);
+      this.lokiLogger.error(`Client not found for Appointment with Id ${firstAppointment.id}.`);
+      throw new NotFoundException(EAppointmentOrderErrorCodes.CLIENT_NOT_FOUND_FOR_APPOINTMENT);
     }
 
     const { appointmentsReminders, appointmentsChimeMeetings, appointmentOrders, appointmentsIds } =
@@ -207,9 +210,10 @@ export class AppointmentOrderExpirationCancelService {
       return;
     }
 
-    throw new NotFoundException(
-      `Failed to cancel appointment. ${entityName} is missing for appointment with Id: ${appointmentId}.`,
+    this.lokiLogger.error(
+      `Failed to cancel Appointment. ${entityName} is missing for Appointment with Id: ${appointmentId}.`,
     );
+    throw new NotFoundException(EAppointmentOrderErrorCodes.ENTITY_MISSING_FOR_APPOINTMENT);
   }
 
   private async deleteEntitiesBatch<T extends ObjectLiteral>(
@@ -219,7 +223,7 @@ export class AppointmentOrderExpirationCancelService {
     const entitiesArray = Array.isArray(entities) ? entities : [entities];
 
     if (entitiesArray.length === 0) {
-      throw new NotFoundException(`Entities not found for deletion.`);
+      throw new NotFoundException(EAppointmentOrderErrorCodes.ENTITIES_NOT_FOUND_FOR_DELETION);
     }
 
     await repository.remove(entitiesArray);

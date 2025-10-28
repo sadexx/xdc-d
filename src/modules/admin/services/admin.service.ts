@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { In, Repository } from "typeorm";
 import { User } from "src/modules/users/entities";
 import { UserRole } from "src/modules/users/entities";
 import {
@@ -9,6 +9,7 @@ import {
   GetUserPaymentsDto,
   GetUsersDto,
   GetUserStepsDto,
+  UpdatePaymentStatusDto,
 } from "src/modules/admin/common/dto";
 import { AccountActivationService } from "src/modules/account-activation/services";
 import { InterpreterProfile } from "src/modules/interpreters/profile/entities";
@@ -21,13 +22,15 @@ import {
 } from "src/modules/admin/common/output";
 import { ITokenUserData } from "src/modules/tokens/common/interfaces";
 import { DUE_PAYMENT_STATUSES } from "src/common/constants";
-import { OldPayment } from "src/modules/payments/entities";
-import { round2 } from "src/common/utils";
+import { OldPayment, OldPaymentItem } from "src/modules/payments/entities";
+import { findOneOrFailTyped, round2 } from "src/common/utils";
 import { format } from "date-fns";
 import { IGetUserPayment } from "src/modules/admin/common/interfaces";
-import { OldEReceiptType } from "src/modules/payments/common/enums";
+import { OldEPaymentStatus, OldEReceiptType } from "src/modules/payments/common/enums";
 import { IAccountRequiredStepsDataOutput } from "src/modules/account-activation/common/outputs";
 import { AccessControlService } from "src/modules/access-control/services";
+import { Appointment } from "src/modules/appointments/appointment/entities";
+import { EAdminErrorCodes } from "src/modules/admin/common/enums";
 
 @Injectable()
 export class AdminService {
@@ -40,6 +43,10 @@ export class AdminService {
     private readonly interpreterProfileRepository: Repository<InterpreterProfile>,
     @InjectRepository(OldPayment)
     private readonly paymentRepository: Repository<OldPayment>,
+    @InjectRepository(OldPaymentItem)
+    private readonly paymentItemRepository: Repository<OldPaymentItem>,
+    @InjectRepository(Appointment)
+    private readonly appointmentRepository: Repository<Appointment>,
     private readonly adminQueryOptionsService: AdminQueryOptionsService,
     private readonly accountActivationService: AccountActivationService,
     private readonly accessControlService: AccessControlService,
@@ -56,22 +63,14 @@ export class AdminService {
 
   public async getUserDocuments(dto: GetUserDocumentsDto): Promise<GetUserDocumentsOutput> {
     const queryOptions = this.adminQueryOptionsService.getUserDocumentsOptions(dto);
-    const userDocs = await this.userRoleRepository.findOne(queryOptions);
-
-    if (!userDocs) {
-      throw new NotFoundException("User not found!");
-    }
+    const userDocs = await findOneOrFailTyped<UserRole>(dto.id, this.userRoleRepository, queryOptions);
 
     return { documents: userDocs };
   }
 
   public async getUserProfile(userRoleId: string): Promise<GetUserProfileOutput> {
     const queryOptions = this.adminQueryOptionsService.getUserProfileOptions(userRoleId);
-    const userProfile = await this.userRoleRepository.findOne(queryOptions);
-
-    if (!userProfile) {
-      throw new NotFoundException("User not found!");
-    }
+    const userProfile = await findOneOrFailTyped<UserRole>(userRoleId, this.userRoleRepository, queryOptions);
 
     return { profile: userProfile };
   }
@@ -132,6 +131,7 @@ export class AdminService {
       )[0];
 
       result.push({
+        id: payment.id,
         invoiceNumber,
         appointmentDate,
         dueDate,
@@ -146,5 +146,66 @@ export class AdminService {
     }
 
     return { data: result, total: totalCount, limit: dto.limit, offset: dto.offset };
+  }
+
+  public async updatePaymentStatus(paymentId: string, dto: UpdatePaymentStatusDto): Promise<void> {
+    const payment = await findOneOrFailTyped<OldPayment>(paymentId, this.paymentRepository, {
+      select: {
+        id: true,
+        items: { id: true, amount: true, gstAmount: true, fullAmount: true, status: true },
+        appointment: { id: true },
+      },
+      where: { id: paymentId },
+      relations: { items: true, appointment: true },
+    });
+
+    const failedItems = payment.items.filter(
+      (item) =>
+        item.status === OldEPaymentStatus.AUTHORIZATION_FAILED || item.status === OldEPaymentStatus.CAPTURE_FAILED,
+    );
+
+    if (failedItems.length === 0) {
+      throw new BadRequestException(EAdminErrorCodes.INCORRECT_PAYMENT_STATUS);
+    }
+
+    const failedItemIds = failedItems.map((item) => item.id);
+
+    await this.paymentItemRepository.update(
+      { id: In(failedItemIds) },
+      { status: dto.status, note: `Manually changed from failed to ${dto.status} by admin.` },
+    );
+
+    const capturedOrAuthorized = payment.items.filter(
+      (item) =>
+        item.status === OldEPaymentStatus.CAPTURED ||
+        item.status === OldEPaymentStatus.AUTHORIZED ||
+        failedItemIds.includes(item.id),
+    );
+
+    let totalAmount = 0;
+    let totalGstAmount = 0;
+    let totalFullAmount = 0;
+
+    for (const item of capturedOrAuthorized) {
+      totalAmount += Number(item.amount);
+      totalGstAmount += Number(item.gstAmount);
+      totalFullAmount += Number(item.fullAmount);
+    }
+
+    await this.paymentRepository.update(
+      { id: payment.id },
+      {
+        totalAmount: round2(totalAmount),
+        totalGstAmount: round2(totalGstAmount),
+        totalFullAmount: round2(totalFullAmount),
+      },
+    );
+
+    if (payment.appointment) {
+      await this.appointmentRepository.update(
+        { id: payment.appointment.id },
+        { paidByClient: round2(totalFullAmount) },
+      );
+    }
   }
 }

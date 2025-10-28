@@ -9,6 +9,9 @@ import { TProcessNotifyMembershipChanges } from "src/modules/memberships/common/
 import { TAppointmentsWithoutClientVisit } from "src/modules/appointments/appointment/common/types";
 import { CheckInOutAppointmentDto } from "src/modules/appointments/appointment/common/dto";
 import { ITokenUserData } from "src/modules/tokens/common/interfaces";
+import { EPaymentOperation } from "src/modules/payment-analysis/common/enums";
+import { IMakePreAuthorization } from "src/modules/payments-new/common/interfaces";
+import { IGeneratePayInReceipt } from "src/modules/pdf-new/common/interfaces";
 
 @Injectable()
 export class QueueInitializeService {
@@ -135,5 +138,33 @@ export class QueueInitializeService {
     };
 
     await this.queueManagementService.addJob(jobData, { jobId: `check-in-out-appointment:${appointmentId}` });
+  }
+
+  public async addProcessPaymentPreAuthorizationQueue(data: IMakePreAuthorization): Promise<void> {
+    const jobData: IQueueData = {
+      queueEnum: EQueueType.PAYMENTS_EXECUTION_QUEUE,
+      jobItem: {
+        jobName: EJobType.PROCESS_PAYMENT_PRE_AUTHORIZATION,
+        payload: data,
+      },
+    };
+
+    await this.queueManagementService.addJob(jobData, {
+      jobId: `payment-operation:${EPaymentOperation.AUTHORIZE_PAYMENT}:${data.context.appointment.id}`,
+    });
+  }
+
+  public async addProcessPayInReceiptGenerationQueue(data: IGeneratePayInReceipt): Promise<void> {
+    const jobData: IQueueData = {
+      queueEnum: EQueueType.PDF_GENERATION_QUEUE,
+      jobItem: {
+        jobName: EJobType.PROCESS_PAY_IN_RECEIPT_PDF_GENERATION,
+        payload: data,
+      },
+    };
+
+    await this.queueManagementService.addJob(jobData, {
+      jobId: `pdf-generation:pay-in-receipt:${data.appointment.id}`,
+    });
   }
 }

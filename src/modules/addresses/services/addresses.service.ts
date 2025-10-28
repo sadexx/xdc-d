@@ -7,7 +7,7 @@ import { AppointmentUpdateService } from "src/modules/appointments/appointment/s
 import { COMPLETED_APPOINTMENT_STATUSES } from "src/modules/appointments/shared/common/constants";
 import { findOneOrFail } from "src/common/utils";
 import { EAppointmentRecreationType } from "src/modules/appointments/appointment/common/enums";
-import { EExtCountry } from "src/modules/addresses/common/enums";
+import { EAddressesErrorCodes, EExtCountry } from "src/modules/addresses/common/enums";
 import { AppointmentNotificationService } from "src/modules/appointments/shared/services";
 import { ITokenUserData } from "src/modules/tokens/common/interfaces";
 import { AccessControlService } from "src/modules/access-control/services";
@@ -68,11 +68,11 @@ export class AddressesService {
     });
 
     if (!address.appointment) {
-      throw new BadRequestException("Address is not associated with an appointment.");
+      throw new BadRequestException(EAddressesErrorCodes.ADDRESS_NOT_ASSOCIATED_WITH_APPOINTMENT);
     }
 
     if (address.appointment && COMPLETED_APPOINTMENT_STATUSES.includes(address.appointment.status)) {
-      throw new BadRequestException("Address cannot be updated in current state of appointment.");
+      throw new BadRequestException(EAddressesErrorCodes.ADDRESS_CANNOT_BE_UPDATED);
     }
 
     await this.accessControlService.authorizeUserRoleForAppointmentOperation(user, address.appointment);

@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException, UnprocessableEntityException } from "@nestjs/common";
 import Stripe from "stripe";
-import { StripeService } from "src/modules/stripe/services";
+import { StripeConnectService, StripeCustomersService } from "src/modules/stripe/services";
 import {
   AddPaypalAccountForPayOutDto,
   AttachPaymentMethodToStripeForPayInDto,
@@ -8,8 +8,8 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { DeepPartial, Repository } from "typeorm";
 import { PaymentInformation } from "src/modules/payment-information/entities";
-import { EPaymentSystem } from "src/modules/payment-information/common/enums";
-import { IAttachPaymentMethodToCustomer } from "src/modules/stripe/common/interfaces";
+import { EPaymentInformationErrorCodes } from "src/modules/payment-information/common/enums";
+import { ICreateAccountLink, IInitializeCustomerSetup } from "src/modules/stripe/common/interfaces";
 import { EOnboardingStatus } from "src/modules/stripe/common/enums";
 import { PaypalSdkService } from "src/modules/paypal/services";
 import { IProfileInformationResponse } from "src/modules/paypal/common/interfaces";
@@ -22,13 +22,15 @@ import {
 import { GeneralPaymentInformationService } from "src/modules/payment-information/services";
 import { UNDEFINED_VALUE } from "src/common/constants";
 import { AccessControlService } from "src/modules/access-control/services";
+import { EPaymentSystem } from "src/modules/payments-new/common/enums";
 
 @Injectable()
 export class CorporatePaymentInformationService {
   public constructor(
     @InjectRepository(PaymentInformation)
     private readonly paymentInformationRepository: Repository<PaymentInformation>,
-    private readonly stripeService: StripeService,
+    private readonly stripeCustomersService: StripeCustomersService,
+    private readonly stripeConnectService: StripeConnectService,
     private readonly paypalSdkService: PaypalSdkService,
     private readonly generalPaymentInformationService: GeneralPaymentInformationService,
     private readonly accessControlService: AccessControlService,
@@ -42,13 +44,17 @@ export class CorporatePaymentInformationService {
     const company = await this.accessControlService.getCompanyByRole(user, {});
 
     if (!company) {
-      throw new NotFoundException("Company not found!");
+      throw new NotFoundException(EPaymentInformationErrorCodes.COMMON_COMPANY_NOT_FOUND);
     }
 
-    let customerInfo: IAttachPaymentMethodToCustomer | null = null;
+    let customerInfo: IInitializeCustomerSetup | null = null;
 
     try {
-      customerInfo = await this.stripeService.createCustomer(company.contactEmail, company.platformId, true, true);
+      customerInfo = await this.stripeCustomersService.initializeCustomerSetup(
+        company.contactEmail,
+        company.platformId,
+        true,
+      );
     } catch (error) {
       throw new UnprocessableEntityException((error as Stripe.Response<Stripe.StripeRawError>).message);
     }
@@ -63,11 +69,11 @@ export class CorporatePaymentInformationService {
     const company = await this.accessControlService.getCompanyByRole(user, { paymentInformation: true });
 
     if (!company) {
-      throw new NotFoundException("Company not found!");
+      throw new NotFoundException(EPaymentInformationErrorCodes.COMMON_COMPANY_NOT_FOUND);
     }
 
     try {
-      await this.stripeService.attachPaymentMethodToCustomer(dto.paymentMethodId, dto.customerId);
+      await this.stripeCustomersService.attachPaymentMethodToCustomer(dto.paymentMethodId, dto.customerId);
     } catch (error) {
       throw new UnprocessableEntityException((error as Stripe.Response<Stripe.StripeRawError>).message);
     }
@@ -97,11 +103,11 @@ export class CorporatePaymentInformationService {
     const company = await this.accessControlService.getCompanyByRole(user, { paymentInformation: true });
 
     if (!company) {
-      throw new NotFoundException("Company not found!");
+      throw new NotFoundException(EPaymentInformationErrorCodes.COMMON_COMPANY_NOT_FOUND);
     }
 
     if (!company.paymentInformation) {
-      throw new BadRequestException("Company payment information not filled!");
+      throw new BadRequestException(EPaymentInformationErrorCodes.CORPORATE_PAYMENT_INFO_NOT_FILLED);
     }
 
     await this.generalPaymentInformationService.checkPaymentMethodDeletionPossibility(UNDEFINED_VALUE, company.id);
@@ -124,7 +130,7 @@ export class CorporatePaymentInformationService {
     const company = await this.accessControlService.getCompanyByRole(user, { paymentInformation: true });
 
     if (!company) {
-      throw new NotFoundException("Company not found!");
+      throw new NotFoundException(EPaymentInformationErrorCodes.COMMON_COMPANY_NOT_FOUND);
     }
 
     if (
@@ -139,7 +145,7 @@ export class CorporatePaymentInformationService {
         onboardingStatus === EOnboardingStatus.DOCUMENTS_PENDING ||
         onboardingStatus === EOnboardingStatus.ONBOARDING_SUCCESS
       ) {
-        throw new BadRequestException("Company already onboarded!");
+        throw new BadRequestException(EPaymentInformationErrorCodes.CORPORATE_ALREADY_ONBOARDED);
       }
 
       if (
@@ -147,12 +153,12 @@ export class CorporatePaymentInformationService {
         onboardingStatus === EOnboardingStatus.ONBOARDING_STARTED
       ) {
         try {
-          const accountLink = await this.stripeService.createAccountLink(
+          const accountLink = await this.stripeConnectService.createAccountLink(
             company.paymentInformation.stripeInterpreterAccountId,
             true,
           );
 
-          return { accountLink: accountLink.url };
+          return accountLink;
         } catch (error) {
           throw new UnprocessableEntityException((error as Stripe.Response<Stripe.StripeRawError>).message);
         }
@@ -160,12 +166,12 @@ export class CorporatePaymentInformationService {
     }
 
     let account: { accountId: string } | null = null;
-    let accountLink: Stripe.Response<Stripe.AccountLink> | null = null;
+    let accountLink: ICreateAccountLink | null = null;
 
     try {
-      account = await this.stripeService.createAccount();
+      account = await this.stripeConnectService.createAccount();
 
-      accountLink = await this.stripeService.createAccountLink(account.accountId, true);
+      accountLink = await this.stripeConnectService.createAccountLink(account.accountId, true);
     } catch (error) {
       throw new UnprocessableEntityException((error as Stripe.Response<Stripe.StripeRawError>).message);
     }
@@ -188,26 +194,28 @@ export class CorporatePaymentInformationService {
       await this.paymentInformationRepository.save(paymentInformation);
     }
 
-    return { accountLink: accountLink.url };
+    return accountLink;
   }
 
   public async createStripeLoginLinkForPayOut(user: ITokenUserData): Promise<ILoginLinkOutput> {
     const company = await this.accessControlService.getCompanyByRole(user, { paymentInformation: true });
 
     if (!company) {
-      throw new NotFoundException("Company not found!");
+      throw new NotFoundException(EPaymentInformationErrorCodes.COMMON_COMPANY_NOT_FOUND);
     }
 
     if (!company.paymentInformation) {
-      throw new BadRequestException("User role payment info not fill!");
+      throw new BadRequestException(EPaymentInformationErrorCodes.COMMON_USER_PAYMENT_INFO_NOT_FILLED);
     }
 
     if (!company.paymentInformation.stripeInterpreterAccountId) {
-      throw new BadRequestException("User role stripe account id not exist!");
+      throw new BadRequestException(EPaymentInformationErrorCodes.COMMON_STRIPE_ACCOUNT_NOT_EXIST);
     }
 
     try {
-      const loginLink = await this.stripeService.createLoginLink(company.paymentInformation.stripeInterpreterAccountId);
+      const loginLink = await this.stripeConnectService.createLoginLink(
+        company.paymentInformation.stripeInterpreterAccountId,
+      );
 
       return loginLink;
     } catch (error) {
@@ -219,11 +227,11 @@ export class CorporatePaymentInformationService {
     const company = await this.accessControlService.getCompanyByRole(user, { paymentInformation: true });
 
     if (!company) {
-      throw new NotFoundException("Company not found!");
+      throw new NotFoundException(EPaymentInformationErrorCodes.COMMON_COMPANY_NOT_FOUND);
     }
 
     if (!company.paymentInformation) {
-      throw new BadRequestException("User role payment information not filled!");
+      throw new BadRequestException(EPaymentInformationErrorCodes.COMMON_USER_PAYMENT_INFO_NOT_FILLED);
     }
 
     await this.generalPaymentInformationService.checkPaymentMethodDeletionPossibility(UNDEFINED_VALUE, company.id);
@@ -258,11 +266,11 @@ export class CorporatePaymentInformationService {
     const company = await this.accessControlService.getCompanyByRole(user, { paymentInformation: true });
 
     if (!company) {
-      throw new NotFoundException("Company not found!");
+      throw new NotFoundException(EPaymentInformationErrorCodes.COMMON_COMPANY_NOT_FOUND);
     }
 
     if (!company.contactEmail) {
-      throw new BadRequestException("Company contact email not filled!");
+      throw new BadRequestException(EPaymentInformationErrorCodes.CORPORATE_CONTACT_EMAIL_NOT_FILLED);
     }
 
     let profile: IProfileInformationResponse | null = null;
@@ -274,7 +282,7 @@ export class CorporatePaymentInformationService {
     }
 
     if (!profile.payer_id) {
-      throw new BadRequestException("Paypal profile does not have payer id!");
+      throw new BadRequestException(EPaymentInformationErrorCodes.COMMON_PAYPAL_PAYER_ID_MISSING);
     }
 
     const updateData: DeepPartial<PaymentInformation> = {
@@ -305,11 +313,11 @@ export class CorporatePaymentInformationService {
     const company = await this.accessControlService.getCompanyByRole(user, { paymentInformation: true });
 
     if (!company) {
-      throw new NotFoundException("Company not found!");
+      throw new NotFoundException(EPaymentInformationErrorCodes.COMMON_COMPANY_NOT_FOUND);
     }
 
     if (!company.paymentInformation) {
-      throw new BadRequestException("Company payment information not filled!");
+      throw new BadRequestException(EPaymentInformationErrorCodes.CORPORATE_PAYMENT_INFO_NOT_FILLED);
     }
 
     await this.generalPaymentInformationService.checkPaymentMethodDeletionPossibility(UNDEFINED_VALUE, company.id);

@@ -5,6 +5,7 @@ import { Not, Repository } from "typeorm";
 import { plainToInstance } from "class-transformer";
 import { membershipsSeedData } from "src/modules/memberships/common/seed-data";
 import {
+  EMembershipErrorCodes,
   EMembershipNotificationType,
   EMembershipPricingRegion,
   EMembershipStatus,
@@ -147,7 +148,7 @@ export class MembershipsService {
     const membership = await findOneOrFailTyped<TDeactivateMembership>(id, this.membershipRepository, queryOptions);
 
     if (membership.status === EMembershipStatus.DEACTIVATED) {
-      throw new BadRequestException("Membership already deactivated.");
+      throw new BadRequestException(EMembershipErrorCodes.DEACTIVATION_ALREADY_DEACTIVATED);
     }
 
     await this.membershipPaymentsService.deactivateSubscriptionProduct(membership);

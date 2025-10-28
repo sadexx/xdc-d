@@ -6,7 +6,7 @@ import {
 } from "src/modules/appointments/appointment/common/dto";
 import { Appointment, AppointmentRating } from "src/modules/appointments/appointment/entities";
 import { EntityManager, Repository } from "typeorm";
-import { EAppointmentStatus } from "src/modules/appointments/appointment/common/enums";
+import { EAppointmentErrorCodes, EAppointmentStatus } from "src/modules/appointments/appointment/common/enums";
 import { InterpreterProfileService } from "src/modules/interpreters/profile/services";
 import {
   AppointmentNotificationService,
@@ -44,7 +44,7 @@ export class AppointmentRatingService {
     const appointmentRating = await findOneOrFail(id, this.appointmentRatingRepository, queryOptions);
 
     if (appointmentRating.appointment?.status !== EAppointmentStatus.COMPLETED) {
-      throw new BadRequestException("Appointment cannot be rated in its current state.");
+      throw new BadRequestException(EAppointmentErrorCodes.APPOINTMENT_CANNOT_BE_RATED);
     }
 
     return appointmentRating;

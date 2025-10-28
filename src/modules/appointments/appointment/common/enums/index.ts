@@ -8,3 +8,4 @@ export * from "src/modules/appointments/appointment/common/enums/appointment-int
 export * from "src/modules/appointments/appointment/common/enums/appointment-simultaneous-interpreting-type.enum";
 export * from "src/modules/appointments/appointment/common/enums/appointment-recreation-type.enum";
 export * from "src/modules/appointments/appointment/common/enums/appointment-external-session-type.enum";
+export * from "src/modules/appointments/appointment/common/enums/appointment-error-codes.enum";

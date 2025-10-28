@@ -43,6 +43,7 @@ import { HelperModule } from "src/modules/helper/helper.module";
 import { PromoCampaignsModule } from "src/modules/promo-campaigns/promo-campaigns.module";
 import { Rate } from "src/modules/rates/entities";
 import { QueueModule } from "src/modules/queues/queues.module";
+import { PaymentAnalysisModule } from "src/modules/payment-analysis/payment-analysis.module";
 
 @Module({
   imports: [
@@ -72,6 +73,7 @@ import { QueueModule } from "src/modules/queues/queues.module";
     AppointmentFailedPaymentCancelModule,
     HelperModule,
     PromoCampaignsModule,
+    PaymentAnalysisModule,
   ],
   controllers: [AppointmentsCommandController, AppointmentsQueryController],
   providers: [

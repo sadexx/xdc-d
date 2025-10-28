@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query, UseGuards, UsePipes } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Query, UseGuards, UsePipes } from "@nestjs/common";
 import { AdminService } from "src/modules/admin/services";
 import {
   GetUserDocumentsDto,
@@ -6,6 +6,7 @@ import {
   GetUserPaymentsDto,
   GetUsersDto,
   GetUserStepsDto,
+  UpdatePaymentStatusDto,
 } from "src/modules/admin/common/dto";
 import { InterpreterProfile } from "src/modules/interpreters/profile/entities";
 import { JwtFullAccessGuard, RolesGuard } from "src/modules/auth/common/guards";
@@ -64,5 +65,11 @@ export class AdminController {
   @Get("payments")
   async getUserPayments(@Query() dto: GetUserPaymentsDto): Promise<IGetUserPaymentResponseOutput> {
     return this.adminService.getUserPayments(dto);
+  }
+
+  @UseGuards(JwtFullAccessGuard, RolesGuard)
+  @Patch("payments/status/:id")
+  async updatePaymentStatus(@Param() { id }: UUIDParamDto, @Body() dto: UpdatePaymentStatusDto): Promise<void> {
+    await this.adminService.updatePaymentStatus(id, dto);
   }
 }

@@ -4,6 +4,7 @@ import { LokiLogger } from "src/common/logger";
 import { IQueueProcessor } from "src/modules/queue-processors/common/interfaces";
 import { EQueueType } from "src/modules/queues/common/enums";
 import { IQueueJobType } from "src/modules/queues/common/interfaces";
+import { EQueueProcessorBridgeErrorCodes } from "src/modules/queue-processor-bridge/common/enums";
 
 /**
  * Bridge service that acts as a proxy to delegate job processing to a registered queue processor.
@@ -50,9 +51,7 @@ export class QueueProcessorBridgeService implements IQueueProcessor {
   async processJob(queueEnum: EQueueType, job: Job<IQueueJobType>): Promise<void> {
     if (!QueueProcessorBridgeService.processorInstance) {
       this.logger.error("Queue processor not registered. Check module initialization order.");
-      throw new InternalServerErrorException(
-        "Queue processor not registered. Ensure QueueProcessorsModule is imported in the app.",
-      );
+      throw new InternalServerErrorException(EQueueProcessorBridgeErrorCodes.PROCESSOR_NOT_REGISTERED);
     }
 
     return QueueProcessorBridgeService.processorInstance.processJob(queueEnum, job);

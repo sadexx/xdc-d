@@ -17,6 +17,7 @@ import { UserRole } from "src/modules/users/entities";
 import { EExtCountry } from "src/modules/addresses/common/enums";
 import { addMinutes, differenceInDays, differenceInMinutes, format } from "date-fns";
 import {
+  EOldPaymentsErrorCodes,
   OldECurrencies,
   OldEPayInStatus,
   OldEPaymentDirection,
@@ -32,7 +33,6 @@ import {
 } from "src/modules/payments/common/constants/old-constants";
 import { HelperService } from "src/modules/helper/services";
 import { LokiLogger } from "src/common/logger";
-import { ILiveAppointmentCacheData } from "src/modules/appointments/appointment/common/interfaces";
 import {
   CORPORATE_CLIENT_ROLES,
   CORPORATE_CLIENTS_COMPANY_ADMIN_ROLES,
@@ -57,6 +57,7 @@ import { OldIGetIndividualPaymentResponseOutput } from "src/modules/payments/com
 import { EExtAbnStatus } from "src/modules/abn/common/enums";
 import { AccessControlService } from "src/modules/access-control/services";
 import { IDiscountRate } from "src/modules/discounts/common/interfaces";
+import { TMakePayInAuthByAdditionalBlockAppointment } from "src/modules/payments/common/types";
 
 @Injectable()
 export class OldGeneralPaymentsService {
@@ -119,7 +120,7 @@ export class OldGeneralPaymentsService {
     }
 
     if (!country) {
-      throw new BadRequestException("Country not filled!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.COUNTRY_NOT_FILLED);
     }
 
     let date: Date | undefined;
@@ -155,14 +156,14 @@ export class OldGeneralPaymentsService {
 
     if (isCorporate) {
       if (!company) {
-        throw new BadRequestException("Company not found!");
+        throw new BadRequestException(EOldPaymentsErrorCodes.COMPANY_NOT_FOUND);
       }
 
       await this.corporatePaymentsService.chargeFromDeposit(
         pricesOfAppointment.amount,
         pricesOfAppointment.gstAmount,
         appointment.id,
-        pricesOfAppointment.discounts,
+        pricesOfAppointment.discounts ?? null,
         pricesOfAppointment.discountByMembershipMinutes,
         pricesOfAppointment.discountByMembershipDiscount,
         pricesOfAppointment.discountByPromoCode,
@@ -248,7 +249,7 @@ export class OldGeneralPaymentsService {
     }
 
     if (!country) {
-      throw new BadRequestException("Country not filled!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.COUNTRY_NOT_FILLED);
     }
 
     const pricesOfAppointment = await this.paymentsHelperService.calculateAppointmentPrice(
@@ -269,7 +270,7 @@ export class OldGeneralPaymentsService {
       } else {
         if (isCorporate) {
           if (!company) {
-            throw new BadRequestException("Company not found.");
+            throw new BadRequestException(EOldPaymentsErrorCodes.COMPANY_NOT_FOUND);
           }
 
           await this.corporatePaymentsService.cancelAuthorization(oldAppointment.id, company);
@@ -288,7 +289,7 @@ export class OldGeneralPaymentsService {
     if (!appointment.clientId) {
       this.lokiLogger.error(`Appointment with id ${appointment.id} does not have clientId (${appointment.clientId})`);
 
-      throw new BadRequestException("Incorrect data");
+      throw new BadRequestException(EOldPaymentsErrorCodes.INCORRECT_DATA);
     }
 
     const clientUserRole = await findOneOrFail(appointment.clientId, this.userRoleRepository, {
@@ -327,7 +328,7 @@ export class OldGeneralPaymentsService {
 
     if (isCorporate) {
       if (!company) {
-        throw new BadRequestException("Company not found.");
+        throw new BadRequestException(EOldPaymentsErrorCodes.COMPANY_NOT_FOUND);
       }
 
       return await this.corporatePaymentsService.cancelAuthorization(appointment.id, company);
@@ -363,12 +364,11 @@ export class OldGeneralPaymentsService {
   }
 
   public async makePayInAuthByAdditionalBlock(
-    liveAppointmentCacheData: ILiveAppointmentCacheData,
+    appointment: TMakePayInAuthByAdditionalBlockAppointment,
     additionalBlockDuration: number,
+    extensionPeriodStart?: Date,
     discounts?: IDiscountRate,
   ): Promise<OldEPayInStatus> {
-    const { appointment, extensionPeriodStart } = liveAppointmentCacheData;
-
     if (!appointment.clientId) {
       this.lokiLogger.error(`Appointment with id ${appointment.id} does not have clientId (${appointment.clientId})`);
 
@@ -381,7 +381,7 @@ export class OldGeneralPaymentsService {
     });
 
     if (!extensionPeriodStart) {
-      throw new BadRequestException("Invalid data.");
+      throw new BadRequestException(EOldPaymentsErrorCodes.INCORRECT_DATA);
     }
 
     const date = new Date(extensionPeriodStart);
@@ -401,7 +401,7 @@ export class OldGeneralPaymentsService {
     }
 
     if (!country) {
-      throw new BadRequestException("Country not filled!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.COUNTRY_NOT_FILLED);
     }
 
     const pricesOfAppointment = await this.paymentsHelperService.calculateAppointmentPrice(
@@ -416,14 +416,14 @@ export class OldGeneralPaymentsService {
 
     if (isCorporate) {
       if (!company) {
-        throw new BadRequestException("Company not found.");
+        throw new BadRequestException(EOldPaymentsErrorCodes.COMPANY_NOT_FOUND);
       }
 
       await this.corporatePaymentsService.chargeFromDeposit(
         pricesOfAppointment.amount,
         pricesOfAppointment.gstAmount,
         appointment.id,
-        pricesOfAppointment.discounts,
+        pricesOfAppointment.discounts ?? null,
         pricesOfAppointment.discountByMembershipMinutes,
         pricesOfAppointment.discountByMembershipDiscount,
         pricesOfAppointment.discountByPromoCode,
@@ -449,7 +449,7 @@ export class OldGeneralPaymentsService {
     });
 
     if (!paymentExist) {
-      throw new BadRequestException("Receipt not exist!");
+      throw new BadRequestException(EOldPaymentsErrorCodes.RECEIPT_NOT_EXIST);
     }
 
     const receiptLink = await this.awsS3Service.getShortLivedSignedUrl(dto.receiptKey);
@@ -480,7 +480,7 @@ export class OldGeneralPaymentsService {
     if (!appointment.clientId || !appointment.client) {
       this.lokiLogger.error(`Appointment with id ${appointment.id} does not have clientId (${appointment.clientId})`);
 
-      throw new BadRequestException("Incorrect data");
+      throw new BadRequestException(EOldPaymentsErrorCodes.INCORRECT_DATA);
     }
 
     let isCorporateClient: boolean = false;
@@ -535,12 +535,6 @@ export class OldGeneralPaymentsService {
       relations: { role: true, abnCheck: true, paymentInformation: true },
     });
 
-    if (!interpreterUserRole.paymentInformation) {
-      this.lokiLogger.error(`User role with id ${interpreterUserRole.id} does not have payment information`);
-
-      return;
-    }
-
     let isCorporateInterpreter: boolean = false;
     let company: Company | null = null;
     let country: EExtCountry | null = null;
@@ -550,15 +544,15 @@ export class OldGeneralPaymentsService {
       appointment.interpreter.role.name === EUserRoleName.CORPORATE_INTERPRETING_PROVIDERS_IND_INTERPRETER
     ) {
       isCorporateInterpreter = true;
-      company = await findOneOrFail(appointment.client.operatedByCompanyId, this.companyRepository, {
-        where: { id: appointment.client.operatedByCompanyId },
+      company = await findOneOrFail(appointment.interpreter.operatedByCompanyId, this.companyRepository, {
+        where: { id: appointment.interpreter.operatedByCompanyId },
         relations: { paymentInformation: true },
       });
 
       country = company?.country;
 
       if (!country) {
-        throw new BadRequestException("Country not filled!");
+        throw new BadRequestException(EOldPaymentsErrorCodes.COUNTRY_NOT_FILLED);
       }
     }
 
@@ -615,7 +609,7 @@ export class OldGeneralPaymentsService {
 
     if (isCorporateInterpreter) {
       if (!company) {
-        throw new BadRequestException("Corporate interpreter does not have company!");
+        throw new BadRequestException(EOldPaymentsErrorCodes.CORPORATE_INTERPRETER_NO_COMPANY);
       }
 
       await this.corporatePaymentsService.makeRecordToPayoutWaitingList(
@@ -661,7 +655,7 @@ export class OldGeneralPaymentsService {
 
     for (const paymentInWaitList of paymentsInWaitList) {
       if (
-        new Date(paymentInWaitList.appointment.scheduledStartTime) >=
+        new Date(paymentInWaitList.appointment.scheduledStartTime) <=
         addMinutes(new Date(), OLD_MINUTES_BEFORE_START_AS_REASON_TO_CANCEL)
       ) {
         await this.incomingPaymentWaitListRepository.delete({ id: paymentInWaitList.id });

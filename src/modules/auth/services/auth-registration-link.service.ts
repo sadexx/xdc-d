@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import {
   ACCOUNT_STATUSES_ALLOWED_TO_IMMEDIATELY_DELETING,
   NUMBER_OF_MILLISECONDS_IN_MINUTE,
@@ -34,6 +34,7 @@ import { EUserRoleName } from "src/modules/users/common/enums";
 import { TProcessUserRegistrationLinkUserRole } from "src/modules/users/common/types";
 import { LokiLogger } from "src/common/logger";
 import { RemovalService } from "src/modules/removal/services";
+import { EAuthErrorCodes } from "src/modules/auth/common/enums";
 
 @Injectable()
 export class AuthRegistrationLinkService {
@@ -60,7 +61,7 @@ export class AuthRegistrationLinkService {
     const existingRegistrationLink = await this.userRoleRepository.exists(queryOptions);
 
     if (existingRegistrationLink) {
-      throw new BadRequestException(`Registration link already sent.`);
+      throw new BadRequestException(EAuthErrorCodes.REGISTRATION_LINK_ALREADY_SENT);
     }
 
     const { userRole, isUserExists } = await this.usersRegistrationService.registerUserForInvitationWithProfile(
@@ -102,7 +103,7 @@ export class AuthRegistrationLinkService {
     );
 
     if (existingUser.isRegistrationFinished && existingUserRole.isRegistrationFinished) {
-      throw new BadRequestException("User already finished registration for this role.");
+      throw new BadRequestException(EAuthErrorCodes.REGISTRATION_LINK_ALREADY_FINISHED);
     }
 
     await this.validateInvitationLinkTimeLimit(existingUserRole);
@@ -130,17 +131,13 @@ export class AuthRegistrationLinkService {
   }
 
   public async deleteRegistrationLinkById(id: string): Promise<void> {
-    const userRole = await this.userRoleRepository.findOne({
+    const userRole = await findOneOrFailTyped<UserRole>(id, this.userRoleRepository, {
       where: { id },
       relations: { user: { userRoles: true }, role: true },
     });
 
-    if (!userRole) {
-      throw new NotFoundException("User role with this id not found!");
-    }
-
     if (!ACCOUNT_STATUSES_ALLOWED_TO_IMMEDIATELY_DELETING.includes(userRole.accountStatus)) {
-      throw new BadRequestException("User role with such account status cannot be deleted immediately!");
+      throw new BadRequestException(EAuthErrorCodes.REGISTRATION_LINK_DELETION_NOT_ALLOWED);
     }
 
     if (userRole.user.userRoles.length > 1) {
@@ -194,7 +191,10 @@ export class AuthRegistrationLinkService {
     const timeSinceLastInvite = now.getTime() - userRole.invitationLinkCreationDate.getTime();
 
     if (timeSinceLastInvite < minTimeLimit) {
-      throw new BadRequestException(`Invitation link was sent less than ${MIN_TIME_LIMIT_MINUTES} minutes ago!`);
+      throw new BadRequestException({
+        message: EAuthErrorCodes.REGISTRATION_LINK_TIME_LIMIT_NOT_REACHED,
+        variables: { timeLimit: MIN_TIME_LIMIT_MINUTES },
+      });
     }
   }
 

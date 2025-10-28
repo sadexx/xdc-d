@@ -18,7 +18,7 @@ import {
 } from "src/modules/payments/common/enums";
 import { OldECurrencies } from "src/modules/payments/common/enums/old-currencies.enum";
 import { OldPaymentItem } from "src/modules/payments/entities/old-payment-item.entity";
-import { EPaymentSystem } from "src/modules/payment-information/common/enums";
+import { EPaymentSystem } from "src/modules/payments-new/common/enums";
 import { Appointment } from "src/modules/appointments/appointment/entities";
 import { UserRole } from "src/modules/users/entities";
 import { Company } from "src/modules/companies/entities";

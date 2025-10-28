@@ -8,4 +8,5 @@ export const enum OldEPaymentFailedReason {
   AUTH_FAILED_MORE_THAN_24H_REPEAT = "Your account does not have enough funds to cover the cost of the appointment. Please deposit the money into your account or change the payment method. Otherwise, your meeting will be cancelled 24 hours before the scheduled start time.",
   AUTH_FAILED_MORE_THAN_6H_FIRST_ATTEMPT = "Your account does not have enough funds to cover the cost of the appointment. Please deposit the money into your account within 30 minutes or the appointment will be cancelled.",
   AUTH_FAILED_FINAL = "Your meeting cancelled, because your account does not have enough funds to cover the cost of the appointment",
+  OVERAGE_AUTH_FAILED = "Unable to charge for additional time used during your appointment. Your appointment has been completed, but the overtime charges could not be processed.",
 }

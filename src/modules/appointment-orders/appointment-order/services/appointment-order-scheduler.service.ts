@@ -18,6 +18,7 @@ import { LokiLogger } from "src/common/logger";
 import { IAppointmentOrderInvitationOutput } from "src/modules/search-engine-logic/common/outputs";
 import { NUMBER_OF_MILLISECONDS_IN_TEN_SECONDS } from "src/common/constants";
 import { delay } from "src/common/utils";
+import { EAppointmentOrderErrorCodes } from "src/modules/appointment-orders/appointment-order/common/enum";
 
 @Injectable()
 export class OrderSchedulerService {
@@ -85,7 +86,8 @@ export class OrderSchedulerService {
     isOrderGroup: boolean,
   ): Promise<void> {
     if (!order.repeatInterval) {
-      throw new NotFoundException(`Repeat Interval is not set for order with id: ${order.id}`);
+      this.lokiLogger.error(`Repeat Interval is not set for Appointment Order with id: ${order.id}.`);
+      throw new NotFoundException(EAppointmentOrderErrorCodes.REPEAT_INTERVAL_NOT_SET);
     }
 
     const newNextRepeatTime = await this.searchTimeFrameService.calculateNextRepeatTime(
@@ -120,7 +122,8 @@ export class OrderSchedulerService {
     const { id, remainingRepeats } = order;
 
     if (!remainingRepeats) {
-      throw new NotFoundException(`Remaining Repeats is not set for order with id: ${order.id}`);
+      this.lokiLogger.error(`Remaining Repeats is not set for Appointment Order with id: ${order.id}.`);
+      throw new NotFoundException(EAppointmentOrderErrorCodes.REMAINING_REPEATS_NOT_SET);
     }
 
     const updatedData = {

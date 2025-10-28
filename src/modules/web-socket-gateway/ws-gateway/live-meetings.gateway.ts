@@ -8,7 +8,6 @@ import {
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
-  WsException,
 } from "@nestjs/websockets";
 import { OnModuleDestroy, UseFilters } from "@nestjs/common";
 import { Server, Socket } from "socket.io";
@@ -88,28 +87,22 @@ export class LiveMeetingGateway implements OnGatewayInit, OnGatewayConnection, O
 
   @SubscribeMessage("message")
   async handleMessage(@ConnectedSocket() client: Socket, @MessageBody() message: AppointmentEventDto): Promise<void> {
-    try {
-      switch (message.event) {
-        case EWebSocketEventTypes.LIVE_SESSIONS: {
-          const user: IWebSocketUserData = client.user;
-          const messages = await this.appointmentExtensionService.updateAppointmentActivityTime(
-            message.appointmentId,
-            user,
-            message.isViewConfirmed,
-          );
-          this.prometheusService.messagesSentCounter.inc();
-          client.emit(EWebSocketEventTypes.LIVE_SESSIONS, messages);
-          break;
-        }
-
-        default:
-          this.lokiLogger.error(`Unhandled event: ${message.event}`);
-          client.disconnect();
+    switch (message.event) {
+      case EWebSocketEventTypes.LIVE_SESSIONS: {
+        const user: IWebSocketUserData = client.user;
+        const messages = await this.appointmentExtensionService.updateAppointmentActivityTime(
+          message.appointmentId,
+          user,
+          message.isViewConfirmed,
+        );
+        this.prometheusService.messagesSentCounter.inc();
+        client.emit(EWebSocketEventTypes.LIVE_SESSIONS, messages);
+        break;
       }
-    } catch (error) {
-      this.lokiLogger.error(`Error handling message: ${(error as Error).message}, ${(error as Error).stack}`);
-      client.emit("error", { message: "An error occurred while processing your request." });
-      throw new WsException((error as Error).message);
+
+      default:
+        this.lokiLogger.error(`Unhandled event: ${message.event}`);
+        client.disconnect();
     }
   }
 }

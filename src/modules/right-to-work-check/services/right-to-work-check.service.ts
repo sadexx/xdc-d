@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { FindOptionsWhere, Repository } from "typeorm";
 import { UserDocument } from "src/modules/users/entities";
@@ -14,7 +14,7 @@ import {
   GetAllRightToWorkChecksDto,
   RightToWorkCheckManualDecisionDto,
 } from "src/modules/right-to-work-check/common/dto";
-import { ERightToWorkCheckStatus } from "src/modules/right-to-work-check/common/enums";
+import { ERightToWorkCheckErrorCodes, ERightToWorkCheckStatus } from "src/modules/right-to-work-check/common/enums";
 import {
   EInterpreterCertificateType,
   EInterpreterType,
@@ -26,7 +26,7 @@ import { UserRole } from "src/modules/users/entities";
 import { IInterpreterProfile } from "src/modules/interpreters/profile/common/interface";
 import { NotificationService } from "src/modules/notifications/services";
 import { OptionalUUIDParamDto } from "src/common/dto";
-import { ESortOrder } from "src/common/enums";
+import { ECommonErrorCodes, ESortOrder } from "src/common/enums";
 import {
   CreateRightToWorkCheckOutput,
   EditRightToWorkCheckOutput,
@@ -38,6 +38,7 @@ import { HelperService } from "src/modules/helper/services";
 import { ConfigService } from "@nestjs/config";
 import { IFile } from "src/modules/file-management/common/interfaces";
 import { AccessControlService } from "src/modules/access-control/services";
+import { findOneOrFailTyped } from "src/common/utils";
 
 @Injectable()
 export class RightToWorkCheckService {
@@ -71,14 +72,11 @@ export class RightToWorkCheckService {
     const whereCondition: FindOptionsWhere<UserRole> = isAdminOperation
       ? { id: dto.userRoleId }
       : { id: user.userRoleId };
-    const userRole = await this.userRoleRepository.findOne({
+
+    const userRole = await findOneOrFailTyped<UserRole>(dto.userRoleId ?? user.userRoleId, this.userRoleRepository, {
       select: { id: true, operatedByCompanyId: true, operatedByMainCorporateCompanyId: true },
       where: whereCondition,
     });
-
-    if (!userRole) {
-      throw new NotFoundException("User role not found!");
-    }
 
     await this.accessControlService.authorizeUserRoleForOperation(user, userRole);
     const rightToWorkCheck = this.rightToWorkCheckRepository.create({
@@ -99,10 +97,10 @@ export class RightToWorkCheckService {
     file: IFile,
   ): Promise<CreateRightToWorkCheckOutput> {
     if (!file) {
-      throw new BadRequestException("File not received!");
+      throw new BadRequestException(ECommonErrorCodes.FILE_NOT_RECEIVED);
     }
 
-    const rightToWorkCheck = await this.rightToWorkCheckRepository.findOne({
+    const rightToWorkCheck = await findOneOrFailTyped<RightToWorkCheck>(id, this.rightToWorkCheckRepository, {
       select: {
         id: true,
         status: true,
@@ -123,14 +121,10 @@ export class RightToWorkCheckService {
       relations: { document: true, userRole: { role: true, user: true } },
     });
 
-    if (!rightToWorkCheck) {
-      throw new BadRequestException("Right to work check not exist!");
-    }
-
     await this.accessControlService.authorizeUserRoleForOperation(user, rightToWorkCheck.userRole);
 
     if (rightToWorkCheck.status === ERightToWorkCheckStatus.VERIFIED) {
-      throw new BadRequestException("File cannot be uploaded for this request!");
+      throw new BadRequestException(ERightToWorkCheckErrorCodes.FILE_UPLOAD_NOT_ALLOWED);
     }
 
     let document: UserDocument;
@@ -179,7 +173,7 @@ export class RightToWorkCheckService {
     user: ITokenUserData,
     file?: IFile,
   ): Promise<EditRightToWorkCheckOutput> {
-    const rightToWorkCheck = await this.rightToWorkCheckRepository.findOne({
+    const rightToWorkCheck = await findOneOrFailTyped<RightToWorkCheck>(dto.id, this.rightToWorkCheckRepository, {
       select: {
         id: true,
         status: true,
@@ -196,10 +190,6 @@ export class RightToWorkCheckService {
       relations: { userRole: { role: true, user: true }, document: true },
     });
 
-    if (!rightToWorkCheck) {
-      throw new BadRequestException("Right to work check not exist!");
-    }
-
     await this.accessControlService.authorizeUserRoleForOperation(user, rightToWorkCheck.userRole);
 
     if (
@@ -207,7 +197,7 @@ export class RightToWorkCheckService {
       rightToWorkCheck.status !== ERightToWorkCheckStatus.VERIFIED &&
       rightToWorkCheck.userRole.role.name !== EUserRoleName.CORPORATE_INTERPRETING_PROVIDERS_IND_INTERPRETER
     ) {
-      throw new BadRequestException("This request can't be edited!");
+      throw new BadRequestException(ERightToWorkCheckErrorCodes.REQUEST_NOT_EDITABLE);
     }
 
     if (file) {
@@ -279,15 +269,15 @@ export class RightToWorkCheckService {
     let result: GetRightToWorkCheckOutput | null = null;
 
     if (isAdminOperation) {
-      const rightToWorkCheck = await this.rightToWorkCheckRepository.findOne({
-        select: { userRole: { id: true, operatedByCompanyId: true, operatedByMainCorporateCompanyId: true } },
-        where: whereCondition,
-        relations: { userRole: true, document: true },
-      });
-
-      if (!rightToWorkCheck) {
-        throw new NotFoundException("Right to work check not found");
-      }
+      const rightToWorkCheck = await findOneOrFailTyped<RightToWorkCheck>(
+        dto.id ?? user.userRoleId,
+        this.rightToWorkCheckRepository,
+        {
+          select: { userRole: { id: true, operatedByCompanyId: true, operatedByMainCorporateCompanyId: true } },
+          where: whereCondition,
+          relations: { userRole: true, document: true },
+        },
+      );
 
       await this.accessControlService.authorizeUserRoleForOperation(user, rightToWorkCheck.userRole);
       result = rightToWorkCheck;
@@ -310,7 +300,7 @@ export class RightToWorkCheckService {
     dto: RightToWorkCheckManualDecisionDto,
     user: ITokenUserData,
   ): Promise<void> {
-    const rightToWorkCheck = await this.rightToWorkCheckRepository.findOne({
+    const rightToWorkCheck = await findOneOrFailTyped<RightToWorkCheck>(dto.id, this.rightToWorkCheckRepository, {
       select: {
         id: true,
         status: true,
@@ -336,14 +326,10 @@ export class RightToWorkCheckService {
       },
     });
 
-    if (!rightToWorkCheck) {
-      throw new NotFoundException("Right to work check not found!");
-    }
-
     await this.accessControlService.authorizeUserRoleForOperation(user, rightToWorkCheck.userRole);
 
     if (rightToWorkCheck.status === ERightToWorkCheckStatus.INITIALIZED) {
-      throw new BadRequestException("Right to work check does not have uploaded file!");
+      throw new BadRequestException(ERightToWorkCheckErrorCodes.FILE_NOT_UPLOADED);
     }
 
     await this.rightToWorkCheckRepository.update({ id: dto.id }, { status: dto.status });
@@ -358,7 +344,7 @@ export class RightToWorkCheckService {
   }
 
   public async removeRightToWorkCheck(id: string, user: ITokenUserData): Promise<void> {
-    const rightToWorkCheck = await this.rightToWorkCheckRepository.findOne({
+    const rightToWorkCheck = await findOneOrFailTyped<RightToWorkCheck>(id, this.rightToWorkCheckRepository, {
       select: {
         id: true,
         status: true,
@@ -379,10 +365,6 @@ export class RightToWorkCheckService {
       where: { id },
       relations: { userRole: { role: true, user: true }, languagePairs: true, document: true },
     });
-
-    if (!rightToWorkCheck) {
-      throw new NotFoundException("Right to work check request not found!");
-    }
 
     await this.accessControlService.authorizeUserRoleForOperation(user, rightToWorkCheck.userRole);
 
@@ -507,7 +489,7 @@ export class RightToWorkCheckService {
   }
 
   public async removeRightToWorkFile(id: string, user: ITokenUserData): Promise<void> {
-    const rightToWorkCheck = await this.rightToWorkCheckRepository.findOne({
+    const rightToWorkCheck = await findOneOrFailTyped<RightToWorkCheck>(id, this.rightToWorkCheckRepository, {
       select: {
         id: true,
         status: true,
@@ -523,10 +505,6 @@ export class RightToWorkCheckService {
       relations: { userRole: { role: true }, document: true },
     });
 
-    if (!rightToWorkCheck) {
-      throw new NotFoundException("Right to work check not found!");
-    }
-
     await this.accessControlService.authorizeUserRoleForOperation(user, rightToWorkCheck.userRole);
 
     if (
@@ -534,11 +512,11 @@ export class RightToWorkCheckService {
       rightToWorkCheck.status !== ERightToWorkCheckStatus.VERIFIED &&
       rightToWorkCheck.userRole.role.name !== EUserRoleName.CORPORATE_INTERPRETING_PROVIDERS_IND_INTERPRETER
     ) {
-      throw new BadRequestException("This request can't be deleted!");
+      throw new BadRequestException(ERightToWorkCheckErrorCodes.REQUEST_NOT_DELETABLE);
     }
 
     if (!rightToWorkCheck.document) {
-      throw new BadRequestException("Right to work check does not have uploaded file!");
+      throw new BadRequestException(ERightToWorkCheckErrorCodes.FILE_NOT_UPLOADED);
     }
 
     await this.awsS3Service.deleteObject(rightToWorkCheck.document.s3Key);

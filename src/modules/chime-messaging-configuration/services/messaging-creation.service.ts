@@ -16,6 +16,7 @@ import {
   EChannelMembershipType,
   EChannelStatus,
   EChannelType,
+  EChimeMessagingConfigurationErrorCodes,
 } from "src/modules/chime-messaging-configuration/common/enums";
 import { ADMIN_ROLES, COMPANY_ADMIN_ROLES, UNDEFINED_VALUE } from "src/common/constants";
 import {
@@ -39,6 +40,7 @@ import {
 } from "src/modules/chime-messaging-configuration/common/types";
 import { findManyTyped, findOneOrFailTyped, isInRoles } from "src/common/utils";
 import { Appointment } from "src/modules/appointments/appointment/entities";
+import { ECommonErrorCodes } from "src/common/enums";
 
 @Injectable()
 export class MessagingCreationService {
@@ -60,7 +62,7 @@ export class MessagingCreationService {
 
   public async createChannel(user: ITokenUserData, dto: CreateChannelDto): Promise<TGetExistingChannel | Channel> {
     if (!isInRoles(ADMIN_ROLES, user.role) && dto.recipientId) {
-      throw new ForbiddenException("Forbidden request.");
+      throw new ForbiddenException(ECommonErrorCodes.ACCESS_FORBIDDEN_REQUEST);
     }
 
     const existingChannel = await this.messagingQueryService.getExistingChannelForUser(user.userRoleId, dto);
@@ -82,11 +84,11 @@ export class MessagingCreationService {
 
   private async createChannelByAdmin(user: ITokenUserData, dto: CreateChannelDto): Promise<Channel> {
     if (!dto.recipientId) {
-      throw new BadRequestException("recipientId should not be empty.");
+      throw new BadRequestException(EChimeMessagingConfigurationErrorCodes.MESSAGING_CREATION_RECIPIENT_ID_REQUIRED);
     }
 
     if (dto.recipientId === user.userRoleId) {
-      throw new BadRequestException("Admin and recipient cannot be the same.");
+      throw new BadRequestException(EChimeMessagingConfigurationErrorCodes.MESSAGING_CREATION_ADMIN_RECIPIENT_SAME);
     }
 
     const queryOptions = this.messagingQueryOptionsService.createChannelByAdminOptions(
@@ -106,7 +108,9 @@ export class MessagingCreationService {
     );
 
     if (!adminUserRole.profile || !recipientUserRole.profile) {
-      throw new BadRequestException("Admin or recipient has not completed their profile.");
+      throw new BadRequestException(
+        EChimeMessagingConfigurationErrorCodes.MESSAGING_CREATION_ADMIN_OR_USER_PROFILE_NOT_COMPLETED,
+      );
     }
 
     const channel = await this.constructAndCreateChannel(adminUserRole);
@@ -131,7 +135,9 @@ export class MessagingCreationService {
     );
 
     if (!userRole.profile) {
-      throw new BadRequestException("User has not completed their profile.");
+      throw new BadRequestException(
+        EChimeMessagingConfigurationErrorCodes.MESSAGING_CREATION_USER_PROFILE_NOT_COMPLETED,
+      );
     }
 
     let appointment: TGetChannelAppointment | null = null;
@@ -264,7 +270,9 @@ export class MessagingCreationService {
     type: EChannelMembershipType = EChannelMembershipType.MEMBER,
   ): Promise<void> {
     if (!userRole.instanceUserArn) {
-      throw new NotFoundException("User instance ARN not found.");
+      throw new NotFoundException(
+        EChimeMessagingConfigurationErrorCodes.MESSAGING_CREATION_USER_INSTANCE_ARN_NOT_FOUND,
+      );
     }
 
     const { adminArn } = await this.messagingIdentityService.getConfig();

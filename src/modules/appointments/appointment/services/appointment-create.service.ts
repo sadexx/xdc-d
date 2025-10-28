@@ -13,6 +13,7 @@ import {
 } from "src/modules/appointments/appointment/common/interfaces";
 import { MultiWayParticipant } from "src/modules/multi-way-participant/entities";
 import {
+  EAppointmentErrorCodes,
   EAppointmentInterpretingType,
   EAppointmentParticipantType,
   EAppointmentSchedulingType,
@@ -20,7 +21,6 @@ import {
 import { MultiWayParticipantService } from "src/modules/multi-way-participant/services";
 import { AttendeeCreationService, MeetingCreationService } from "src/modules/chime-meeting-configuration/services";
 import { AppointmentOrderCreateService } from "src/modules/appointment-orders/workflow/services";
-import { AppointmentOrder } from "src/modules/appointment-orders/appointment-order/entities";
 import { UNDEFINED_VALUE } from "src/common/constants";
 import { ICreateAppointmentOutput } from "src/modules/appointments/appointment/common/outputs";
 import { CreateFaceToFaceAppointmentAddressDto } from "src/modules/addresses/common/dto";
@@ -37,6 +37,8 @@ import { AppointmentOrderSharedLogicService } from "src/modules/appointment-orde
 import { ICreateFaceToFaceAppointmentAddress } from "src/modules/addresses/common/interfaces";
 import { ICreateMultiWayParticipant } from "src/modules/multi-way-participant/common/interfaces";
 import { Attendee } from "src/modules/chime-meeting-configuration/entities";
+import { PaymentAnalysisService } from "src/modules/payment-analysis/services";
+import { EPaymentOperation } from "src/modules/payment-analysis/common/enums";
 
 export class AppointmentCreateService {
   private readonly lokiLogger = new LokiLogger(AppointmentCreateService.name);
@@ -59,6 +61,7 @@ export class AppointmentCreateService {
     private readonly generalPaymentsService: OldGeneralPaymentsService,
     private readonly paymentsHelperService: OldPaymentsHelperService,
     private readonly appointmentSharedService: AppointmentSharedService,
+    private readonly paymentAnalysisService: PaymentAnalysisService,
   ) {}
 
   public async checkConflictsAndCreateVirtualAppointment(
@@ -99,7 +102,7 @@ export class AppointmentCreateService {
         `Failed to create virtual appointment: ${(error as Error).message}`,
         (error as Error).stack,
       );
-      throw new InternalServerErrorException("Unexpected error occurred while creating the virtual appointment.");
+      throw new InternalServerErrorException(EAppointmentErrorCodes.UNEXPECTED_ERROR_VIRTUAL);
     }
   }
 
@@ -137,20 +140,19 @@ export class AppointmentCreateService {
       );
     }
 
-    const appointmentOrder = (await this.appointmentOrderCreateService.constructAndCreateAppointmentOrder(
-      savedAppointment,
-      client,
-    )) as AppointmentOrder;
+    await this.appointmentOrderCreateService.constructAndCreateAppointmentOrder(savedAppointment, client);
     await this.createAppointmentAdminInfo(savedAppointment);
 
     await this.appointmentSharedService.sendParticipantsInvitations(savedAppointment, client, participants, attendees);
 
-    this.paymentAuthAndSearchTriggerIndividual(savedAppointment, appointmentOrder.id).catch((error: Error) => {
-      this.lokiLogger.error(
-        `Failed to make payin: ${error.message}, appointmentId: ${savedAppointment.id}`,
-        error.stack,
-      );
-    });
+    await this.paymentAnalysisService
+      .analyzePaymentAction(savedAppointment.id, EPaymentOperation.AUTHORIZE_PAYMENT)
+      .catch((error: Error) => {
+        this.lokiLogger.error(
+          `Failed to analyze payment action: ${error.message}, appointmentId: ${savedAppointment.id}`,
+          error.stack,
+        );
+      });
 
     return savedAppointment;
   }
@@ -160,7 +162,7 @@ export class AppointmentCreateService {
     dto: CreateVirtualAppointmentDto,
   ): Promise<void> {
     if (!dto.schedulingExtraDays || dto.schedulingExtraDays.length === 0) {
-      throw new BadRequestException("schedulingExtraDays should not be empty");
+      throw new BadRequestException(EAppointmentErrorCodes.SCHEDULING_EXTRA_DAYS_EMPTY);
     }
 
     const appointmentOrderGroup = await this.appointmentOrderCreateService.constructAndCreateAppointmentOrderGroup(
@@ -251,12 +253,16 @@ export class AppointmentCreateService {
       appointmentOrderGroup.platformId,
     );
 
-    this.paymentAuthAndSearchTriggerGroup(appointments, appointmentOrderGroup.id).catch((error: Error) => {
-      this.lokiLogger.error(
-        `Failed to make payin auth: ${error.message}, appointmentGroupId: ${appointments[0].appointmentsGroupId}`,
-        error.stack,
-      );
-    });
+    for (const appointment of appointments) {
+      this.paymentAnalysisService
+        .analyzePaymentAction(appointment.id, EPaymentOperation.AUTHORIZE_PAYMENT)
+        .catch((error: Error) => {
+          this.lokiLogger.error(
+            `Failed to analyze payment action: ${error.message}, appointmentGroupId: ${appointments[0].appointmentsGroupId}`,
+            error.stack,
+          );
+        });
+    }
   }
 
   public async checkConflictsAndCreateFaceToFaceAppointment(
@@ -297,7 +303,7 @@ export class AppointmentCreateService {
         `Failed to create face to face appointment: ${(error as Error).message}`,
         (error as Error).stack,
       );
-      throw new InternalServerErrorException("Unexpected error occurred while creating the face to face appointment.");
+      throw new InternalServerErrorException(EAppointmentErrorCodes.UNEXPECTED_ERROR_FACE_TO_FACE);
     }
   }
 
@@ -321,19 +327,17 @@ export class AppointmentCreateService {
 
     address.appointment = null;
 
-    const appointmentOrder = (await this.appointmentOrderCreateService.constructAndCreateAppointmentOrder(
-      savedAppointment,
-      client,
-      address,
-    )) as AppointmentOrder;
+    await this.appointmentOrderCreateService.constructAndCreateAppointmentOrder(savedAppointment, client, address);
     await this.createAppointmentAdminInfo(savedAppointment);
 
-    this.paymentAuthAndSearchTriggerIndividual(savedAppointment, appointmentOrder.id).catch((error: Error) => {
-      this.lokiLogger.error(
-        `Failed to make payin: ${error.message}, appointmentId: ${savedAppointment.id}`,
-        error.stack,
-      );
-    });
+    await this.paymentAnalysisService
+      .analyzePaymentAction(savedAppointment.id, EPaymentOperation.AUTHORIZE_PAYMENT)
+      .catch((error: Error) => {
+        this.lokiLogger.error(
+          `Failed to analyze payment action: ${error.message}, appointmentId: ${savedAppointment.id}`,
+          error.stack,
+        );
+      });
 
     return savedAppointment;
   }
@@ -343,7 +347,7 @@ export class AppointmentCreateService {
     dto: CreateFaceToFaceAppointmentDto,
   ): Promise<void> {
     if (!dto.schedulingExtraDays || dto.schedulingExtraDays.length === 0) {
-      throw new BadRequestException("schedulingExtraDays should not be empty");
+      throw new BadRequestException(EAppointmentErrorCodes.SCHEDULING_EXTRA_DAYS_EMPTY);
     }
 
     const appointmentOrderGroup = await this.appointmentOrderCreateService.constructAndCreateAppointmentOrderGroup(
@@ -423,12 +427,16 @@ export class AppointmentCreateService {
       appointmentOrderGroup.platformId,
     );
 
-    this.paymentAuthAndSearchTriggerGroup(appointments, appointmentOrderGroup.id).catch((error: Error) => {
-      this.lokiLogger.error(
-        `Failed to make payin auth: ${error.message}, appointmentGroupId: ${appointments[0].appointmentsGroupId}`,
-        error.stack,
-      );
-    });
+    for (const appointment of appointments) {
+      this.paymentAnalysisService
+        .analyzePaymentAction(appointment.id, EPaymentOperation.AUTHORIZE_PAYMENT)
+        .catch((error: Error) => {
+          this.lokiLogger.error(
+            `Failed to analyze payment action: ${error.message}, appointmentGroupId: ${appointments[0].appointmentsGroupId}`,
+            error.stack,
+          );
+        });
+    }
   }
 
   private async constructAndConfigureAppointment(
@@ -469,7 +477,7 @@ export class AppointmentCreateService {
     const determinedScheduledEndTime = addMinutes(determinedScheduledStartTime, determinedSchedulingDurationMin);
 
     if (!client.timezone) {
-      throw new BadRequestException("Missing timezone. Please update your address.");
+      throw new BadRequestException(EAppointmentErrorCodes.MISSING_TIMEZONE);
     }
 
     const appointmentDto: ICreateAppointment = {
@@ -511,7 +519,7 @@ export class AppointmentCreateService {
     const { client } = appointment;
 
     if (!client || !client.user.phoneNumber) {
-      throw new NotFoundException("Client not found.");
+      throw new NotFoundException(EAppointmentErrorCodes.CLIENT_NOT_FOUND);
     }
 
     const appointmentAdminInfoDto: ICreateAppointmentAdminInfo = {
@@ -565,7 +573,8 @@ export class AppointmentCreateService {
     return await this.addressRepository.save(newAddress);
   }
 
-  private async paymentAuthAndSearchTriggerIndividual(
+  // TODO: remove after new payments
+  protected async paymentAuthAndSearchTriggerIndividual(
     appointment: Appointment,
     appointmentOrderId: string,
   ): Promise<void> {
@@ -614,7 +623,8 @@ export class AppointmentCreateService {
     }
   }
 
-  private async paymentAuthAndSearchTriggerGroup(
+  // TODO: remove after new payments
+  protected async paymentAuthAndSearchTriggerGroup(
     appointments: Appointment[],
     appointmentOrderGroupId: string,
   ): Promise<void> {

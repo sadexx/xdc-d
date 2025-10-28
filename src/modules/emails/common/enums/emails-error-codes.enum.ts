@@ -1,0 +1,7 @@
+export const enum EEmailErrorCodes {
+  /**
+   * Template operations
+   */
+  TEMPLATE_BODY_NOT_FOUND = "EMAILS.CUSTOM_MAILER.BODY_NOT_FOUND",
+  TEMPLATE_LAYOUT_NOT_FOUND = "EMAILS.CUSTOM_MAILER.LAYOUT_NOT_FOUND",
+}

@@ -17,7 +17,7 @@ import { ActivationStepsTransferService } from "src/modules/data-transfer/servic
 import { EmailsService } from "src/modules/emails/services";
 import { MockService } from "src/modules/mock/services";
 import { RedisService } from "src/modules/redis/services";
-import { EUserRoleName, EAccountStatus } from "src/modules/users/common/enums";
+import { EUserRoleName, EAccountStatus, EUsersErrorCodes } from "src/modules/users/common/enums";
 import { ICurrentUserData, IPhoneVerification } from "src/modules/users/common/interfaces";
 import {
   TVerifyEmail,
@@ -70,7 +70,7 @@ export class UsersRegistrationStepsService {
       const hasFinishedRegistration = user.userRoles.some(({ isRegistrationFinished }) => isRegistrationFinished);
 
       if (hasFinishedRegistration) {
-        throw new ForbiddenException("This email is already registered. Log in to your account.");
+        throw new ForbiddenException(EUsersErrorCodes.EMAIL_ALREADY_REGISTERED);
       }
     }
 
@@ -118,7 +118,7 @@ export class UsersRegistrationStepsService {
     const savedCode = await this.redisService.get(CACHE_KEY);
 
     if (savedCode !== receivedCode) {
-      throw new BadRequestException("Your code is incorrect");
+      throw new BadRequestException(EUsersErrorCodes.CODE_INCORRECT);
     }
 
     await this.redisService.del(CACHE_KEY);
@@ -129,7 +129,7 @@ export class UsersRegistrationStepsService {
     const user = await findOneOrFailTyped<TCreatePassword>(email, this.userRepository, queryOptions, "email");
 
     if (user.password) {
-      throw new ForbiddenException("Unable to add password to your account.");
+      throw new ForbiddenException(EUsersErrorCodes.UNABLE_ADD_PASSWORD);
     }
 
     await this.usersPasswordService.setPassword(user.id, password);
@@ -151,7 +151,7 @@ export class UsersRegistrationStepsService {
     );
 
     if (userWithSamePhoneNumber) {
-      throw new BadRequestException("User with this phone number already exists.");
+      throw new BadRequestException(EUsersErrorCodes.PHONE_NUMBER_ALREADY_EXISTS);
     }
   }
 
@@ -183,7 +183,7 @@ export class UsersRegistrationStepsService {
     const redisPayload = await this.redisService.getJson<IPhoneVerification>(CACHE_KEY);
 
     if (!redisPayload || redisPayload.confirmationCode !== verificationCode) {
-      throw new BadRequestException("Can't verify phone number.");
+      throw new BadRequestException(EUsersErrorCodes.PHONE_VERIFICATION_FAILED);
     }
 
     await this.redisService.del(CACHE_KEY);
@@ -201,7 +201,7 @@ export class UsersRegistrationStepsService {
     );
 
     if (userRole.isUserAgreedToTermsAndConditions) {
-      throw new BadRequestException("You have already agreed to the terms and conditions");
+      throw new BadRequestException(EUsersErrorCodes.ALREADY_AGREED_TO_TERMS);
     }
 
     await this.userRoleRepository.update(userRole.id, { isUserAgreedToTermsAndConditions: true });

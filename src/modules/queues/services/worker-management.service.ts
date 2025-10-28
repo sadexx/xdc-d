@@ -119,6 +119,24 @@ export class WorkerManagementService implements OnModuleInit, OnModuleDestroy {
           },
         };
 
+      case EQueueType.PAYMENTS_EXECUTION_QUEUE:
+        return {
+          queueName: EQueueType.PAYMENTS_EXECUTION_QUEUE,
+          workerOptions: {
+            name: EWorkerType.PAYMENTS,
+            ...DEFAULT_WORKER_OPTIONS,
+          },
+        };
+
+      case EQueueType.PDF_GENERATION_QUEUE:
+        return {
+          queueName: EQueueType.PDF_GENERATION_QUEUE,
+          workerOptions: {
+            name: EWorkerType.PAYMENTS,
+            ...DEFAULT_WORKER_OPTIONS,
+          },
+        };
+
       case EQueueType.NOTIFICATIONS_QUEUE:
         return {
           queueName: EQueueType.NOTIFICATIONS_QUEUE,
@@ -133,20 +151,20 @@ export class WorkerManagementService implements OnModuleInit, OnModuleDestroy {
           },
         };
 
-      case EQueueType.WEBHOOKS_QUEUE:
-        return {
-          queueName: EQueueType.WEBHOOKS_QUEUE,
-          workerOptions: {
-            name: EWorkerType.WEBHOOKS,
-            ...DEFAULT_WORKER_OPTIONS,
-          },
-        };
-
       case EQueueType.APPOINTMENTS_QUEUE:
         return {
           queueName: EQueueType.APPOINTMENTS_QUEUE,
           workerOptions: {
             name: EWorkerType.APPOINTMENTS,
+            ...DEFAULT_WORKER_OPTIONS,
+          },
+        };
+
+      case EQueueType.WEBHOOKS_QUEUE:
+        return {
+          queueName: EQueueType.WEBHOOKS_QUEUE,
+          workerOptions: {
+            name: EWorkerType.WEBHOOKS,
             ...DEFAULT_WORKER_OPTIONS,
           },
         };

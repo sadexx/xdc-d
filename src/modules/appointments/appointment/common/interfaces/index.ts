@@ -6,6 +6,6 @@ export * from "src/modules/appointments/appointment/common/interfaces/recreate-a
 export * from "src/modules/appointments/appointment/common/interfaces/recreated-appointment-with-old-appointment.interface";
 export * from "src/modules/appointments/appointment/common/interfaces/appointment-external-session-check-in.interface";
 export * from "src/modules/appointments/appointment/common/interfaces/appointment-external-session-check-out.interface";
-export * from "src/modules/appointments/appointment/common/interfaces/appointment-business-time-range.interface";
+export * from "src/modules/appointments/appointment/common/interfaces/appointment-external-business-time-and-overage.interface";
 export * from "src/modules/appointments/appointment/common/interfaces/appointment-invitation-list.interface";
 export * from "src/modules/appointments/appointment/common/interfaces/finalize-external-appointment.interface";

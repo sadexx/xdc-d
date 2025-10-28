@@ -7,7 +7,11 @@ import { EExtCountry } from "src/modules/addresses/common/enums";
 import { QueueInitializeService } from "src/modules/queues/services";
 import { membershipRegionPricingMap } from "src/modules/memberships/common/constants";
 import { UpdateMembershipPriceDto } from "src/modules/memberships/common/dto";
-import { EMembershipPricingRegion, EMembershipNotificationType } from "src/modules/memberships/common/enums";
+import {
+  EMembershipPricingRegion,
+  EMembershipNotificationType,
+  EMembershipErrorCodes,
+} from "src/modules/memberships/common/enums";
 import { IGetMembershipPrice } from "src/modules/memberships/common/interfaces";
 import {
   TGetMembershipPriceMembership,
@@ -17,9 +21,11 @@ import {
 } from "src/modules/memberships/common/types";
 import { Membership, MembershipPrice } from "src/modules/memberships/entities";
 import { MembershipPaymentsService, MembershipsQueryOptionsService } from "src/modules/memberships/services";
+import { LokiLogger } from "src/common/logger";
 
 @Injectable()
 export class MembershipsPriceService {
+  private readonly lokiLogger = new LokiLogger(MembershipsPriceService.name);
   constructor(
     @InjectRepository(Membership)
     private readonly membershipRepository: Repository<Membership>,
@@ -39,9 +45,8 @@ export class MembershipsPriceService {
     const membershipPrice = membership.membershipPrices.find((price) => price.region === pricingRegion);
 
     if (!membershipPrice) {
-      throw new NotFoundException(
-        `Price not found for membership with id: ${membership.id} in region: ${pricingRegion}`,
-      );
+      this.lokiLogger.error(`Price not found for Membership with id: ${membership.id} in region: ${pricingRegion}.`);
+      throw new NotFoundException(EMembershipErrorCodes.PRICE_NOT_FOUND_FOR_REGION);
     }
 
     return {

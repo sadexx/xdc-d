@@ -31,6 +31,7 @@ import {
   TGetAllNotifications,
 } from "src/modules/notifications/common/types";
 import { findManyTyped, findOneOrFailTyped } from "src/common/utils";
+import { EPaymentFailedReason } from "src/modules/payments-new/common/enums";
 
 @Injectable()
 export class NotificationService {
@@ -660,7 +661,7 @@ export class NotificationService {
     platformId: string,
     appointmentDetails: IAppointmentDetailsOutput,
   ): Promise<void> {
-    const title = ENotificationType.PAYMENT_SUCCEEDED;
+    const title = ENotificationType.PRE_AUTHORIZATION_SUCCEEDED;
     const message = `The pre-authorization for your appointment (ID: ${platformId}) has been successfully processed.`;
     const data: INotificationData = {
       data: { type: ENotificationDataType.APPOINTMENT_PAYMENT_SUCCEEDED, extraData: appointmentDetails },
@@ -673,10 +674,10 @@ export class NotificationService {
   public async sendAppointmentAuthorizationPaymentFailedNotification(
     userRoleId: string,
     platformId: string,
-    reason: OldEPaymentFailedReason,
+    reason: OldEPaymentFailedReason | EPaymentFailedReason,
     appointmentDetails: IAppointmentDetailsOutput,
   ): Promise<void> {
-    const title = ENotificationType.PAYMENT_FAILED;
+    const title = ENotificationType.PRE_AUTHORIZATION_FAILED;
     const message = `The pre-authorization for your appointment (ID: ${platformId}) has failed. Reason: ${reason}`;
     const data: INotificationData = {
       data: { type: ENotificationDataType.APPOINTMENT_PAYMENT_FAILED, extraData: appointmentDetails },
@@ -715,7 +716,7 @@ export class NotificationService {
   public async sendDepositChargeFailedNotification(
     userRoleId: string,
     platformId: string,
-    reason: OldEPaymentFailedReason,
+    reason: EPaymentFailedReason,
     depositChargeDetails: ICompanyDetailsOutput,
   ): Promise<void> {
     const title = ENotificationType.DEPOSIT_CHARGE_FAILED;

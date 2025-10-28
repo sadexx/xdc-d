@@ -1,0 +1,16 @@
+export const enum EHelperErrorCodes {
+  /*
+   * User repository operations
+   */
+  NO_SUPER_ADMINS_FOUND = "HELPER.USER_REPOSITORY.NO_SUPER_ADMINS_FOUND",
+  /*
+   * UserRole repository operations
+   */
+  NO_LFH_ADMINS_FOUND = "HELPER.USER_ROLE_REPOSITORY.NO_LFH_ADMINS_FOUND",
+  /*
+   * Other operations
+   */
+  USER_DOES_NOT_EXIST = "HELPER.OTHER.USER_DOES_NOT_EXIST",
+  USER_NO_ROLES_ASSIGNED = "HELPER.OTHER.USER_NO_ROLES_ASSIGNED",
+  ROLE_NOT_FOUND = "HELPER.OTHER.ROLE_NOT_FOUND",
+}

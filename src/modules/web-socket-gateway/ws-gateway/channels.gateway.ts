@@ -8,7 +8,6 @@ import {
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
-  WsException,
 } from "@nestjs/websockets";
 import { UseFilters } from "@nestjs/common";
 import { Server, Socket } from "socket.io";
@@ -110,42 +109,36 @@ export class ChannelGateway implements OnGatewayInit, OnGatewayConnection, OnGat
 
   @SubscribeMessage("message")
   async handleMessage(@ConnectedSocket() client: Socket, @MessageBody() message: ChannelEventDto): Promise<void> {
-    try {
-      switch (message.event) {
-        case EWebSocketEventTypes.CHANNEL_MESSAGE: {
-          if (!message.id) {
-            break;
-          }
-
-          const channel = await this.messagingQueryService.getChannelById(message.id);
-          const messages = await this.messagingManagementService.handleWebSocketChannelUpdate(channel);
-          this.prometheusService.messagesSentCounter.inc();
-          client.emit(EWebSocketEventTypes.CHANNEL_MESSAGE, messages);
-          await this.syncActiveChannelAndNotifyMembers(channel, client.user.userRoleId);
-
+    switch (message.event) {
+      case EWebSocketEventTypes.CHANNEL_MESSAGE: {
+        if (!message.id) {
           break;
         }
 
-        case EWebSocketEventTypes.CHANNEL_DELETE_MESSAGE:
-          await this.messagingManagementService.deleteChannelMessage(message);
-          this.prometheusService.messagesSentCounter.inc();
-          client.emit(EWebSocketEventTypes.CHANNEL_DELETE_MESSAGE, message);
-          break;
+        const channel = await this.messagingQueryService.getChannelById(message.id);
+        const messages = await this.messagingManagementService.handleWebSocketChannelUpdate(channel);
+        this.prometheusService.messagesSentCounter.inc();
+        client.emit(EWebSocketEventTypes.CHANNEL_MESSAGE, messages);
+        await this.syncActiveChannelAndNotifyMembers(channel, client.user.userRoleId);
 
-        case EWebSocketEventTypes.RESET_ACTIVE_CHANNEL:
-          await this.activeChannelStorageService.removeActiveChannel(client.user.userRoleId);
-          this.prometheusService.messagesSentCounter.inc();
-          client.emit(EWebSocketEventTypes.RESET_ACTIVE_CHANNEL, message);
-          break;
-
-        default:
-          this.lokiLogger.error(`Unhandled event: ${message.event}`);
-          client.disconnect();
+        break;
       }
-    } catch (error) {
-      this.lokiLogger.error(`Error handling channel message: ${(error as Error).message}, ${(error as Error).stack}`);
-      client.emit("error", { message: "An error occurred while processing your request." });
-      throw new WsException((error as Error).message);
+
+      case EWebSocketEventTypes.CHANNEL_DELETE_MESSAGE:
+        await this.messagingManagementService.deleteChannelMessage(message);
+        this.prometheusService.messagesSentCounter.inc();
+        client.emit(EWebSocketEventTypes.CHANNEL_DELETE_MESSAGE, message);
+        break;
+
+      case EWebSocketEventTypes.RESET_ACTIVE_CHANNEL:
+        await this.activeChannelStorageService.removeActiveChannel(client.user.userRoleId);
+        this.prometheusService.messagesSentCounter.inc();
+        client.emit(EWebSocketEventTypes.RESET_ACTIVE_CHANNEL, message);
+        break;
+
+      default:
+        this.lokiLogger.error(`Unhandled event: ${message.event}`);
+        client.disconnect();
     }
   }
 

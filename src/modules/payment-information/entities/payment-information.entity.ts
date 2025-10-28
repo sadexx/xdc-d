@@ -10,7 +10,7 @@ import {
 import { UserRole } from "src/modules/users/entities";
 import { EOnboardingStatus } from "src/modules/stripe/common/enums";
 import { Company } from "src/modules/companies/entities";
-import { EPaymentSystem } from "src/modules/payment-information/common/enums";
+import { EPaymentSystem } from "src/modules/payments-new/common/enums";
 
 @Entity("payments_information")
 export class PaymentInformation {

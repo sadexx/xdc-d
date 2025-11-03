@@ -2,9 +2,6 @@ import { FindOptionsSelect, FindOptionsRelations } from "typeorm";
 import { NonNullableProperties, QueryResultType } from "src/common/types";
 import { Appointment } from "src/modules/appointments/appointment/entities";
 import { Payment } from "src/modules/payments-new/entities";
-import { User } from "src/modules/users/entities";
-import { PaymentInformation } from "src/modules/payment-information/entities";
-import { Address } from "src/modules/addresses/entities";
 import { Company } from "src/modules/companies/entities";
 
 /**
@@ -23,13 +20,20 @@ export type TClientCaptureContext = NonNullableProperties<
   NonNullable<TBaseAppointmentCaptureContext["client"]>,
   "country" | "timezone"
 > & {
-  user: NonNullableProperties<Pick<User, "platformId">, "platformId">;
-  paymentInformation: NonNullableProperties<Pick<PaymentInformation, "stripeClientLastFour">, "stripeClientLastFour">;
-  address: Pick<Address, "streetNumber" | "streetName" | "suburb" | "state" | "postcode" | "country">;
+  user: NonNullableProperties<NonNullable<TBaseAppointmentCaptureContext["client"]>["user"], "platformId">;
+  paymentInformation: NonNullableProperties<
+    NonNullable<NonNullable<TBaseAppointmentCaptureContext["client"]>["paymentInformation"]>,
+    "stripeClientLastFour"
+  >;
+  address: NonNullable<NonNullable<TBaseAppointmentCaptureContext["client"]>["address"]>;
 };
 
 export type TInterpreterCaptureContext = TBaseAppointmentCaptureContext["interpreter"] & {
-  user: NonNullableProperties<Pick<User, "platformId">, "platformId">;
+  user: NonNullableProperties<NonNullable<TBaseAppointmentCaptureContext["interpreter"]>["user"], "platformId">;
+};
+
+export type TLoadPaymentCaptureContext = TBasePaymentCaptureContext & {
+  company: NonNullableProperties<NonNullable<TBasePaymentCaptureContext["company"]>, "platformCommissionRate">;
 };
 
 /**
@@ -62,6 +66,7 @@ export const LoadAppointmentCaptureContextQuery = {
       user: { platformId: true },
       paymentInformation: { stripeClientLastFour: true },
       address: { streetNumber: true, streetName: true, suburb: true, state: true, postcode: true, country: true },
+      abnCheck: { abnNumber: true },
     },
     interpreter: {
       id: true,
@@ -74,7 +79,7 @@ export const LoadAppointmentCaptureContextQuery = {
     },
   } as const satisfies FindOptionsSelect<Appointment>,
   relations: {
-    client: { role: true, profile: true, user: true, paymentInformation: true, address: true },
+    client: { role: true, profile: true, user: true, paymentInformation: true, address: true, abnCheck: true },
     interpreter: { user: true, role: true, abnCheck: true },
   } as const satisfies FindOptionsRelations<Appointment>,
 };
@@ -98,13 +103,14 @@ export const LoadPaymentCaptureContextQuery = {
       platformCommissionRate: true,
       platformId: true,
       name: true,
+      contactEmail: true,
       address: { streetNumber: true, streetName: true, suburb: true, state: true, postcode: true, country: true },
     },
     items: { id: true, amount: true, gstAmount: true, fullAmount: true, externalId: true, status: true },
   } as const satisfies FindOptionsSelect<Payment>,
   relations: { company: { address: true }, items: true } as const satisfies FindOptionsRelations<Payment>,
 };
-export type TLoadPaymentCaptureContext = QueryResultType<Payment, typeof LoadPaymentCaptureContextQuery.select>;
+export type TBasePaymentCaptureContext = QueryResultType<Payment, typeof LoadPaymentCaptureContextQuery.select>;
 
 export const LoadInterpreterCompanyCaptureContextQuery = {
   select: {

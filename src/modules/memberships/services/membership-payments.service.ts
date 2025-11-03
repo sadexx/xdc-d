@@ -1,12 +1,10 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
 import {
   TActivateMembership,
   TCancelMembershipSubscriptionUserRole,
   TDeactivateMembership,
   TGetTrialEndTimestampDiscountHolder,
   TProcessAndSavePaymentMembership,
-  TProcessAndSavePaymentUserRole,
   TProcessMembershipPayment,
   TProcessMembershipPaymentUserRole,
   TProcessMembershipSubscription,
@@ -23,7 +21,6 @@ import { StripePaymentsService, StripeSubscriptionsService } from "src/modules/s
 import { UNDEFINED_VALUE, NUMBER_OF_MILLISECONDS_IN_SECOND } from "src/common/constants";
 import { UpdateMembershipPriceDto } from "src/modules/memberships/common/dto";
 import { InjectRepository } from "@nestjs/typeorm";
-import { randomUUID } from "crypto";
 import Stripe from "stripe";
 import { Repository } from "typeorm";
 import { findOneOrFailTyped, normalizedAmountToDenormalized } from "src/common/utils";
@@ -34,22 +31,19 @@ import {
   OldEPaymentDirection,
   OldEPaymentStatus,
 } from "src/modules/payments/common/enums";
-import { OldPayment, OldPaymentItem } from "src/modules/payments/entities";
 import { UserRole } from "src/modules/users/entities";
 import { Membership, MembershipAssignment } from "src/modules/memberships/entities";
-import { PdfBuilderService } from "src/modules/pdf/services";
 import {
   MembershipAssignmentsService,
   MembershipsPriceService,
   MembershipsQueryOptionsService,
 } from "src/modules/memberships/services";
-import { AwsS3Service } from "src/modules/aws/s3/aws-s3.service";
 import { EmailsService } from "src/modules/emails/services";
+import { QueueInitializeService } from "src/modules/queues/services";
+import { Payment, PaymentItem } from "src/modules/payments-new/entities";
 
 @Injectable()
 export class MembershipPaymentsService {
-  private readonly BACK_END_URL: string;
-
   constructor(
     @InjectRepository(Membership)
     private readonly membershipRepository: Repository<Membership>,
@@ -57,22 +51,18 @@ export class MembershipPaymentsService {
     private readonly membershipAssignmentRepository: Repository<MembershipAssignment>,
     @InjectRepository(UserRole)
     private readonly userRoleRepository: Repository<UserRole>,
-    @InjectRepository(OldPayment)
-    private readonly paymentRepository: Repository<OldPayment>,
-    @InjectRepository(OldPaymentItem)
-    private readonly paymentItemRepository: Repository<OldPaymentItem>,
+    @InjectRepository(Payment)
+    private readonly paymentRepository: Repository<Payment>,
+    @InjectRepository(PaymentItem)
+    private readonly paymentItemRepository: Repository<PaymentItem>,
     private readonly membershipsQueryOptionsService: MembershipsQueryOptionsService,
     private readonly membershipsPriceService: MembershipsPriceService,
     private readonly membershipAssignmentsService: MembershipAssignmentsService,
     private readonly stripeSubscriptionsService: StripeSubscriptionsService,
     private readonly stripePaymentsService: StripePaymentsService,
-    private readonly pdfBuilderService: PdfBuilderService,
-    private readonly awsS3Service: AwsS3Service,
     private readonly emailsService: EmailsService,
-    private readonly configService: ConfigService,
-  ) {
-    this.BACK_END_URL = this.configService.getOrThrow<string>("appUrl");
-  }
+    private readonly queueInitializeService: QueueInitializeService,
+  ) {}
 
   public async createStripeSubscription(
     membership: TProcessMembershipSubscription,
@@ -174,15 +164,7 @@ export class MembershipPaymentsService {
     );
 
     const membershipPrice = this.membershipsPriceService.getMembershipPrice(membership, userRole);
-    const payment = await this.processAndSavePayment(invoice, membership, userRole, membershipPrice, true);
-
-    const receiptLink = `${this.BACK_END_URL}/v1/payments/download-receipt?receiptKey=${payment.receipt}`;
-    await this.emailsService.sendMembershipPaymentSucceededEmail(
-      userRole.profile.contactEmail,
-      userRole.profile.preferredName || userRole.profile.firstName,
-      membership.type,
-      receiptLink,
-    );
+    await this.processAndSavePayment(invoice, membership, userRole, membershipPrice, true);
   }
 
   public async processMembershipPaymentFailed(invoice: Stripe.Invoice): Promise<void> {
@@ -261,10 +243,10 @@ export class MembershipPaymentsService {
   private async processAndSavePayment(
     invoice: Stripe.Invoice,
     membership: TProcessAndSavePaymentMembership,
-    userRole: TProcessAndSavePaymentUserRole,
+    userRole: TProcessMembershipPaymentUserRole,
     membershipPrice: IGetMembershipPrice,
     paymentSucceeded: boolean,
-  ): Promise<OldPayment> {
+  ): Promise<Payment> {
     const amount = normalizedAmountToDenormalized(paymentSucceeded ? invoice.amount_paid : invoice.amount_due);
     const gstAmount = paymentSucceeded ? membershipPrice.gstAmount || 0 : 0;
 
@@ -273,7 +255,7 @@ export class MembershipPaymentsService {
 
     const payment = this.paymentRepository.create({
       customerType: OldECustomerType.INDIVIDUAL,
-      fromClientId: userRole.id,
+      fromClient: userRole,
       membershipId: membership.id,
       totalGstAmount: gstAmount,
       totalFullAmount: amount,
@@ -290,18 +272,15 @@ export class MembershipPaymentsService {
     const paymentIntent = await this.stripePaymentsService.getPaymentIntent(finalizedInvoice.payment_intent);
 
     if (paymentSucceeded) {
-      const membershipReceipt = await this.pdfBuilderService.generateMembershipInvoice(
+      await this.queueInitializeService.addProcessMembershipInvoiceGenerationQueue({
         payment,
         userRole,
-        membership.type,
-        currency,
+        membershipType: membership.type,
+      });
+      stripeReceiptKey = await this.stripePaymentsService.getPaymentReceipt(
+        payment.id,
+        paymentIntent.latest_charge as string,
       );
-      payment.receipt = membershipReceipt.receiptKey;
-
-      const stripeReceipt = await this.stripePaymentsService.getReceipt(paymentIntent.latest_charge as string);
-
-      stripeReceiptKey = `payments/stripe-receipts/${randomUUID()}.html`;
-      await this.awsS3Service.uploadObject(stripeReceiptKey, stripeReceipt as ReadableStream, "text/html");
     }
 
     const savedPayment = await this.paymentRepository.save(payment);

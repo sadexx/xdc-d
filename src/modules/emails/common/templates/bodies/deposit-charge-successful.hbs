@@ -27,15 +27,13 @@
                   <div style="text-align: right">
                     <p style="font-size: 35px">TAX INVOICE</p>
                     <br />
-                    <b>From: {{fromCompanyName}}</b><br />
-                    <p>ABN {{fromCompanyABNNumber}}</p>
-                    <p>{{fromCompanyAddress}}</p>
-                    <b>To: {{toCompanyName}}</b><br />
-                    {{#if toCompanyABNNumber}}
-                    <p>ABN {{toCompanyABNNumber}}</p>
-                    {{/if}}
-                    <b>(Company ID {{toCompanyId}})</b><br />
-                    <p>{{toCompanyAddress}}</p>
+                    <b>From: {{lfhCompanyData.companyName}}</b><br />
+                    <p>ABN {{lfhCompanyData.abnNumber}}</p>
+                    <p>{{lfhCompanyData.companyAddress}}</p>
+                    <b>To: {{recipientData.recipientName}}</b><br />
+										{{#if recipientData.recipientAbnNumber}}<p>ABN {{recipientData.recipientAbnNumber}}</p>{{/if}}
+                    <b>(Company ID {{recipientData.recipientId}})</b><br />
+                    <p>{{recipientData.recipientAddress}}</p>
                     <br />
                   </div>
                 </td>
@@ -46,7 +44,7 @@
         <tr>
           <td>
             <h3 style="font-family: Arial, sans-serif; color: #333; line-height: 1.4">
-              Invoice Number {{receiptNumber}} - PAID
+              Invoice Number {{payment.platformId}} - PAID
             </h3>
             <table
               width="100%"
@@ -155,7 +153,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{currency}}
+                    {{payment.currency}}
                   </td>
                   <td
                     style="
@@ -179,7 +177,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{currency}} {{total}}
+                    {{payment.currency}} {{payment.totalAmount}}
                   </td>
                   <td
                     style="
@@ -191,7 +189,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{currency}} {{gstAmount}}
+                    {{payment.currency}} {{payment.totalGstAmount}}
                   </td>
                   <td
                     style="
@@ -203,7 +201,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{currency}} {{invoiceTotal}}
+                    {{payment.currency}} {{payment.totalFullAmount}}
                   </td>
                   <td
                     style="
@@ -215,7 +213,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{currency}} {{amountPaid}}
+                    {{payment.currency}} {{#if payment.totalFullAmount}}-{{payment.totalFullAmount}}{{else}}0{{/if}}
                   </td>
                   <td
                     style="
@@ -227,7 +225,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{currency}} {{amountDue}}
+                    {{payment.currency}} "0.00"
                   </td>
                 </tr>
               </tbody>
@@ -332,7 +330,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{currency}} {{paymentTotal}}
+                    {{payment.currency}} {{#if payment.totalFullAmount}}-{{payment.totalFullAmount}}{{else}}0{{/if}}
                   </td>
                   <td
                     style="
@@ -344,7 +342,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{currency}} {{thisInvoiceAmount}}
+                    {{payment.currency}} {{payment.totalFullAmount}}
                   </td>
                 </tr>
               </tbody>
@@ -437,7 +435,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{transactionId}}
+                    {{payment.platformId}}
                   </td>
                   <td
                     style="
@@ -461,7 +459,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{paymentDateTime}}
+                    {{paymentDate}}
                   </td>
                   <td
                     style="
@@ -473,7 +471,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{toCompanyId}}
+                    {{recipientData.recipientId}}
                   </td>
                   <td
                     style="
@@ -485,7 +483,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{currency}} {{invoiceTotal}}
+                    {{payment.currency}} {{payment.totalFullAmount}}
                   </td>
                 </tr>
               </tbody>

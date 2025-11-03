@@ -35,12 +35,12 @@
                       36/1 Thread Lane, Waterloo, NSW, 2017, Australia
                     </p>
                     <p style="font-size: 16px; margin: 0">
-                      <b>To: {{companyName}}</b>
+                      <b>To: {{recipientData.recipientName}}</b>
                     </p>
-                    {{#if companyAbnNumber}}
-                    <p style="font-size: 16px; margin: 0">ABN {{companyAbnNumber}}</p>
+                    {{#if recipientData.recipientAbnNumber}}
+                    <p style="font-size: 16px; margin: 0">ABN {{recipientData.recipientAbnNumber}}</p>
                     {{/if}}
-                    <p style="font-size: 16px; margin: 0">(Company ID {{companyId}})</p>
+                    <p style="font-size: 16px; margin: 0">(Company ID {{recipientData.recipientId}})</p>
                   </div>
                 </td>
               </tr>
@@ -168,7 +168,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{paymentDate}}
+                    {{issueDate}}
                   </td>
                   <td
                     style="
@@ -180,7 +180,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{bookingId}}
+                    #{{payment.appointment.platformId}}
                   </td>
                   <td
                     style="
@@ -192,7 +192,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{interpreterId}}
+                    {{payment.appointment.interpreter.user.platformId}}
                   </td>
                   <td
                     style="
@@ -204,7 +204,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{service}}
+                    {{appointmentServiceType}}
                   </td>
                   <td
                     style="
@@ -216,7 +216,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{duration}}
+                    {{totalDuration}}
                   </td>
                   <td
                     style="
@@ -228,7 +228,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{currency}} {{fullAmount}}
+                    {{payment.currency}} {{payment.totalFullAmount}}
                   </td>
                 </tr>
               </tbody>
@@ -317,7 +317,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{paymentDate}}
+                    {{issueDate}}
                   </td>
                   <td
                     style="
@@ -329,7 +329,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{serviceDate}}
+                    {{appointmentDate}}
                   </td>
                   <td
                     style="
@@ -341,7 +341,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{topic}}
+                    {{payment.appointment.topic}}
                   </td>
                   <td
                     style="
@@ -353,7 +353,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{currency}} {{amount}}
+                    {{payment.currency}} {{payment.totalAmount}}
                   </td>
                   <td
                     style="
@@ -365,7 +365,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{currency}} {{gstAmount}}
+                    {{payment.currency}} {{payment.totalGstAmount}}
                   </td>
                 </tr>
               </tbody>

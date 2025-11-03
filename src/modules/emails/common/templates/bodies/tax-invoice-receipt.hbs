@@ -46,30 +46,30 @@
                       </td>
                     </tr>
                     <tr>
-                      <td style="padding-bottom: 20px">Dated: {{invoiceDate}}</td>
+                      <td style="padding-bottom: 20px">Dated: {{issueDate}}</td>
                     </tr>
                     <tr>
-                      <td style="font-weight: bold">From: {{fromInterpreterName}}</td>
+                      <td style="font-weight: bold">From: {{recipientData.recipientName}}</td>
                     </tr>
                     <tr>
-                      <td>(Interpreter ID {{fromInterpreterId}})</td>
+                      <td>(Interpreter ID {{recipientData.recipientId}})</td>
                     </tr>
-                    {{#if fromInterpreterABNNumber}}
+                    {{#if recipientData.recipientAbnNumber}}
                     <tr>
-                      <td>ABN {{fromInterpreterABNNumber}}</td>
+                      <td>ABN {{recipientData.recipientAbnNumber}}</td>
                     </tr>
                     {{/if}}
                     <tr>
-                      <td>{{fromInterpreterAddress}}</td>
+                      <td>{{recipientData.recipientAddress}}</td>
                     </tr>
                     <tr>
-                      <td style="padding-top: 20px; font-weight: bold">To: {{toCompanyName}}</td>
+                      <td style="padding-top: 20px; font-weight: bold">To: {{lfhCompanyData.companyName}}</td>
                     </tr>
                     <tr>
-                      <td>ABN {{toCompanyABNNumber}}</td>
+                      <td>ABN {{lfhCompanyData.abnNumber}}</td>
                     </tr>
                     <tr>
-                      <td>{{toCompanyAddress}}</td>
+                      <td>{{lfhCompanyData.companyAddress}}</td>
                     </tr>
                   </table>
                 </td>
@@ -197,7 +197,7 @@
                       font-size: 10px;
                     "
                   >
-                    {{bookingId}}
+                    {{appointment.platformId}}
                   </td>
                   <td
                     style="
@@ -209,7 +209,7 @@
                       font-size: 10px;
                     "
                   >
-                    {{serviceDate}}
+                    {{appointmentDate}}
                   </td>
                   <td
                     style="
@@ -221,7 +221,7 @@
                       font-size: 10px;
                     "
                   >
-                    {{description}}
+                    {{appointmentDescription}}
                   </td>
                   <td
                     style="
@@ -233,7 +233,7 @@
                       font-size: 10px;
                     "
                   >
-                    {{duration}}
+                    {{totalDuration}}
                   </td>
                   <td
                     style="
@@ -245,7 +245,7 @@
                       font-size: 10px;
                     "
                   >
-                    {{currency}} {{valueExclGST}}
+                    {{payment.currency}} {{payment.totalAmount}}
                   </td>
                   <td
                     style="
@@ -257,7 +257,7 @@
                       font-size: 10px;
                     "
                   >
-                    {{currency}} {{valueGST}}
+                    {{payment.currency}} {{payment.totalGstAmount}}
                   </td>
                   <td
                     style="
@@ -269,7 +269,7 @@
                       font-size: 10px;
                     "
                   >
-                    {{currency}} {{total}}
+                    {{payment.currency}} {{payment.totalFullAmount}}
                   </td>
                 </tr>
               </tbody>

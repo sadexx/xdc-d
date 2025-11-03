@@ -19,7 +19,6 @@ import { OldRatesModule } from "src/modules/rates-old/old-rates.module";
 import { DiscountsModule } from "src/modules/discounts/discounts.module";
 import { NotificationModule } from "src/modules/notifications/notification.module";
 import { AppointmentFailedPaymentCancelModule } from "src/modules/appointments/failed-payment-cancel/appointment-failed-payment-cancel.module";
-import { HelperModule } from "src/modules/helper/helper.module";
 import { OldPaymentsQueryOptionsService } from "src/modules/payments/services/old-payments-query-options.service";
 import { Company } from "src/modules/companies/entities";
 import { CompaniesDepositChargeModule } from "src/modules/companies-deposit-charge/companies-deposit-charge.module";
@@ -48,7 +47,6 @@ import { AccessControlModule } from "src/modules/access-control/access-control.m
     DiscountsModule,
     NotificationModule,
     AppointmentFailedPaymentCancelModule,
-    HelperModule,
     CompaniesDepositChargeModule,
     AppointmentsSharedModule,
     AccessControlModule,

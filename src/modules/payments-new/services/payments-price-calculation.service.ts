@@ -22,7 +22,6 @@ export class PaymentsPriceCalculationService {
 
   public async calculatePaymentStartPrice(data: ICalculatePaymentStartPrice): Promise<IPaymentCalculationResult> {
     const { appointment, isClientCorporate, country } = data;
-
     const appointmentCalculation = this.constructAppointmentCalculation(appointment);
 
     const isClientGstPayer = this.determineClientGstStatus(isClientCorporate, country);
@@ -40,7 +39,6 @@ export class PaymentsPriceCalculationService {
   ): Promise<IPaymentCalculationResult> {
     const { appointment, isClientCorporate, isInterpreterCorporate, country, additionalBlockDuration, discountRate } =
       data;
-
     const appointmentCalculation = this.constructAppointmentCalculation(appointment);
 
     const isClientGstPayer = this.determineClientGstStatus(isClientCorporate, country);
@@ -61,7 +59,6 @@ export class PaymentsPriceCalculationService {
 
   public async calculatePaymentEndPrice(data: ICalculatePaymentEndPrice): Promise<IPaymentCalculationResult> {
     const { appointment, isClientCorporate, isInterpreterCorporate, clientCountry, interpreterCountry } = data;
-
     const appointmentCalculation = this.constructAppointmentCalculation(appointment);
 
     const isClientGstPayer = this.determineClientGstStatus(isClientCorporate, clientCountry);

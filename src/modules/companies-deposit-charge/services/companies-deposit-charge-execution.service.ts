@@ -1,9 +1,8 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { DataSource, EntityManager, In, Repository } from "typeorm";
-import { denormalizedAmountToNormalized, findManyTyped, round2 } from "src/common/utils";
+import { findManyTyped, round2 } from "src/common/utils";
 import { FIFTEEN_PERCENT_MULTIPLIER, GST_COEFFICIENT, TEN_PERCENT_MULTIPLIER } from "src/common/constants";
-import { HelperService } from "src/modules/helper/services";
 import {
   EPaymentCurrency,
   EPaymentCustomerType,
@@ -12,15 +11,13 @@ import {
   EPaymentStatus,
   EPaymentSystem,
 } from "src/modules/payments-new/common/enums";
-import { ICreatePaymentRecordResult } from "src/modules/payments-new/common/interfaces";
+import { ICreatePaymentRecordResult, IPaymentCalculationResult } from "src/modules/payments-new/common/interfaces";
 import { Payment } from "src/modules/payments-new/entities";
-import { PaymentsCreationService } from "src/modules/payments-new/services";
-import { StripePaymentsService } from "src/modules/stripe/services";
+import { PaymentsExternalOperationsService, PaymentsManagementService } from "src/modules/payments-new/services";
 import { EUserRoleName } from "src/modules/users/common/enums";
 import { UNFINISHED_DEPOSIT_CHARGE_STATUSES } from "src/modules/companies-deposit-charge/common/constants";
 import { ECompaniesDepositChargeErrorCodes } from "src/modules/companies-deposit-charge/common/enums";
 import {
-  IAttemptStripeDepositChargeData,
   ICalculateDepositChargeGstAmounts,
   ICreateDepositChargePaymentRecordData,
   IHandleDepositChargeFailureData,
@@ -33,7 +30,7 @@ import {
 } from "src/modules/companies-deposit-charge/common/types";
 import { CompanyDepositCharge } from "src/modules/companies-deposit-charge/entities";
 import { CompaniesDepositChargeNotificationService } from "src/modules/companies-deposit-charge/services";
-import { IStripeOperationResult } from "src/modules/stripe/common/interfaces";
+import { isCorporateGstPayer } from "src/modules/payments-new/common/helpers";
 
 @Injectable()
 export class CompaniesDepositChargeExecutionService {
@@ -41,9 +38,8 @@ export class CompaniesDepositChargeExecutionService {
     @InjectRepository(CompanyDepositCharge)
     private readonly companyDepositChargeRepository: Repository<CompanyDepositCharge>,
     private readonly companiesDepositChargeNotificationService: CompaniesDepositChargeNotificationService,
-    private readonly paymentsCreationService: PaymentsCreationService,
-    private readonly stripePaymentsService: StripePaymentsService,
-    private readonly helperService: HelperService,
+    private readonly paymentsManagementService: PaymentsManagementService,
+    private readonly paymentsExternalOperationsService: PaymentsExternalOperationsService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -68,7 +64,6 @@ export class CompaniesDepositChargeExecutionService {
     currency: EPaymentCurrency,
   ): Promise<void> {
     const { company } = depositCharge;
-
     const validatedCompany = await this.validateCompanyForChargeExecution(manager, company);
 
     const superAdminRole = validatedCompany.superAdmin.userRoles.find(
@@ -90,22 +85,22 @@ export class CompaniesDepositChargeExecutionService {
       validatedCompany,
     );
 
-    const stripeDepositChargeResult = await this.attemptStripeDepositCharge({
+    const externalOperationResult = await this.paymentsExternalOperationsService.attemptStripeDepositCharge(
       depositCharge,
-      company: validatedCompany,
+      validatedCompany,
       currency,
-      totalFullAmount: calculatedAmounts.totalFullAmount,
-    });
+      calculatedAmounts.totalFullAmount,
+    );
 
     const { payment } = await this.createDepositChargePaymentRecord({
       manager,
-      stripeOperationResult: stripeDepositChargeResult,
+      externalOperationResult,
       calculatedAmounts,
       company: validatedCompany,
       currency,
     });
 
-    if (stripeDepositChargeResult.status === EPaymentStatus.AUTHORIZATION_FAILED) {
+    if (externalOperationResult.status === EPaymentStatus.AUTHORIZATION_FAILED) {
       return await this.handleDepositChargeFailure({
         company: validatedCompany,
         calculatedAmounts,
@@ -164,7 +159,6 @@ export class CompaniesDepositChargeExecutionService {
 
   private async handleDepositThresholds(data: IHandleDepositThresholdsData): Promise<boolean> {
     const { manager, depositCharge, company, superAdminRole } = data;
-
     const companyDepositChargeRepository = manager.getRepository(CompanyDepositCharge);
 
     const depositDefaultChargeAmount = company.depositDefaultChargeAmount ?? depositCharge.depositChargeAmount;
@@ -194,7 +188,7 @@ export class CompaniesDepositChargeExecutionService {
     let amount = totalFullAmount;
     let totalGstAmount = 0;
 
-    const isGstPayer = this.helperService.isCorporateGstPayer(company.country);
+    const isGstPayer = isCorporateGstPayer(company.country);
 
     if (isGstPayer.client && totalFullAmount > 0) {
       amount = round2(totalFullAmount / GST_COEFFICIENT);
@@ -207,35 +201,30 @@ export class CompaniesDepositChargeExecutionService {
   private async createDepositChargePaymentRecord(
     data: ICreateDepositChargePaymentRecordData,
   ): Promise<ICreatePaymentRecordResult> {
-    const { manager, stripeOperationResult, calculatedAmounts, company, currency } = data;
-
+    const { manager, externalOperationResult, calculatedAmounts, company, currency } = data;
     const determinedPaymentMethodInfo = `Bank Account ${company.paymentInformation.stripeClientLastFour}`;
 
-    return await this.paymentsCreationService.createPaymentRecord(manager, {
+    return await this.paymentsManagementService.createPaymentRecord(manager, {
       direction: EPaymentDirection.INCOMING,
       customerType: EPaymentCustomerType.CORPORATE,
       system: EPaymentSystem.STRIPE,
-      status: stripeOperationResult.status,
+      status: externalOperationResult.status,
       isDepositCharge: true,
       paymentMethodInfo: determinedPaymentMethodInfo,
-      externalId: stripeOperationResult.paymentIntentId,
-      note: stripeOperationResult.error ?? "Deposit charge",
+      externalId: externalOperationResult.paymentIntentId,
+      note: externalOperationResult.error ?? "Deposit charge",
       company,
       currency,
       prices: {
         clientAmount: calculatedAmounts.totalAmount,
         clientGstAmount: calculatedAmounts.totalGstAmount,
         clientFullAmount: calculatedAmounts.totalFullAmount,
-        interpreterAmount: 0,
-        interpreterGstAmount: 0,
-        interpreterFullAmount: 0,
-      },
+      } as IPaymentCalculationResult,
     });
   }
 
   private async handleDepositChargeFailure(data: IHandleDepositChargeFailureData): Promise<void> {
     const { company, calculatedAmounts, currency, payment, superAdminRole } = data;
-
     await this.companiesDepositChargeNotificationService.sendDepositChargeFailedNotification({
       company,
       calculatedAmounts,
@@ -250,37 +239,6 @@ export class CompaniesDepositChargeExecutionService {
       company,
       EPaymentFailedReason.INFO_NOT_FILLED,
     );
-  }
-
-  private async attemptStripeDepositCharge(data: IAttemptStripeDepositChargeData): Promise<IStripeOperationResult> {
-    const { depositCharge, company, currency, totalFullAmount } = data;
-
-    const idempotencyKey = this.generateDepositChargeIdempotencyKey(depositCharge);
-    try {
-      const normalizedAmount = denormalizedAmountToNormalized(Number(totalFullAmount));
-      const { paymentIntentId } = await this.stripePaymentsService.chargeByBECSDebit({
-        amount: normalizedAmount,
-        paymentMethodId: company.paymentInformation.stripeClientPaymentMethodId,
-        customerId: company.paymentInformation.stripeClientAccountId,
-        companyPlatformId: company.platformId,
-        idempotencyKey,
-        currency,
-      });
-
-      return {
-        status: EPaymentStatus.DEPOSIT_PAYMENT_REQUEST_INITIALIZING,
-        paymentIntentId,
-      };
-    } catch (error) {
-      return {
-        status: EPaymentStatus.AUTHORIZATION_FAILED,
-        error: (error as Error).message,
-      };
-    }
-  }
-
-  private generateDepositChargeIdempotencyKey(depositCharge: TChargeCompaniesDeposit): string {
-    return `deposit-charge-${depositCharge.company.platformId}-${depositCharge.id}`;
   }
 
   private determineCurrency(): EPaymentCurrency {

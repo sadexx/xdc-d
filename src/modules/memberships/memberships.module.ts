@@ -13,20 +13,16 @@ import { DiscountsModule } from "src/modules/discounts/discounts.module";
 import { MembershipsController } from "src/modules/memberships/controllers";
 import { EmailsModule } from "src/modules/emails/emails.module";
 import { StripeModule } from "src/modules/stripe/stripe.module";
-import { OldPayment, OldPaymentItem } from "src/modules/payments/entities";
-import { AwsS3Module } from "src/modules/aws/s3/aws-s3.module";
-import { PdfModule } from "src/modules/pdf/pdf.module";
 import { QueueModule } from "src/modules/queues/queues.module";
 import { UserRole } from "src/modules/users/entities";
+import { Payment, PaymentItem } from "src/modules/payments-new/entities";
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Membership, MembershipPrice, MembershipAssignment, OldPayment, OldPaymentItem, UserRole]),
+    TypeOrmModule.forFeature([Membership, MembershipPrice, MembershipAssignment, Payment, PaymentItem, UserRole]),
     forwardRef(() => DiscountsModule),
     StripeModule,
-    PdfModule,
     EmailsModule,
-    AwsS3Module,
     QueueModule,
   ],
   providers: [

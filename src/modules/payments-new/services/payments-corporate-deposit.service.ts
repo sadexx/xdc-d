@@ -1,10 +1,10 @@
-import { Injectable, ServiceUnavailableException } from "@nestjs/common";
+import { Injectable, InternalServerErrorException } from "@nestjs/common";
 import { IAuthorizationPaymentContext } from "src/modules/payment-analysis/common/interfaces/authorization";
 import { Company } from "src/modules/companies/entities";
 import { EntityManager } from "typeorm";
 import { TChargeFromCompanyDeposit, TCreateDepositChargePaymentRecord } from "src/modules/payments-new/common/types";
 import { round2 } from "src/common/utils";
-import { PaymentsCreationService, PaymentsNotificationService } from "src/modules/payments-new/services";
+import { PaymentsManagementService, PaymentsNotificationService } from "src/modules/payments-new/services";
 import {
   EPaymentCustomerType,
   EPaymentDirection,
@@ -16,56 +16,83 @@ import { CompaniesDepositChargeManagementService } from "src/modules/companies-d
 import { IPaymentOperationResult } from "src/modules/payments-new/common/interfaces";
 import { LokiLogger } from "src/common/logger";
 import { UNDEFINED_VALUE } from "src/common/constants";
+import { AppointmentFailedPaymentCancelTempService } from "src/modules/appointments/failed-payment-cancel/services";
 
 @Injectable()
 export class PaymentsCorporateDepositService {
   private readonly lokiLogger = new LokiLogger(PaymentsCorporateDepositService.name);
   constructor(
-    private readonly paymentsCreationService: PaymentsCreationService,
+    private readonly paymentsManagementService: PaymentsManagementService,
     private readonly paymentsNotificationService: PaymentsNotificationService,
     private readonly companiesDepositChargeManagementService: CompaniesDepositChargeManagementService,
+    private readonly appointmentFailedPaymentCancelService: AppointmentFailedPaymentCancelTempService,
   ) {}
 
   public async chargeFromDeposit(
     manager: EntityManager,
     context: IAuthorizationPaymentContext,
   ): Promise<IPaymentOperationResult> {
+    const { appointment } = context;
     try {
-      await this.chargeFromCompanyDeposit(manager, context as TChargeFromCompanyDeposit);
-      await this.createDepositChargePaymentRecord(manager, context as TCreateDepositChargePaymentRecord);
+      const paymentStatus = await this.chargeFromCompanyDeposit(manager, context as TChargeFromCompanyDeposit);
+      await this.createDepositChargePaymentRecord(manager, context as TCreateDepositChargePaymentRecord, paymentStatus);
 
-      await this.paymentsNotificationService.sendAuthorizationPaymentSuccessNotification(context.appointment);
-
-      return { success: true };
+      return { success: paymentStatus === EPaymentStatus.AUTHORIZED };
     } catch (error) {
       await this.paymentsNotificationService.sendAuthorizationPaymentFailedNotification(
         context.appointment,
         EPaymentFailedReason.AUTH_FAILED,
       );
-      this.lokiLogger.error(
-        `Failed to authorize payment for appointmentId: ${context.appointment.id}`,
-        (error as Error).stack,
-      );
-      throw new ServiceUnavailableException("Failed to authorize payment.");
+      this.lokiLogger.error(`Failed to authorize payment for appointmentId: ${appointment.id}`, (error as Error).stack);
+      throw new InternalServerErrorException("Failed to authorize payment.");
     }
   }
 
-  private async chargeFromCompanyDeposit(manager: EntityManager, context: TChargeFromCompanyDeposit): Promise<void> {
-    const { companyContext, depositChargeContext } = context;
+  private async chargeFromCompanyDeposit(
+    manager: EntityManager,
+    context: TChargeFromCompanyDeposit,
+  ): Promise<EPaymentStatus> {
+    const { companyContext, depositChargeContext, appointment } = context;
+
+    if (depositChargeContext.isInsufficientFunds) {
+      return await this.handleBalanceInsufficientFunds(manager, context);
+    }
 
     await manager.getRepository(Company).update(companyContext.company.id, {
       depositAmount: round2(depositChargeContext.balanceAfterCharge),
     });
-
-    if (!depositChargeContext.depositDefaultChargeAmount || depositChargeContext.depositDefaultChargeAmount <= 0) {
-      return;
-    }
 
     if (depositChargeContext.isBalanceBelowTenPercent) {
       await this.handleBalanceBelowTenPercent(manager, context);
     } else if (depositChargeContext.isBalanceBelowFifteenPercent) {
       await this.handleBalanceBelowFifteenPercent(context);
     }
+
+    await this.paymentsNotificationService.sendAuthorizationPaymentSuccessNotification(appointment);
+
+    return EPaymentStatus.AUTHORIZED;
+  }
+
+  private async handleBalanceInsufficientFunds(
+    manager: EntityManager,
+    context: TChargeFromCompanyDeposit,
+  ): Promise<EPaymentStatus> {
+    const { companyContext } = context;
+    await this.appointmentFailedPaymentCancelService.cancelAppointmentPaymentFailed(manager, context.appointment.id);
+
+    if (companyContext.superAdminRole) {
+      await this.paymentsNotificationService.sendDepositBalanceInsufficientFundNotification(
+        companyContext.company,
+        companyContext.superAdminRole,
+      );
+    }
+
+    await this.paymentsNotificationService.sendAuthorizationPaymentFailedNotification(
+      context.appointment,
+      EPaymentFailedReason.AUTH_FAILED,
+    );
+
+    return EPaymentStatus.AUTHORIZATION_FAILED;
   }
 
   private async handleBalanceBelowTenPercent(
@@ -73,7 +100,6 @@ export class PaymentsCorporateDepositService {
     context: TChargeFromCompanyDeposit,
   ): Promise<void> {
     const { companyContext, depositChargeContext } = context;
-
     await this.companiesDepositChargeManagementService.createOrUpdateDepositCharge(
       manager,
       companyContext.company,
@@ -96,19 +122,23 @@ export class PaymentsCorporateDepositService {
   private async createDepositChargePaymentRecord(
     manager: EntityManager,
     context: TCreateDepositChargePaymentRecord,
+    paymentStatus: EPaymentStatus,
   ): Promise<void> {
     const { currency, prices, appointment, companyContext, existingPayment } = context;
     const determinedPaymentMethodInfo = `Deposit of company ${companyContext.company.platformId}`;
+    const determinedNote =
+      paymentStatus === EPaymentStatus.AUTHORIZATION_FAILED ? "Insufficient funds on deposit." : UNDEFINED_VALUE;
 
-    await this.paymentsCreationService.createPaymentRecord(manager, {
+    await this.paymentsManagementService.createPaymentRecord(manager, {
       direction: EPaymentDirection.INCOMING,
       customerType: EPaymentCustomerType.CORPORATE,
       system: EPaymentSystem.DEPOSIT,
-      status: EPaymentStatus.AUTHORIZED,
+      status: paymentStatus,
       fromClient: appointment.client,
       company: companyContext.company,
       paymentMethodInfo: determinedPaymentMethodInfo,
       existingPayment: existingPayment ?? UNDEFINED_VALUE,
+      note: determinedNote,
       currency,
       prices,
       appointment,

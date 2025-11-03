@@ -15,6 +15,8 @@ import {
 import { InterpreterProfile } from "src/modules/interpreters/profile/entities";
 import { findOneOrFail } from "src/common/utils";
 import { EAppointmentOrderSharedErrorCodes } from "src/modules/appointment-orders/shared/common/enum";
+import { TLoadAppointmentAuthorizationContext } from "src/modules/payment-analysis/common/types/authorization";
+import { EAppointmentStatus } from "src/modules/appointments/appointment/common/enums";
 
 @Injectable()
 export class AppointmentOrderSharedLogicService {
@@ -25,12 +27,27 @@ export class AppointmentOrderSharedLogicService {
     private readonly appointmentOrderRepository: Repository<AppointmentOrder>,
     @InjectRepository(AppointmentOrderGroup)
     private readonly appointmentOrderGroupRepository: Repository<AppointmentOrderGroup>,
+    @InjectRepository(Appointment)
+    private readonly appointmentRepository: Repository<Appointment>,
     @InjectRepository(InterpreterProfile)
     private readonly interpreterProfileRepository: Repository<InterpreterProfile>,
     private readonly appointmentOrderQueryOptionsService: AppointmentOrderQueryOptionsService,
     private readonly bookingSlotManagementService: BookingSlotManagementService,
     private readonly notificationService: NotificationService,
   ) {}
+
+  public async triggerLaunchSearchForAppointment(appointment: TLoadAppointmentAuthorizationContext): Promise<void> {
+    if (!appointment.isGroupAppointment) {
+      await this.appointmentRepository.update(appointment.id, { status: EAppointmentStatus.PENDING });
+      await this.appointmentOrderRepository.update(appointment.id, { isSearchNeeded: true });
+    } else if (appointment.appointmentsGroupId) {
+      await this.appointmentRepository.update(
+        { appointmentsGroupId: appointment.appointmentsGroupId },
+        { status: EAppointmentStatus.PENDING },
+      );
+      await this.appointmentOrderGroupRepository.update(appointment.id, { isSearchNeeded: true });
+    }
+  }
 
   public async triggerLaunchSearchForIndividualOrder(id: string): Promise<void> {
     await this.appointmentOrderRepository.update(id, {

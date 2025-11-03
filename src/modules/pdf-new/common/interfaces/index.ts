@@ -2,3 +2,16 @@ export * from "src/modules/pdf-new/common/interfaces/lfh-company-pdf-data.interf
 export * from "src/modules/pdf-new/common/interfaces/recipient-pdf-data.interface";
 export * from "src/modules/pdf-new/common/interfaces/generate-pay-in-receipt.interface";
 export * from "src/modules/pdf-new/common/interfaces/pay-in-receipt.interface";
+export * from "src/modules/pdf-new/common/interfaces/generate-pay-out-receipt.interface";
+export * from "src/modules/pdf-new/common/interfaces/pay-out-receipt.interface";
+export * from "src/modules/pdf-new/common/interfaces/generate-tax-invoice-receipt.interface";
+export * from "src/modules/pdf-new/common/interfaces/tax-invoice-receipt.interface";
+export * from "src/modules/pdf-new/common/interfaces/generate-membership-invoice.interface";
+export * from "src/modules/pdf-new/common/interfaces/membership-invoice.interface";
+export * from "src/modules/pdf-new/common/interfaces/generate-interpreter-badge.interface";
+export * from "src/modules/pdf-new/common/interfaces/interpreter-badge.interface";
+export * from "src/modules/pdf-new/common/interfaces/deposit-charge-receipt.interface";
+export * from "src/modules/pdf-new/common/interfaces/generate-corporate-pay-out-receipt.interface";
+export * from "src/modules/pdf-new/common/interfaces/corporate-pay-out-receipt.interface";
+export * from "src/modules/pdf-new/common/interfaces/generate-corporate-tax-invoice-receipt.interface";
+export * from "src/modules/pdf-new/common/interfaces/corporate-tax-invoice.receipt.interface";

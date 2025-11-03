@@ -21,9 +21,10 @@ export class CaptureContextValidationService {
 
   private validateSameCompanyCommissionCaptureContext(context: ICapturePaymentContext): IPaymentValidationResult {
     const errors: string[] = [];
-    const { payment } = context;
+    const { payment, commissionAmounts } = context;
+    const missingFields = [payment.company, commissionAmounts].filter((value) => !value);
 
-    if (!payment.company) {
+    if (missingFields.length > 0) {
       errors.push("Invalid context state for same company commission.");
     }
 
@@ -41,7 +42,7 @@ export class CaptureContextValidationService {
     const { payment } = context;
 
     if (!payment.company) {
-      errors.push("Invalid context state for same company commission.");
+      errors.push("Invalid context state for corporate capture.");
     }
 
     if (payment.system !== EPaymentSystem.DEPOSIT) {

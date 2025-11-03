@@ -10,18 +10,11 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { OldPayment } from "src/modules/payments/entities";
 import { UserRole } from "src/modules/users/entities";
 import { Company } from "src/modules/companies/entities";
-import { HelperModule } from "src/modules/helper/helper.module";
 import { OldRatesModule } from "src/modules/rates-old/old-rates.module";
 import { RedisModule } from "src/modules/redis/redis.module";
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([OldPayment, UserRole, Company]),
-    AwsS3Module,
-    HelperModule,
-    OldRatesModule,
-    RedisModule,
-  ],
+  imports: [TypeOrmModule.forFeature([OldPayment, UserRole, Company]), AwsS3Module, OldRatesModule, RedisModule],
   providers: [PdfService, PdfBuilderService, PdfTemplatesService, PdfBase64ImageConverterService],
   exports: [PdfBuilderService],
 })

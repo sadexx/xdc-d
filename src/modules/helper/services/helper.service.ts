@@ -7,9 +7,6 @@ import { EUserRoleName } from "src/modules/users/common/enums";
 import { LFH_ADMIN_ROLES, NUMBER_OF_SECONDS_IN_HOUR } from "src/common/constants";
 import { LokiLogger } from "src/common/logger";
 import { RedisService } from "src/modules/redis/services";
-import { EExtCountry } from "src/modules/addresses/common/enums";
-import { EGstPayer } from "src/modules/abn/common/enums";
-import { OldIIsGstPayers } from "src/modules/payments/common/interfaces";
 import { TGetUserRoleByName } from "src/modules/helper/common/types";
 import { EHelperErrorCodes } from "src/modules/helper/common/enums";
 
@@ -118,33 +115,5 @@ export class HelperService {
     }
 
     return userRole as TReturnType;
-  }
-
-  public isIndividualGstPayer(clientCountry: string | null, interpreterIsGstPayer?: EGstPayer | null): OldIIsGstPayers {
-    const res = { interpreter: false, client: false };
-
-    if (interpreterIsGstPayer === EGstPayer.YES) {
-      res.interpreter = true;
-    }
-
-    if (clientCountry === EExtCountry.AUSTRALIA) {
-      res.client = true;
-    }
-
-    return res;
-  }
-
-  public isCorporateGstPayer(clientCountry: string | null, interpreterCountry?: string | null): OldIIsGstPayers {
-    const res = { interpreter: false, client: false };
-
-    if (interpreterCountry === EExtCountry.AUSTRALIA) {
-      res.interpreter = true;
-    }
-
-    if (clientCountry === EExtCountry.AUSTRALIA) {
-      res.client = true;
-    }
-
-    return res;
   }
 }

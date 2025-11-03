@@ -6,17 +6,17 @@ import {
   IPayment,
   IPaymentItem,
 } from "src/modules/payments-new/common/interfaces";
-import { EntityManager } from "typeorm";
+import { EntityManager, FindOptionsWhere } from "typeorm";
 import { EPaymentStatus } from "src/modules/payments-new/common/enums";
 import { setPlatformId } from "src/common/utils";
 import { ESequenceName } from "src/common/enums";
-import { TCreatePaymentRecordPayment } from "src/modules/payments-new/common/types";
+import { TConstructPaymentDto, TCreatePaymentRecordPayment } from "src/modules/payments-new/common/types";
 import { UserRole } from "src/modules/users/entities";
 import { Company } from "src/modules/companies/entities";
 import { Appointment } from "src/modules/appointments/appointment/entities";
 
 @Injectable()
-export class PaymentsCreationService {
+export class PaymentsManagementService {
   /**
    * Creates a new payment record or extends an existing one by adding a payment item.
    * Handles platform ID generation, entity persistence, and conditional totals update.
@@ -37,7 +37,7 @@ export class PaymentsCreationService {
       payment = await this.constructAndCreatePayment(manager, data);
     }
 
-    const paymentItem = await this.constructAndCreatePaymentItem(manager, data, payment);
+    const paymentItem = await this.constructAndCreatePaymentItem(manager, payment, data);
 
     if (existingPayment && data.status === EPaymentStatus.AUTHORIZED) {
       await this.updatePaymentTotals(manager, existingPayment, data);
@@ -47,19 +47,62 @@ export class PaymentsCreationService {
   }
 
   private async constructAndCreatePayment(manager: EntityManager, data: ICreatePaymentRecord): Promise<Payment> {
-    const newPaymentDto = await this.constructPaymentDto(data);
+    const newPaymentDto = await this.constructPaymentDto(data as TConstructPaymentDto);
 
     return await this.createPayment(manager, newPaymentDto);
   }
 
-  private async constructAndCreatePaymentItem(
+  /**
+   * Constructs and creates a new payment item associated with the given payment.
+   * This method builds the DTO from the provided data, then persists it via the repository.
+   * Intended for use within a database transaction to ensure atomicity.
+   *
+   * @param manager - The TypeORM EntityManager for transactional operations.
+   * @param payment - The existing or newly created Payment entity to associate the item with.
+   * @param data - The input data for creating the payment item (e.g., prices, status, external IDs).
+   */
+  public async constructAndCreatePaymentItem(
     manager: EntityManager,
-    data: ICreatePaymentRecord,
     payment: Payment,
+    data: ICreatePaymentRecord,
   ): Promise<PaymentItem> {
     const newPaymentItemDto = this.constructPaymentItemDto(data, payment);
 
     return await this.createPaymentItem(manager, newPaymentItemDto);
+  }
+
+  /**
+   * Updates one or more payment entities with the provided partial payload.
+   * Intended for use within a database transaction for atomicity.
+   *
+   * @param manager - The TypeORM EntityManager for transactional operations.
+   * @param whereCondition - The where condition to identify the payment(s) to update.
+   * @param payload - Partial updates to apply to the payment entity/entities.
+   */
+  public async updatePayment(
+    manager: EntityManager,
+    whereCondition: FindOptionsWhere<Payment>,
+    payload: Partial<Payment>,
+  ): Promise<void> {
+    const paymentRepository = manager.getRepository(Payment);
+    await paymentRepository.update(whereCondition, payload);
+  }
+
+  /**
+   * Updates one or more payment item entities with the provided partial payload.
+   * Intended for use within a database transaction for atomicity.
+   *
+   * @param manager - The TypeORM EntityManager for transactional operations.
+   * @param whereCondition - The where condition to identify the payment item(s) to update.
+   * @param payload - Partial updates to apply to the payment item entity/entities.
+   */
+  public async updatePaymentItem(
+    manager: EntityManager,
+    whereCondition: FindOptionsWhere<PaymentItem>,
+    payload: Partial<PaymentItem>,
+  ): Promise<void> {
+    const paymentItemRepository = manager.getRepository(PaymentItem);
+    await paymentItemRepository.update(whereCondition, payload);
   }
 
   private async updatePaymentTotals(
@@ -117,7 +160,7 @@ export class PaymentsCreationService {
     return platformId;
   }
 
-  private async constructPaymentDto(data: ICreatePaymentRecord): Promise<IPayment> {
+  private async constructPaymentDto(data: TConstructPaymentDto): Promise<IPayment> {
     const { prices } = data;
 
     const platformId = await this.generatePaymentPlatformId(data);
@@ -128,9 +171,9 @@ export class PaymentsCreationService {
 
     return {
       platformId,
-      totalAmount: prices?.clientAmount ?? 0,
-      totalGstAmount: prices?.clientGstAmount ?? 0,
-      totalFullAmount: prices?.clientFullAmount ?? 0,
+      totalAmount: prices?.clientAmount ?? prices?.interpreterAmount ?? 0,
+      totalGstAmount: prices?.clientGstAmount ?? prices?.interpreterGstAmount ?? 0,
+      totalFullAmount: prices?.clientFullAmount ?? prices?.interpreterFullAmount ?? 0,
       estimatedCostAmount: prices?.clientFullAmount ?? 0,
       currency: data.currency,
       direction: data.direction,
@@ -152,9 +195,9 @@ export class PaymentsCreationService {
     const { prices } = data;
 
     return {
-      amount: prices?.clientAmount ?? 0,
-      gstAmount: prices?.clientGstAmount ?? 0,
-      fullAmount: prices?.clientFullAmount ?? 0,
+      amount: prices?.clientAmount ?? prices?.interpreterAmount ?? 0,
+      gstAmount: prices?.clientGstAmount ?? prices?.interpreterGstAmount ?? 0,
+      fullAmount: prices?.clientFullAmount ?? prices?.interpreterFullAmount ?? 0,
       currency: data.currency,
       status: data.status,
       note: data.note ?? null,

@@ -17,10 +17,15 @@ export type TLoadAppointmentAuthorizationContext = NonNullableProperties<
 
 export type TClientAuthorizationContext = NonNullableProperties<
   NonNullable<TBaseAppointmentAuthorizationContext["client"]>,
-  "country" | "timezone"
+  "country" | "timezone" | "paymentInformation"
 >;
 
-export type TLoadCompanyAuthorizationContext = NonNullableProperties<TBaseCompanyAuthorizationContext, "superAdmin">;
+export type TLoadCompanyAuthorizationContext = NonNullableProperties<TBaseCompanyAuthorizationContext, "superAdmin"> & {
+  paymentInformation: NonNullableProperties<
+    NonNullable<TBaseCompanyAuthorizationContext["paymentInformation"]>,
+    "stripeClientLastFour"
+  >;
+};
 
 export type TLoadCompanySuperAdminAuthorizationContext =
   TLoadCompanyAuthorizationContext["superAdmin"]["userRoles"][number];
@@ -46,6 +51,8 @@ export const LoadAppointmentAuthorizationContextQuery = {
     acceptOvertimeRates: true,
     timezone: true,
     creationDate: true,
+    isGroupAppointment: true,
+    appointmentsGroupId: true,
     client: {
       id: true,
       operatedByCompanyId: true,
@@ -90,6 +97,7 @@ export const LoadCompanyAuthorizationContextQuery = {
       id: true,
       userRoles: { id: true, role: { name: true }, profile: { preferredName: true, firstName: true, lastName: true } },
     },
+    paymentInformation: { stripeClientLastFour: true },
   } as const satisfies FindOptionsSelect<Company>,
   relations: {
     superAdmin: { userRoles: { role: true, profile: true } },

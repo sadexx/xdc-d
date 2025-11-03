@@ -11,4 +11,3 @@ export * from "src/modules/stripe/common/interfaces/create-transfer.interface";
 export * from "src/modules/stripe/common/interfaces/create-payout.interface";
 export * from "src/modules/stripe/common/interfaces/create-subscription-data.interface";
 export * from "src/modules/stripe/common/interfaces/create-new-product-price.interface";
-export * from "src/modules/stripe/common/interfaces/stripe-operation-result.interface";

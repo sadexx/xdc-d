@@ -4,22 +4,23 @@ import { IPaymentCalculationResult } from "src/modules/payments-new/common/inter
 import {
   TLoadAppointmentAuthorizationContext,
   TLoadExistingPaymentAuthorizationContext,
-  TLoadWaitListAuthorizationContext,
 } from "src/modules/payment-analysis/common/types/authorization";
 import {
   ICompanyAuthorizationContext,
   IDepositChargeAuthorizationContext,
   ITimingAuthorizationContext,
+  IWaitListAuthorizationContext,
 } from "src/modules/payment-analysis/common/interfaces/authorization";
 
 export interface IAuthorizationPaymentContext {
   operation: EPaymentOperation.AUTHORIZE_PAYMENT;
   appointment: TLoadAppointmentAuthorizationContext;
   isClientCorporate: boolean;
+  isShortTimeSlot: boolean;
+  paymentMethodInfo: string;
   currency: EPaymentCurrency;
-  shouldRedirectToWaitList: boolean;
+  waitListContext: IWaitListAuthorizationContext;
   timingContext: ITimingAuthorizationContext;
-  existingWaitListRecord: TLoadWaitListAuthorizationContext | null;
   existingPayment: TLoadExistingPaymentAuthorizationContext | null;
   companyContext: ICompanyAuthorizationContext | null;
   prices: IPaymentCalculationResult | null;

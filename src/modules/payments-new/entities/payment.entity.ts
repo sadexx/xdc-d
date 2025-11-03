@@ -16,7 +16,7 @@ import {
   EPaymentCustomerType,
   EPaymentDirection,
   EPaymentSystem,
-  EStripeInterpreterPayoutType,
+  EStripeInterpreterPayOutType,
 } from "src/modules/payments-new/common/enums";
 import { PaymentItem } from "src/modules/payments-new/entities";
 
@@ -77,11 +77,11 @@ export class Payment {
 
   @Column({
     type: "enum",
-    enum: EStripeInterpreterPayoutType,
+    enum: EStripeInterpreterPayOutType,
     name: "stripe_interpreter_payout_type",
     nullable: true,
   })
-  stripeInterpreterPayoutType: EStripeInterpreterPayoutType | null;
+  stripeInterpreterPayoutType: EStripeInterpreterPayOutType | null;
 
   @OneToMany(() => PaymentItem, (paymentItem) => paymentItem.payment)
   items: PaymentItem[];

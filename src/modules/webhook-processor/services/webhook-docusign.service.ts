@@ -11,6 +11,8 @@ import { EFileType } from "src/modules/file-management/common/enums";
 import { ActivationTrackingService } from "src/modules/activation-tracking/services";
 import { FileManagementService } from "src/modules/file-management/services";
 import { LokiLogger } from "src/common/logger";
+import { findOneTyped } from "src/common/utils";
+import { ProcessDocusignWebhookQuery, TProcessDocusignWebhook } from "src/modules/webhook-processor/common/types";
 
 @Injectable()
 export class WebhookDocusignService {
@@ -34,15 +36,10 @@ export class WebhookDocusignService {
       return;
     }
 
-    const docusignContract = await this.docusignContractRepository.findOne({
+    const docusignContract = await findOneTyped<TProcessDocusignWebhook>(this.docusignContractRepository, {
+      select: ProcessDocusignWebhookQuery.select,
       where: { envelopeId: docusignMessage.data.envelopeId },
-      relations: {
-        userRole: {
-          role: true,
-          user: true,
-        },
-        company: true,
-      },
+      relations: ProcessDocusignWebhookQuery.relations,
     });
 
     if (!docusignContract) {

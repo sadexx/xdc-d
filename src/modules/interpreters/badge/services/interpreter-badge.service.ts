@@ -4,20 +4,25 @@ import { CreateOrUpdateInterpreterBadge } from "src/modules/interpreters/badge/c
 import { InterpreterProfile } from "src/modules/interpreters/profile/entities";
 import { Repository } from "typeorm";
 import { ITokenUserData } from "src/modules/tokens/common/interfaces";
-import { PdfBuilderService } from "src/modules/pdf/services";
 import { AwsS3Service } from "src/modules/aws/s3/aws-s3.service";
-import { LokiLogger } from "src/common/logger";
 import { IS_MEDIA_BUCKET } from "src/common/constants";
+import { UserRole } from "src/modules/users/entities";
+import { findOneOrFailTyped } from "src/common/utils";
+import {
+  CreateOrUpdateInterpreterBadgePdfQuery,
+  TCreateOrUpdateInterpreterBadgePdf,
+} from "src/modules/interpreters/badge/common/types";
+import { QueueInitializeService } from "src/modules/queues/services";
 
 @Injectable()
 export class InterpreterBadgeService {
-  private readonly lokiLogger = new LokiLogger(InterpreterBadgeService.name);
-
   constructor(
     @InjectRepository(InterpreterProfile)
     private readonly interpreterProfileRepository: Repository<InterpreterProfile>,
-    private readonly pdfBuilderService: PdfBuilderService,
+    @InjectRepository(UserRole)
+    private readonly userRoleRepository: Repository<UserRole>,
     private readonly awsS3Service: AwsS3Service,
+    private readonly queueInitializeService: QueueInitializeService,
   ) {}
 
   public async createOrUpdateInterpreterBadge(
@@ -29,24 +34,20 @@ export class InterpreterBadgeService {
       { interpreterBadge: dto.interpreterBadge, interpreterBadgePdf: null },
     );
 
-    this.uploadAndSaveInterpreterBadgePdf(user.userRoleId, dto.interpreterBadge).catch((error: Error) => {
-      this.lokiLogger.error(`Failed to upload interpreter badge pdf for userRoleId: ${user.userRoleId}`, error.stack);
+    await this.createOrUpdateInterpreterBadgePdf(user.userRoleId, dto.interpreterBadge);
+  }
+
+  public async createOrUpdateInterpreterBadgePdf(userRoleId: string, interpreterBadge?: string): Promise<void> {
+    const userRole = await findOneOrFailTyped<TCreateOrUpdateInterpreterBadgePdf>(userRoleId, this.userRoleRepository, {
+      select: CreateOrUpdateInterpreterBadgePdfQuery.select,
+      where: { id: userRoleId },
+      relations: CreateOrUpdateInterpreterBadgePdfQuery.relations,
     });
-  }
 
-  private async uploadAndSaveInterpreterBadgePdf(userRoleId: string, interpreterBadge: string): Promise<void> {
-    const interpreterBadgePdf = await this.createOrUpdateInterpreterBadgePdf(userRoleId, interpreterBadge);
-    await this.interpreterProfileRepository.update(
-      { userRole: { id: userRoleId } },
-      { interpreterBadgePdf: interpreterBadgePdf },
-    );
-  }
-
-  public async createOrUpdateInterpreterBadgePdf(userRoleId: string, interpreterBadge?: string): Promise<string> {
-    const interpreterBadgePdf = await this.pdfBuilderService.generateInterpreterBadge(userRoleId, interpreterBadge);
-    const interpreterBadgePdfUrl = this.awsS3Service.getMediaObjectUrl(interpreterBadgePdf.interpreterBadgeKey);
-
-    return interpreterBadgePdfUrl;
+    await this.queueInitializeService.addProcessInterpreterBadgeGenerationQueue({
+      userRole,
+      newInterpreterBadge: interpreterBadge,
+    });
   }
 
   public async removeInterpreterBadgePdf(interpreterBadgePdfUrl: string): Promise<void> {

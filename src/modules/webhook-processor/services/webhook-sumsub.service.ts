@@ -13,6 +13,13 @@ import { SumSubSdkService } from "src/modules/sumsub/services";
 import { ConfigService } from "@nestjs/config";
 import { MockService } from "src/modules/mock/services";
 import { EWebhookErrorCodes } from "src/modules/webhook-processor/common/enums";
+import { findOneTyped } from "src/common/utils";
+import {
+  ProcessSumSubWebhookCheckQuery,
+  ProcessSumSubWebhookUserRoleQuery,
+  TProcessSumSubWebhookCheck,
+  TProcessSumSubWebhookUserRole,
+} from "src/modules/webhook-processor/common/types";
 
 @Injectable()
 export class WebhookSumSubService {
@@ -37,9 +44,10 @@ export class WebhookSumSubService {
       return;
     }
 
-    const userRole = await this.userRoleRepository.findOne({
+    const userRole = await findOneTyped<TProcessSumSubWebhookUserRole>(this.userRoleRepository, {
+      select: ProcessSumSubWebhookUserRoleQuery.select,
       where: { id: sumSubMessage.externalUserId },
-      relations: { role: true, user: true },
+      relations: ProcessSumSubWebhookUserRoleQuery.relations,
     });
 
     if (!userRole) {
@@ -48,7 +56,8 @@ export class WebhookSumSubService {
       return;
     }
 
-    let sumSubCheck = await this.sumSubCheckRepository.findOne({
+    let sumSubCheck = await findOneTyped<TProcessSumSubWebhookCheck>(this.sumSubCheckRepository, {
+      select: ProcessSumSubWebhookCheckQuery.select,
       where: { externalUserId: sumSubMessage.externalUserId },
     });
 
@@ -66,9 +75,12 @@ export class WebhookSumSubService {
     }
   }
 
-  private constructSumSubCheckDto(userRole: UserRole, sumSubMessage: ISumSubMessageWithReview): ICreateSumSubCheck {
+  private constructSumSubCheckDto(
+    userRole: TProcessSumSubWebhookUserRole,
+    sumSubMessage: ISumSubMessageWithReview,
+  ): ICreateSumSubCheck {
     return {
-      userRole: userRole,
+      userRole: userRole as UserRole,
       applicantId: sumSubMessage.applicantId,
       inspectionId: sumSubMessage.inspectionId,
       applicantType: sumSubMessage.applicantType,
@@ -89,8 +101,8 @@ export class WebhookSumSubService {
 
   private async validateAndProcessApplicant(
     sumSubMessage: ISumSubMessageWithReview,
-    userRole: UserRole,
-    sumSubCheck: SumSubCheck,
+    userRole: TProcessSumSubWebhookUserRole,
+    sumSubCheck: TProcessSumSubWebhookCheck,
   ): Promise<void> {
     try {
       const applicantData = await this.sumSubSdkService.getApplicantData(sumSubMessage.applicantId);

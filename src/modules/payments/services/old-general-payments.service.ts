@@ -31,7 +31,6 @@ import {
   OLD_MIN_NUM_DAYS_BEFORE_APPOINTMENT_TO_PAY,
   OLD_MINUTES_BEFORE_START_AS_REASON_TO_CANCEL,
 } from "src/modules/payments/common/constants/old-constants";
-import { HelperService } from "src/modules/helper/services";
 import { LokiLogger } from "src/common/logger";
 import {
   CORPORATE_CLIENT_ROLES,
@@ -58,6 +57,7 @@ import { EExtAbnStatus } from "src/modules/abn/common/enums";
 import { AccessControlService } from "src/modules/access-control/services";
 import { IDiscountRate } from "src/modules/discounts/common/interfaces";
 import { TMakePayInAuthByAdditionalBlockAppointment } from "src/modules/payments/common/types";
+import { isCorporateGstPayer, isIndividualGstPayer } from "src/modules/payments-new/common/helpers";
 
 @Injectable()
 export class OldGeneralPaymentsService {
@@ -77,7 +77,6 @@ export class OldGeneralPaymentsService {
     @InjectRepository(AppointmentAdminInfo)
     private readonly appointmentAdminInfoRepository: Repository<AppointmentAdminInfo>,
     private readonly awsS3Service: AwsS3Service,
-    private readonly helperService: HelperService,
     private readonly ratesService: OldRatesService,
     private readonly individualPaymentsService: OldIndividualPaymentsService,
     private readonly appointmentFailedPaymentCancelService: AppointmentFailedPaymentCancelService,
@@ -559,9 +558,9 @@ export class OldGeneralPaymentsService {
     let isGstPayers: OldIIsGstPayers | null = null;
 
     if (isCorporateInterpreter) {
-      isGstPayers = this.helperService.isCorporateGstPayer(null, country);
+      isGstPayers = isCorporateGstPayer(null, country);
     } else {
-      isGstPayers = this.helperService.isIndividualGstPayer(null, interpreterUserRole?.abnCheck?.gstFromClient);
+      isGstPayers = isIndividualGstPayer(null, interpreterUserRole?.abnCheck?.gstFromClient);
     }
 
     let duration = appointment.schedulingDurationMin;

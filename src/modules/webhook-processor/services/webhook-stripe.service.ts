@@ -15,45 +15,43 @@ import { DeepPartial, FindOptionsWhere, Repository } from "typeorm";
 import { DEFAULT_COUNTRY, DEFAULT_CURRENCY } from "src/modules/stripe/common/constants/constants";
 import { OldEPaymentStatus } from "src/modules/payments/common/enums";
 import { ActivationTrackingService } from "src/modules/activation-tracking/services";
-import { findOneOrFail, round2 } from "src/common/utils";
+import { findOneOrFail, findOneTyped, round2 } from "src/common/utils";
 import { MembershipPaymentsService } from "src/modules/memberships/services";
 import { LokiLogger } from "src/common/logger";
 import { NotificationService } from "src/modules/notifications/services";
 import { EPaymentSystem } from "src/modules/payments-new/common/enums";
-import { OldPayment, OldPaymentItem } from "src/modules/payments/entities";
+import { OldPaymentItem } from "src/modules/payments/entities";
 import { randomUUID } from "node:crypto";
 import { AwsS3Service } from "src/modules/aws/s3/aws-s3.service";
 import { Company } from "src/modules/companies/entities";
-import { EmailsService } from "src/modules/emails/services";
-import { PdfBuilderService } from "src/modules/pdf/services";
-import { ConfigService } from "@nestjs/config";
 import { NUMBER_OF_MILLISECONDS_IN_TEN_SECONDS, UNDEFINED_VALUE } from "src/common/constants";
 import { EUserRoleName } from "src/modules/users/common/enums";
+import {
+  TUpdatePaymentItemStatusByDepositCharge,
+  TWebhookPaymentIntentSucceeded,
+  TWebhookPaymentIntentSucceededCompany,
+  UpdatePaymentItemStatusByDepositChargeQuery,
+  WebhookPaymentIntentSucceededQuery,
+} from "src/modules/webhook-processor/common/types";
+import { QueueInitializeService } from "src/modules/queues/services";
 
 @Injectable()
 export class WebhookStripeService {
   private readonly lokiLogger = new LokiLogger(WebhookStripeService.name);
-  private readonly BACK_END_URL: string;
 
   public constructor(
     @InjectRepository(PaymentInformation)
     private readonly paymentInformationRepository: Repository<PaymentInformation>,
     @InjectRepository(OldPaymentItem)
     private readonly paymentItemRepository: Repository<OldPaymentItem>,
-    @InjectRepository(OldPayment)
-    private readonly paymentRepository: Repository<OldPayment>,
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
     private readonly activationTrackingService: ActivationTrackingService,
     private readonly membershipPaymentsService: MembershipPaymentsService,
     private readonly notificationService: NotificationService,
     private readonly awsS3Service: AwsS3Service,
-    private readonly emailsService: EmailsService,
-    private readonly pdfBuilderService: PdfBuilderService,
-    private readonly configService: ConfigService,
-  ) {
-    this.BACK_END_URL = this.configService.getOrThrow<string>("appUrl");
-  }
+    private readonly queueInitializeService: QueueInitializeService,
+  ) {}
 
   public async processStripeWebhook(message: Message): Promise<void> {
     try {
@@ -471,36 +469,10 @@ export class WebhookStripeService {
   private async webhookPaymentIntentSucceeded(event: Stripe.PaymentIntentSucceededEvent): Promise<void> {
     const paymentIntentId = event.data.object.id;
 
-    const paymentItem = await this.paymentItemRepository.findOne({
-      where: {
-        externalId: paymentIntentId,
-      },
-      relations: {
-        payment: {
-          company: { superAdmin: { userRoles: { role: true } } },
-        },
-      },
-      select: {
-        id: true,
-        fullAmount: true,
-        payment: {
-          id: true,
-          isDepositCharge: true,
-          company: {
-            id: true,
-            platformId: true,
-            superAdminId: true,
-            contactEmail: true,
-            depositAmount: true,
-            superAdmin: {
-              userRoles: {
-                id: true,
-                role: { name: true },
-              },
-            },
-          },
-        },
-      },
+    const paymentItem = await findOneTyped<TWebhookPaymentIntentSucceeded>(this.paymentItemRepository, {
+      select: WebhookPaymentIntentSucceededQuery.select,
+      where: { externalId: paymentIntentId },
+      relations: WebhookPaymentIntentSucceededQuery.relations,
     });
 
     if (!paymentItem || !paymentItem.payment || !paymentItem.payment.company) {
@@ -519,28 +491,11 @@ export class WebhookStripeService {
       return;
     }
 
-    const receipt = await this.pdfBuilderService.generateDepositChargeReceipt(paymentItem.payment.id);
-
-    await this.paymentRepository.update(
-      { id: paymentItem.payment.id },
-      {
-        receipt: receipt.receiptKey,
-      },
-    );
-
     await this.companyRepository.update(
       { id: paymentItem.payment.company.id },
       {
         depositAmount: round2(Number(paymentItem.payment.company.depositAmount || 0) + Number(paymentItem.fullAmount)),
       },
-    );
-
-    const receiptLink = `${this.BACK_END_URL}/v1/payments/download-receipt?receiptKey=${receipt.receiptKey}`;
-
-    await this.emailsService.sendDepositChargeReceipt(
-      paymentItem.payment.company.contactEmail,
-      receiptLink,
-      receipt.receiptData,
     );
 
     await this.paymentItemRepository.update(
@@ -549,6 +504,8 @@ export class WebhookStripeService {
     );
 
     this.sendDepositChargeSuccessNotification(paymentItem.payment.company);
+
+    await this.queueInitializeService.addProcessDepositChargeGenerationQueue(paymentItem.payment);
 
     return;
   }
@@ -615,21 +572,10 @@ export class WebhookStripeService {
       return;
     }
 
-    const paymentItem = await this.paymentItemRepository.findOne({
-      where: {
-        externalId: paymentIntentId,
-      },
-      relations: {
-        payment: true,
-      },
-      select: {
-        id: true,
-        status: true,
-        payment: {
-          id: true,
-          isDepositCharge: true,
-        },
-      },
+    const paymentItem = await findOneTyped<TUpdatePaymentItemStatusByDepositCharge>(this.paymentItemRepository, {
+      select: UpdatePaymentItemStatusByDepositChargeQuery.select,
+      where: { externalId: paymentIntentId },
+      relations: UpdatePaymentItemStatusByDepositChargeQuery.relations,
     });
 
     if (!paymentItem) {
@@ -657,7 +603,7 @@ export class WebhookStripeService {
     return;
   }
 
-  private sendDepositChargeSuccessNotification(company: Company): void {
+  private sendDepositChargeSuccessNotification(company: TWebhookPaymentIntentSucceededCompany): void {
     if (!company.superAdmin) {
       this.lokiLogger.error(`Company ${company.id} does not have superAdminId`);
 

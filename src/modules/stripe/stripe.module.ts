@@ -3,7 +3,6 @@ import {
   StripeConnectService,
   StripeCustomersService,
   StripePaymentsService,
-  StripeReceiptsService,
   StripeSdkService,
   StripeSubscriptionsService,
 } from "src/modules/stripe/services";
@@ -18,7 +17,6 @@ import { AwsS3Module } from "src/modules/aws/s3/aws-s3.module";
     StripeCustomersService,
     StripePaymentsService,
     StripeSubscriptionsService,
-    StripeReceiptsService,
   ],
   exports: [
     StripeSdkService,
@@ -26,7 +24,6 @@ import { AwsS3Module } from "src/modules/aws/s3/aws-s3.module";
     StripeCustomersService,
     StripePaymentsService,
     StripeSubscriptionsService,
-    StripeReceiptsService,
   ],
 })
 export class StripeModule {}

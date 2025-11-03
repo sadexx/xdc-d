@@ -8,6 +8,11 @@ export interface IDepositChargeAuthorizationContext {
    */
   depositDefaultChargeAmount: number;
   /**
+   * Whether current deposit balance is less than the required charge amount
+   * Indicates insufficient funds for the transaction
+   */
+  isInsufficientFunds: boolean;
+  /**
    * Projected balance after charging requiredAmount
    */
   balanceAfterCharge: number;

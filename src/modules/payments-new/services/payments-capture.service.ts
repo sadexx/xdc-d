@@ -1,173 +1,158 @@
-import { Injectable, ServiceUnavailableException } from "@nestjs/common";
+import { Injectable, InternalServerErrorException } from "@nestjs/common";
 import { EntityManager } from "typeorm";
 import { ICapturePaymentContext } from "src/modules/payment-analysis/common/interfaces/capture";
-import { StripePaymentsService, StripeReceiptsService } from "src/modules/stripe/services";
-import { PaymentItem } from "src/modules/payments-new/entities";
-import { EPaymentStatus } from "src/modules/payments-new/common/enums";
-import { IStripeOperationResult } from "src/modules/stripe/common/interfaces";
+import { EPaymentCustomerType, EPaymentStatus } from "src/modules/payments-new/common/enums";
+import {
+  IPaymentExternalOperationResult,
+  IPaymentOperationResult,
+  IValidatePaymentItem,
+} from "src/modules/payments-new/common/interfaces";
+import { TCaptureItemWithAmount } from "src/modules/payments-new/common/types";
 import { UNDEFINED_VALUE } from "src/common/constants";
-import { TAttemptStripePaymentCapture, TCaptureItemWithAmount } from "src/modules/payments-new/common/types";
-import { denormalizedAmountToNormalized, round2 } from "src/common/utils";
+import { round2 } from "src/common/utils";
 import { LokiLogger } from "src/common/logger";
-import { QueueInitializeService } from "src/modules/queues/services";
 import { Appointment } from "src/modules/appointments/appointment/entities";
+import { PaymentsExternalOperationsService, PaymentsManagementService } from "src/modules/payments-new/services";
+import { StripePaymentsService } from "src/modules/stripe/services";
 
 @Injectable()
 export class PaymentsCaptureService {
   private readonly lokiLogger = new LokiLogger(PaymentsCaptureService.name);
   constructor(
+    private readonly paymentsManagementService: PaymentsManagementService,
+    private readonly paymentsExternalOperationsService: PaymentsExternalOperationsService,
     private readonly stripePaymentsService: StripePaymentsService,
-    private readonly stripeReceiptsService: StripeReceiptsService,
-    private readonly queueInitializeService: QueueInitializeService,
   ) {}
 
-  public async capturePayment(manager: EntityManager, context: ICapturePaymentContext): Promise<void> {
+  public async capturePayment(
+    manager: EntityManager,
+    context: ICapturePaymentContext,
+    customerType: EPaymentCustomerType,
+  ): Promise<IPaymentOperationResult> {
+    const { payment, prices, appointment } = context;
     try {
-      const { payment, prices } = context;
-      const [mainPaymentItem, ...secondaryPaymentItems] = payment.items;
+      const captureResults: IPaymentExternalOperationResult[] = [];
+      let totalCapturedAmount: number = 0;
 
-      const captureResults: IStripeOperationResult[] = [];
+      for (const [i, paymentItem] of payment.items.entries()) {
+        const isMainItem = i === 0;
+        const amountToCapture = isMainItem ? prices.clientFullAmount : paymentItem.fullAmount;
+        const captureResult = await this.captureItem(manager, paymentItem, amountToCapture, customerType);
+        captureResults.push(captureResult);
 
-      const mainCaptureResult = await this.captureItemWithAmount(manager, mainPaymentItem, prices.clientFullAmount);
-      captureResults.push(mainCaptureResult);
-
-      if (secondaryPaymentItems.length > 0) {
-        for (const paymentItem of secondaryPaymentItems) {
-          const secondaryCaptureResult = await this.captureItemWithAmount(manager, paymentItem, paymentItem.fullAmount);
-          captureResults.push(secondaryCaptureResult);
+        if (this.isCaptureSuccess(captureResult)) {
+          totalCapturedAmount += amountToCapture;
         }
       }
 
-      const allCaptured = captureResults.every((result) => result.status === EPaymentStatus.CAPTURED);
+      const allCaptured = captureResults.every((result) => this.isCaptureSuccess(result));
 
       if (allCaptured) {
-        await this.handleCapturedPayment(manager, context);
+        await this.handleCapturedPayment(manager, context, totalCapturedAmount);
       }
+
+      return { success: allCaptured };
     } catch (error) {
+      const typePrefix = customerType === EPaymentCustomerType.CORPORATE ? "corporate " : "";
       this.lokiLogger.error(
-        `Failed to capture payment for appointmentId: ${context.appointment.id}`,
+        `Failed to ${typePrefix}capture payment for appointmentId: ${appointment.id}`,
         (error as Error).stack,
       );
-      throw new ServiceUnavailableException("Failed to capture payment.");
+      throw new InternalServerErrorException(`Failed to ${typePrefix}capture payment.`);
     }
   }
 
-  private async captureItemWithAmount(
+  private async captureItem(
     manager: EntityManager,
     paymentItem: TCaptureItemWithAmount,
     amountToCapture: number,
-  ): Promise<IStripeOperationResult> {
-    if (!(await this.ensurePaymentItemIsCapturable(manager, paymentItem))) {
-      return { status: EPaymentStatus.CAPTURE_FAILED };
+    customerType: EPaymentCustomerType,
+  ): Promise<IPaymentExternalOperationResult> {
+    const validationResult = this.validatePaymentItemForCapture(paymentItem, customerType);
+
+    if (!validationResult.valid) {
+      const result: IPaymentExternalOperationResult = {
+        status: EPaymentStatus.CAPTURE_FAILED,
+        error: validationResult.reason,
+      };
+      await this.handleFailedCapturePaymentItem(manager, paymentItem, result);
+
+      return result;
     }
 
-    const stripeOperationResult = await this.attemptStripePaymentCapture(
-      paymentItem as TAttemptStripePaymentCapture,
-      amountToCapture,
-    );
+    let result: IPaymentExternalOperationResult;
 
-    if (stripeOperationResult.status === EPaymentStatus.CAPTURED) {
-      await this.handleCapturedPaymentItem(manager, paymentItem, stripeOperationResult);
+    if (customerType === EPaymentCustomerType.INDIVIDUAL) {
+      result = await this.paymentsExternalOperationsService.attemptStripeCapture(paymentItem, amountToCapture);
+    } else {
+      result = { status: EPaymentStatus.CAPTURED };
     }
 
-    return stripeOperationResult;
+    if (this.isCaptureSuccess(result)) {
+      await this.handleCapturedPaymentItem(manager, paymentItem, result);
+    } else {
+      await this.handleFailedCapturePaymentItem(manager, paymentItem, result);
+    }
+
+    return result;
   }
 
-  private async ensurePaymentItemIsCapturable(
-    manager: EntityManager,
+  private validatePaymentItemForCapture(
     paymentItem: TCaptureItemWithAmount,
-  ): Promise<boolean> {
-    const paymentItemRepository = manager.getRepository(PaymentItem);
-
+    customerType: EPaymentCustomerType,
+  ): IValidatePaymentItem {
     if (paymentItem.status !== EPaymentStatus.AUTHORIZED) {
-      const note = "Incorrect payment status.";
-      await paymentItemRepository.update({ id: paymentItem.id }, { status: EPaymentStatus.CAPTURE_FAILED, note });
-
-      return false;
+      return { valid: false, reason: "Incorrect payment status." };
     }
 
-    if (!paymentItem.externalId && paymentItem.fullAmount > 0) {
-      const note = "Payment external ID not filled.";
-      await paymentItemRepository.update({ id: paymentItem.id }, { status: EPaymentStatus.CAPTURE_FAILED, note });
-
-      return false;
+    if (customerType === EPaymentCustomerType.INDIVIDUAL && !paymentItem.externalId && paymentItem.fullAmount > 0) {
+      return { valid: false, reason: "Payment external ID not filled." };
     }
 
-    return true;
+    return { valid: true };
   }
 
   private async handleCapturedPaymentItem(
     manager: EntityManager,
     paymentItem: TCaptureItemWithAmount,
-    stripeOperationResult: IStripeOperationResult,
+    result: IPaymentExternalOperationResult,
   ): Promise<void> {
-    let receipt: string | null = null;
-    let note: string | null = null;
+    const receipt = await this.stripePaymentsService.getPaymentReceipt(paymentItem.id, result.latestCharge);
+    const note = !receipt ? "Receipt download failed." : UNDEFINED_VALUE;
 
-    if (stripeOperationResult.latestCharge && stripeOperationResult.latestCharge !== UNDEFINED_VALUE) {
-      receipt = await this.stripeReceiptsService.uploadPaymentItemReceipt(paymentItem, stripeOperationResult);
-    } else {
-      note = "Receipt download failed.";
-    }
-
-    await manager
-      .getRepository(PaymentItem)
-      .update({ id: paymentItem.id }, { status: EPaymentStatus.CAPTURED, receipt, note });
+    await this.paymentsManagementService.updatePaymentItem(
+      manager,
+      { id: paymentItem.id },
+      { status: result.status, note },
+    );
   }
 
-  private async handleCapturedPayment(manager: EntityManager, context: ICapturePaymentContext): Promise<void> {
-    const { payment, appointment, prices } = context;
+  private async handleFailedCapturePaymentItem(
+    manager: EntityManager,
+    paymentItem: TCaptureItemWithAmount,
+    result: IPaymentExternalOperationResult,
+  ): Promise<void> {
+    await this.paymentsManagementService.updatePaymentItem(
+      manager,
+      { id: paymentItem.id },
+      { status: result.status, note: result.error },
+    );
+  }
 
-    let totalCapturedAmount = 0;
-    for (const paymentItem of payment.items) {
-      totalCapturedAmount += paymentItem.fullAmount ?? 0;
-    }
-
+  private async handleCapturedPayment(
+    manager: EntityManager,
+    context: ICapturePaymentContext,
+    totalCapturedAmount: number,
+  ): Promise<void> {
     await manager
       .getRepository(Appointment)
       .update(
         { id: context.appointment.id },
         { paidByClient: round2(totalCapturedAmount), clientCurrency: context.payment.currency },
       );
-
-    await this.queueInitializeService.addProcessPayInReceiptGenerationQueue({ payment, appointment, prices });
   }
 
-  private async attemptStripePaymentCapture(
-    paymentItem: TAttemptStripePaymentCapture,
-    amountToCapture: number,
-  ): Promise<IStripeOperationResult> {
-    if (amountToCapture <= 0 || !paymentItem.externalId) {
-      return {
-        status: EPaymentStatus.CAPTURED,
-        latestCharge: UNDEFINED_VALUE,
-      };
-    }
-
-    const idempotencyKey = this.generateCaptureIdempotencyKey(paymentItem);
-    const normalizedAmount = denormalizedAmountToNormalized(amountToCapture);
-
-    try {
-      const paymentIntent = await this.stripePaymentsService.capturePayment(
-        paymentItem.externalId,
-        idempotencyKey,
-        normalizedAmount,
-      );
-
-      return {
-        status: EPaymentStatus.CAPTURED,
-        paymentIntentId: paymentIntent.id,
-        latestCharge: (paymentIntent.latest_charge as string) ?? UNDEFINED_VALUE,
-      };
-    } catch (error) {
-      return {
-        status: EPaymentStatus.CAPTURE_FAILED,
-        error: (error as Error).message,
-      };
-    }
-  }
-
-  private generateCaptureIdempotencyKey(paymentItem: TAttemptStripePaymentCapture): string {
-    return `capture-${paymentItem.id}-${paymentItem.externalId}`;
+  private isCaptureSuccess(result: IPaymentExternalOperationResult): boolean {
+    return result.status === EPaymentStatus.CAPTURED;
   }
 }

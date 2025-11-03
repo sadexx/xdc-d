@@ -2,12 +2,13 @@ import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { EUserRoleName } from "src/modules/users/common/enums";
 import {
-  IDepositChargeReceipt,
+  IPayInReceipt,
   IPayOutReceipt,
-  ITaxInvoiceCorporateReceipt,
   ITaxInvoiceReceipt,
-} from "src/modules/pdf/common/interfaces";
-import { IPayInReceipt } from "src/modules/pdf-new/common/interfaces";
+  IDepositChargeReceipt,
+  ICorporatePayOutReceipt,
+  ICorporateTaxInvoiceReceipt,
+} from "src/modules/pdf-new/common/interfaces";
 import { EMembershipType } from "src/modules/memberships/common/enums";
 import { format } from "date-fns";
 import { OldECurrencies } from "src/modules/payments/common/enums";
@@ -15,7 +16,6 @@ import { CustomMailerService } from "src/modules/emails/custom-mailer/services";
 import { INaatiWebScraperReport } from "src/modules/naati/common/interface";
 import { EExtIssueState } from "src/modules/backy-check/common/enums";
 import { INewCompanyRequestDetails } from "src/modules/companies/common/interfaces";
-import { IPayOutCorporateReceipt } from "src/modules/pdf/common/interfaces/payout-corporate-receipt.interface";
 import { IDepositBalanceInsufficientFund, IDepositBalanceIsLow } from "src/modules/emails/common/interfaces";
 import { IDepositChargeFailed } from "src/modules/emails/common/interfaces/deposit-charge-failed.interface";
 import { EEmailLayoutName, EEmailTemplateName } from "src/modules/emails/common/enums";
@@ -636,7 +636,7 @@ export class EmailsService {
   public async sendOutgoingCorporatePaymentReceipt(
     email: string,
     receiptLink: string,
-    data: IPayOutCorporateReceipt,
+    data: ICorporatePayOutReceipt,
   ): Promise<string> {
     await this.mailService.sendMail({
       to: email,
@@ -655,7 +655,7 @@ export class EmailsService {
   public async sendTaxInvoiceCorporatePaymentReceipt(
     email: string,
     receiptLink: string,
-    data: ITaxInvoiceCorporateReceipt,
+    data: ICorporateTaxInvoiceReceipt,
   ): Promise<string> {
     await this.mailService.sendMail({
       to: email,

@@ -9,6 +9,7 @@ import { LokiLogger } from "src/common/logger";
 import { EPaymentFailedReason } from "src/modules/payments-new/common/enums";
 import { EmailsService } from "src/modules/emails/services";
 import { MINIMUM_DEPOSIT_CHARGE_AMOUNT } from "src/modules/companies-deposit-charge/common/constants";
+import { format } from "date-fns";
 
 @Injectable()
 export class PaymentsNotificationService {
@@ -57,16 +58,33 @@ export class PaymentsNotificationService {
     superAdminRole: TSendDepositLowBalanceNotificationSuperAdmin,
     currentBalance: number,
   ): Promise<void> {
+    const { profile } = superAdminRole;
     this.emailsService
       .sendDepositLowBalanceNotification(company.contactEmail, {
-        adminName: superAdminRole.profile.preferredName || superAdminRole.profile.firstName || "",
+        adminName: profile.preferredName || profile.firstName,
         platformId: company.platformId,
         minimumRequiredBalance: MINIMUM_DEPOSIT_CHARGE_AMOUNT,
         currentBalance,
       })
       .catch((error: Error) => {
+        this.lokiLogger.error(`Failed to send payment success email for email: ${company.contactEmail}`, error.stack);
+      });
+  }
+
+  public async sendDepositBalanceInsufficientFundNotification(
+    company: TSendDepositLowBalanceNotificationCompany,
+    superAdminRole: TSendDepositLowBalanceNotificationSuperAdmin,
+  ): Promise<void> {
+    const { profile } = superAdminRole;
+    this.emailsService
+      .sendDepositBalanceInsufficientFundNotification(company.contactEmail, {
+        adminName: profile.preferredName || profile.firstName,
+        platformId: company.platformId,
+        date: format(new Date(), "dd/MM/yyyy"),
+      })
+      .catch((error: Error) => {
         this.lokiLogger.error(
-          `Failed to send payment success notification for userRoleId: ${superAdminRole.id}`,
+          `Failed to send deposit balance insufficient notification for userRoleId: ${superAdminRole.id}`,
           error.stack,
         );
       });

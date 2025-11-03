@@ -5,17 +5,6 @@ import { IAuthorizationPaymentContext } from "src/modules/payment-analysis/commo
  ** Type
  */
 
-export type TAttemptStripeAuthorization = NonNullableProperties<IAuthorizationPaymentContext, "prices"> & {
-  appointment: IAuthorizationPaymentContext["appointment"] & {
-    client: NonNullableProperties<IAuthorizationPaymentContext["appointment"]["client"], "paymentInformation"> & {
-      paymentInformation: NonNullableProperties<
-        NonNullable<IAuthorizationPaymentContext["appointment"]["client"]["paymentInformation"]>,
-        "stripeClientPaymentMethodId" | "stripeClientAccountId"
-      >;
-    };
-  };
-};
-
 export type TCreateAuthorizationPaymentRecord = NonNullableProperties<IAuthorizationPaymentContext, "prices"> & {
   appointment: IAuthorizationPaymentContext["appointment"] & {
     client: NonNullableProperties<IAuthorizationPaymentContext["appointment"]["client"], "paymentInformation"> & {

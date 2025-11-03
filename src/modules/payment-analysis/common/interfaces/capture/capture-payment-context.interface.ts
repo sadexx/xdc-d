@@ -3,7 +3,10 @@ import {
   TLoadPaymentCaptureContext,
 } from "src/modules/payment-analysis/common/types/capture";
 import { EPaymentOperation } from "src/modules/payment-analysis/common/enums";
-import { ICorporateCaptureContext } from "src/modules/payment-analysis/common/interfaces/capture";
+import {
+  ICommissionAmountsCaptureContext,
+  ICorporateCaptureContext,
+} from "src/modules/payment-analysis/common/interfaces/capture";
 import { IPaymentCalculationResult } from "src/modules/payments-new/common/interfaces";
 
 export interface ICapturePaymentContext {
@@ -12,4 +15,5 @@ export interface ICapturePaymentContext {
   corporateContext: ICorporateCaptureContext;
   appointment: TLoadAppointmentCaptureContext;
   payment: TLoadPaymentCaptureContext;
+  commissionAmounts: ICommissionAmountsCaptureContext | null;
 }

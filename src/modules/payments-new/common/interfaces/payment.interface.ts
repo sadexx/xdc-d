@@ -3,7 +3,7 @@ import {
   EPaymentCustomerType,
   EPaymentDirection,
   EPaymentSystem,
-  EStripeInterpreterPayoutType,
+  EStripeInterpreterPayOutType,
 } from "src/modules/payments-new/common/enums";
 import { UserRole } from "src/modules/users/entities";
 import { Company } from "src/modules/companies/entities";
@@ -23,7 +23,7 @@ export interface IPayment {
   system: EPaymentSystem;
   membershipId: string | null;
   note: string | null;
-  stripeInterpreterPayoutType: EStripeInterpreterPayoutType | null;
+  stripeInterpreterPayoutType: EStripeInterpreterPayOutType | null;
   fromClient: UserRole | null;
   toInterpreter: UserRole | null;
   company: Company | null;

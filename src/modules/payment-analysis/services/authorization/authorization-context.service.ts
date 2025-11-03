@@ -32,13 +32,11 @@ import {
   TLoadCompanySuperAdminAuthorizationContext,
   TLoadExistingPaymentAuthorizationContext,
 } from "src/modules/payment-analysis/common/types/authorization";
-import {
-  PAYMENT_AUTHORIZATION_CUTOFF_MINUTES,
-  WAIT_LIST_REDIRECT_THRESHOLD_DAYS,
-} from "src/modules/payment-analysis/common/constants/authorization";
+import { WAIT_LIST_REDIRECT_THRESHOLD_DAYS } from "src/modules/payment-analysis/common/constants/authorization";
 import { AuthorizationContextQueryOptionsService } from "src/modules/payment-analysis/services/authorization";
 import { EUserRoleName } from "src/modules/users/common/enums";
 import { COMPANY_LFH_ID } from "src/modules/companies/common/constants/constants";
+import { PAYMENT_AUTHORIZATION_CUTOFF_MINUTES } from "src/modules/payments-new/common/constants";
 
 @Injectable()
 export class AuthorizationContextService {
@@ -55,24 +53,40 @@ export class AuthorizationContextService {
     private readonly paymentPriceCalculationService: PaymentsPriceCalculationService,
   ) {}
 
-  public async loadPaymentContextForAuthorization(appointmentId: string): Promise<IAuthorizationPaymentContext | null> {
+  /**
+   * Loads the full authorization context for payment processing.
+   * @param appointmentId - The ID of the appointment to authorize.
+   * @returns The payment context or null if redirecting to waitlist.
+   * @throws {NotFoundException} If required entities not found.
+   */
+  public async loadPaymentContextForAuthorization(
+    appointmentId: string,
+    isShortTimeSlot: boolean,
+  ): Promise<IAuthorizationPaymentContext | null> {
     const appointment = await this.loadAppointmentContext(appointmentId);
+
     const isClientCorporate = this.determineIfClientCorporate(appointment.client);
+
     const currency = this.determineCurrency();
+
     const timingContext = this.calculateTimingContext(appointment);
 
     const waitListContext = await this.loadWaitListContext(appointment, isClientCorporate);
-    const { shouldRedirectToWaitList, existingWaitListRecord } = waitListContext;
 
-    if (shouldRedirectToWaitList) {
+    const companyContext = isClientCorporate ? await this.loadCompanyContext(appointment.client) : null;
+
+    const paymentMethodInfo = this.determinePaymentMethodInfo(appointment.client, companyContext);
+
+    if (waitListContext.shouldRedirectToWaitList) {
       return {
         operation: EPaymentOperation.AUTHORIZE_PAYMENT,
         appointment,
         isClientCorporate,
+        isShortTimeSlot,
+        paymentMethodInfo,
         currency,
         timingContext,
-        shouldRedirectToWaitList: true,
-        existingWaitListRecord,
+        waitListContext,
         existingPayment: null,
         companyContext: null,
         prices: null,
@@ -80,10 +94,10 @@ export class AuthorizationContextService {
       };
     }
 
-    const companyContext = isClientCorporate ? await this.loadCompanyContext(appointment.client) : null;
-
     const country = this.determineCountry(appointment.client, isClientCorporate, companyContext);
+
     const existingPayment = await this.loadExistingPaymentContext(appointmentId);
+
     const prices = await this.calculatePaymentPrice(appointment, isClientCorporate, country);
 
     const depositChargeContext =
@@ -93,10 +107,11 @@ export class AuthorizationContextService {
       operation: EPaymentOperation.AUTHORIZE_PAYMENT,
       appointment,
       isClientCorporate,
+      isShortTimeSlot,
+      paymentMethodInfo,
       currency,
       timingContext,
-      shouldRedirectToWaitList: false,
-      existingWaitListRecord: null,
+      waitListContext,
       existingPayment,
       companyContext,
       prices,
@@ -159,7 +174,6 @@ export class AuthorizationContextService {
     company: TLoadCompanyAuthorizationContext,
   ): Promise<TLoadCompanySuperAdminAuthorizationContext | null> {
     const { superAdmin } = company;
-
     const superAdminRole = superAdmin.userRoles.find(
       (userRole) =>
         userRole.role.name === EUserRoleName.CORPORATE_CLIENTS_SUPER_ADMIN ||
@@ -217,9 +231,21 @@ export class AuthorizationContextService {
     prices: IPaymentCalculationResult,
   ): IDepositChargeAuthorizationContext {
     const { company } = companyContext;
-
     const depositAmount = company.depositAmount ?? 0;
     const depositDefaultChargeAmount = company.depositDefaultChargeAmount ?? 0;
+
+    const isInsufficientFunds = depositAmount < prices.clientFullAmount;
+
+    if (!depositDefaultChargeAmount || !depositAmount || isInsufficientFunds) {
+      return {
+        depositAmount,
+        depositDefaultChargeAmount,
+        isInsufficientFunds,
+        balanceAfterCharge: 0,
+        isBalanceBelowTenPercent: false,
+        isBalanceBelowFifteenPercent: false,
+      };
+    }
 
     const balanceAfterCharge = depositAmount - prices.clientFullAmount;
     const tenPercentThreshold = depositDefaultChargeAmount * TEN_PERCENT_MULTIPLIER;
@@ -232,6 +258,7 @@ export class AuthorizationContextService {
     return {
       depositAmount,
       depositDefaultChargeAmount,
+      isInsufficientFunds,
       balanceAfterCharge,
       isBalanceBelowTenPercent,
       isBalanceBelowFifteenPercent,
@@ -240,6 +267,17 @@ export class AuthorizationContextService {
 
   private determineIfClientCorporate(client: TClientAuthorizationContext): boolean {
     return isInRoles(CORPORATE_CLIENT_ROLES, client.role.name);
+  }
+
+  private determinePaymentMethodInfo(
+    client: TClientAuthorizationContext,
+    companyContext: ICompanyAuthorizationContext | null,
+  ): string {
+    if (companyContext) {
+      return `Bank Account ${companyContext.company.paymentInformation.stripeClientLastFour}`;
+    }
+
+    return `Credit Card ${client.paymentInformation.stripeClientLastFour}`;
   }
 
   private determineCurrency(): EPaymentCurrency {

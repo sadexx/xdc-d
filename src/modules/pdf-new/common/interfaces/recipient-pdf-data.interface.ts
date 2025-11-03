@@ -3,4 +3,5 @@ export interface IRecipientPdfData {
   recipientId: string;
   recipientAddress: string;
   description: string;
+  recipientAbnNumber?: string;
 }

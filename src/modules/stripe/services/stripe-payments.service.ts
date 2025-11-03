@@ -10,6 +10,7 @@ import {
   IChargeByBECSDebitData,
   IChargeByBECSDebit,
 } from "src/modules/stripe/common/interfaces";
+import { AwsS3Service } from "src/modules/aws/s3/aws-s3.service";
 
 @Injectable()
 export class StripePaymentsService {
@@ -19,6 +20,7 @@ export class StripePaymentsService {
   constructor(
     private readonly configService: ConfigService,
     private readonly stripeSdkService: StripeSdkService,
+    private readonly awsS3Service: AwsS3Service,
   ) {
     this.BACK_END_URL = this.configService.getOrThrow<string>("appUrl");
   }
@@ -148,9 +150,46 @@ export class StripePaymentsService {
    * Cancels a payment intent authorization.
    * Releases any held funds.
    * @param paymentIntentId - The Stripe payment intent ID to cancel.
+   * @param idempotencyKey -  The idempotency key for the cancel operation.
    * @returns {Promise<void>}
    */
-  public async cancelAuthorization(paymentIntentId: string): Promise<void> {
-    await this.stripeSdkService.cancelPaymentIntent(paymentIntentId);
+  public async cancelAuthorization(paymentIntentId: string, idempotencyKey: string): Promise<void> {
+    await this.stripeSdkService.cancelPaymentIntent(paymentIntentId, { idempotencyKey });
+  }
+
+  /**
+   * Retrieves the Stripe payment receipt for a given payment item, downloads it from Stripe,
+   * uploads it to AWS S3 as an HTML file, and returns the S3 object key.
+   * If the `latestCharge` is not provided, logs an error and returns `null`.
+   * On any other failure (e.g., download or upload error), logs the error and returns `null`.
+   *
+   * @param {string} paymentItemId - The unique identifier for the payment item.
+   * @param {string} [latestCharge] - The Stripe charge ID associated with the latest charge for this payment.
+   * @returns {Promise<string | null>} A promise that resolves to the S3 object key (e.g., 'payments/stripe-receipts/{paymentItemId}.html')
+   *   if the receipt is successfully uploaded, or `null` if the operation fails.
+   */
+  public async getPaymentReceipt(paymentItemId: string, latestCharge?: string): Promise<string | null> {
+    try {
+      if (!latestCharge) {
+        this.lokiLogger.error(
+          `Failed to get payment receipt, missing latestCharge for paymentItemId: ${paymentItemId}`,
+        );
+
+        return null;
+      }
+
+      const key = `payments/stripe-receipts/${paymentItemId}.html`;
+      const stripeReceipt = await this.getReceipt(latestCharge);
+      await this.awsS3Service.uploadObject(key, stripeReceipt as ReadableStream, "text/html");
+
+      return key;
+    } catch (error) {
+      this.lokiLogger.error(
+        `Failed to get payment receipt for paymentItemId: ${paymentItemId}`,
+        (error as Error).stack,
+      );
+
+      return null;
+    }
   }
 }

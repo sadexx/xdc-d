@@ -132,7 +132,7 @@ export class WorkerManagementService implements OnModuleInit, OnModuleDestroy {
         return {
           queueName: EQueueType.PDF_GENERATION_QUEUE,
           workerOptions: {
-            name: EWorkerType.PAYMENTS,
+            name: EWorkerType.PDF_GENERATION,
             ...DEFAULT_WORKER_OPTIONS,
           },
         };

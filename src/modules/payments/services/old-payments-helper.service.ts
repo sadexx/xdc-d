@@ -28,8 +28,8 @@ import { GST_COEFFICIENT, NUMBER_OF_MINUTES_IN_TEN_MINUTES, ONE_HUNDRED, TEN } f
 import { OldICalculatePrice } from "src/modules/rates-old/common/interfaces";
 import { IDiscountRate } from "src/modules/discounts/common/interfaces";
 import { OldCalculatePriceDto } from "src/modules/rates-old/common/dto";
-import { HelperService } from "src/modules/helper/services";
 import { TCalculateAppointmentPriceAppointment } from "src/modules/payments/common/types";
+import { isCorporateGstPayer, isIndividualGstPayer } from "src/modules/payments-new/common/helpers";
 
 @Injectable()
 export class OldPaymentsHelperService {
@@ -42,7 +42,6 @@ export class OldPaymentsHelperService {
     private readonly incomingPaymentWaitListRepository: Repository<OldIncomingPaymentsWaitList>,
     private readonly ratesService: OldRatesService,
     private readonly discountsService: DiscountsService,
-    private readonly helperService: HelperService,
   ) {}
 
   // TODO: Add Status checking for appointment in live, no update.
@@ -171,9 +170,9 @@ export class OldPaymentsHelperService {
     let isGstPayers: OldIIsGstPayers;
 
     if (isCorporate) {
-      isGstPayers = this.helperService.isCorporateGstPayer(country);
+      isGstPayers = isCorporateGstPayer(country);
     } else {
-      isGstPayers = this.helperService.isIndividualGstPayer(country);
+      isGstPayers = isIndividualGstPayer(country);
     }
 
     let timezone: string | null = null;

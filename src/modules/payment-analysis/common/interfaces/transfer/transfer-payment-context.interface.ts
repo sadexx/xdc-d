@@ -16,6 +16,8 @@ export interface ITransferPaymentContext {
   interpreter: TInterpreterTransferContext;
   interpreterPrices: ICalculateInterpreterPrices;
   isInterpreterCorporate: boolean;
+  paymentMethodInfo: string;
+  isPersonalCard: boolean;
   currency: EPaymentCurrency;
   paymentContext: IPaymentTransferContext;
   company: TLoadCompanyTransferContext | null;

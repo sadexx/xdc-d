@@ -140,9 +140,12 @@ export class StripeSdkService {
     }
   }
 
-  public async cancelPaymentIntent(paymentIntentId: string): Promise<Stripe.Response<Stripe.PaymentIntent>> {
+  public async cancelPaymentIntent(
+    paymentIntentId: string,
+    options: Stripe.RequestOptions,
+  ): Promise<Stripe.Response<Stripe.PaymentIntent>> {
     try {
-      const paymentIntent = await this.stripe.paymentIntents.cancel(paymentIntentId);
+      const paymentIntent = await this.stripe.paymentIntents.cancel(paymentIntentId, options);
 
       return paymentIntent;
     } catch (error) {
@@ -151,9 +154,12 @@ export class StripeSdkService {
     }
   }
 
-  public async createTransfer(params: Stripe.TransferCreateParams): Promise<Stripe.Response<Stripe.Transfer>> {
+  public async createTransfer(
+    params: Stripe.TransferCreateParams,
+    options: Stripe.RequestOptions,
+  ): Promise<Stripe.Response<Stripe.Transfer>> {
     try {
-      const transfer = await this.stripe.transfers.create(params);
+      const transfer = await this.stripe.transfers.create(params, options);
 
       return transfer;
     } catch (error) {

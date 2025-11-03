@@ -8,8 +8,22 @@ import {
 import { EMembershipNotificationType, EMembershipPricingRegion } from "src/modules/memberships/common/enums";
 import { CheckInOutAppointmentDto } from "src/modules/appointments/appointment/common/dto";
 import { ITokenUserData } from "src/modules/tokens/common/interfaces";
-import { IMakePreAuthorization } from "src/modules/payments-new/common/interfaces";
-import { IGeneratePayInReceipt } from "src/modules/pdf-new/common/interfaces";
+import {
+  IMakeAuthorizationCancel,
+  IMakeCaptureAndTransfer,
+  IMakePreAuthorization,
+  IMakeTransfer,
+} from "src/modules/payments-new/common/interfaces";
+import {
+  IGenerateCorporatePayOutReceipt,
+  IGenerateCorporateTaxInvoiceReceipt,
+  IGenerateInterpreterBadge,
+  IGenerateMembershipInvoice,
+  IGeneratePayInReceipt,
+  IGeneratePayOutReceipt,
+  IGenerateTaxInvoiceReceipt,
+} from "src/modules/pdf-new/common/interfaces";
+import { TWebhookPaymentIntentSucceededPayment } from "src/modules/webhook-processor/common/types";
 
 export interface IQueueData {
   queueEnum: EQueueType;
@@ -36,49 +50,104 @@ export interface IProcessStripeCancelSubscriptionsData {
   payload: { subscriptionId: string };
 }
 
-export interface IProcessStripeUpdateSubscriptionPriceData {
+interface IProcessStripeUpdateSubscriptionPriceData {
   jobName: EJobType.PROCESS_STRIPE_UPDATE_SUBSCRIPTIONS_PRICE;
   payload: { customerId: string; newPriceId: string };
 }
 
-export interface IProcessSumSubWebhookData {
+interface IProcessSumSubWebhookData {
   jobName: EJobType.PROCESS_SUMSUB_WEBHOOK;
   payload: { message: Message };
 }
 
-export interface IProcessDocusignWebhookData {
+interface IProcessDocusignWebhookData {
   jobName: EJobType.PROCESS_DOCUSIGN_WEBHOOK;
   payload: { message: Message };
 }
 
-export interface IProcessStripeWebhookData {
+interface IProcessStripeWebhookData {
   jobName: EJobType.PROCESS_STRIPE_WEBHOOK;
   payload: { message: Message };
 }
 
-export interface IProcessCloseMeetingData {
+interface IProcessCloseMeetingData {
   jobName: EJobType.PROCESS_CLOSE_MEETING;
   payload: { chimeMeetingId: string };
 }
 
-export interface IProcessCloseMeetingWithoutClientVisitData {
+interface IProcessCloseMeetingWithoutClientVisitData {
   jobName: EJobType.PROCESS_CLOSE_MEETING_WITHOUT_CLIENT_VISIT;
   payload: { appointment: TAppointmentsWithoutClientVisit };
 }
 
-export interface IProcessCheckInOutAppointmentData {
+interface IProcessCheckInOutAppointmentData {
   jobName: EJobType.PROCESS_CHECK_IN_OUT_APPOINTMENT;
   payload: { appointmentId: string; dto: CheckInOutAppointmentDto; user: ITokenUserData };
 }
 
-export interface IProcessPaymentPreAuthorizationData {
+interface IProcessPaymentPreAuthorizationData {
   jobName: EJobType.PROCESS_PAYMENT_PRE_AUTHORIZATION;
   payload: IMakePreAuthorization;
 }
 
-export interface IProcessPayInReceiptPdfGenerationData {
+interface IProcessPaymentAuthorizationCancelData {
+  jobName: EJobType.PROCESS_PAYMENT_AUTHORIZATION_CANCEL;
+  payload: IMakeAuthorizationCancel;
+}
+
+interface IProcessPaymentCaptureData {
+  jobName: EJobType.PROCESS_PAYMENT_CAPTURE;
+  payload: IMakeCaptureAndTransfer;
+}
+
+interface IProcessPaymentTransferData {
+  jobName: EJobType.PROCESS_PAYMENT_TRANSFER;
+  payload: IMakeTransfer;
+}
+
+interface IProcessPaymentPreAuthorizationData {
+  jobName: EJobType.PROCESS_PAYMENT_PRE_AUTHORIZATION;
+  payload: IMakePreAuthorization;
+}
+
+interface IProcessPayInReceiptPdfGenerationData {
   jobName: EJobType.PROCESS_PAY_IN_RECEIPT_PDF_GENERATION;
   payload: IGeneratePayInReceipt;
+}
+
+interface IProcessPayOutReceiptPdfGenerationData {
+  jobName: EJobType.PROCESS_PAY_OUT_RECEIPT_PDF_GENERATION;
+  payload: IGeneratePayOutReceipt;
+}
+
+interface IProcessTaxInvoiceReceiptPdfGenerationData {
+  jobName: EJobType.PROCESS_TAX_INVOICE_RECEIPT_PDF_GENERATION;
+  payload: IGenerateTaxInvoiceReceipt;
+}
+
+interface IProcessMembershipInvoicePdfGenerationData {
+  jobName: EJobType.PROCESS_MEMBERSHIP_INVOICE_PDF_GENERATION;
+  payload: IGenerateMembershipInvoice;
+}
+
+interface IProcessInterpreterBadgePdfGenerationData {
+  jobName: EJobType.PROCESS_INTERPRETER_BADGE_PDF_GENERATION;
+  payload: IGenerateInterpreterBadge;
+}
+
+interface IProcessDepositChargePdfGenerationData {
+  jobName: EJobType.PROCESS_DEPOSIT_CHARGE_PDF_GENERATION;
+  payload: TWebhookPaymentIntentSucceededPayment;
+}
+
+interface IProcessCorporatePayOutReceiptPdfGenerationData {
+  jobName: EJobType.PROCESS_CORPORATE_PAYOUT_RECEIPT_PDF_GENERATION;
+  payload: IGenerateCorporatePayOutReceipt;
+}
+
+interface IProcessCorporateTaxInvoiceReceiptPdfGenerationData {
+  jobName: EJobType.PROCESS_CORPORATE_TAX_INVOICE_RECEIPT_PDF_GENERATION;
+  payload: IGenerateCorporateTaxInvoiceReceipt;
 }
 
 export type IQueueJobType =
@@ -92,4 +161,14 @@ export type IQueueJobType =
   | IProcessCloseMeetingWithoutClientVisitData
   | IProcessCheckInOutAppointmentData
   | IProcessPaymentPreAuthorizationData
-  | IProcessPayInReceiptPdfGenerationData;
+  | IProcessPaymentAuthorizationCancelData
+  | IProcessPaymentCaptureData
+  | IProcessPaymentTransferData
+  | IProcessPayInReceiptPdfGenerationData
+  | IProcessPayOutReceiptPdfGenerationData
+  | IProcessTaxInvoiceReceiptPdfGenerationData
+  | IProcessMembershipInvoicePdfGenerationData
+  | IProcessInterpreterBadgePdfGenerationData
+  | IProcessDepositChargePdfGenerationData
+  | IProcessCorporatePayOutReceiptPdfGenerationData
+  | IProcessCorporateTaxInvoiceReceiptPdfGenerationData;

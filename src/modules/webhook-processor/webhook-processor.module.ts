@@ -8,8 +8,6 @@ import { NotificationModule } from "src/modules/notifications/notification.modul
 import { OldPayment, OldPaymentItem } from "src/modules/payments/entities";
 import { AwsS3Module } from "src/modules/aws/s3/aws-s3.module";
 import { Company } from "src/modules/companies/entities";
-import { EmailsModule } from "src/modules/emails/emails.module";
-import { PdfModule } from "src/modules/pdf/pdf.module";
 import {
   WebhookDocusignService,
   WebhookStripeService,
@@ -39,8 +37,6 @@ import { MockModule } from "src/modules/mock/mock.module";
     QueueModule,
     NotificationModule,
     AwsS3Module,
-    EmailsModule,
-    PdfModule,
     DocusignModule,
     FileManagementModule,
     SumSubModule,

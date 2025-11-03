@@ -7,9 +7,9 @@ import { TLoadExistingPaymentAuthorizationContext } from "src/modules/payment-an
 @Injectable()
 export class AuthorizationContextValidationService {
   public validateAuthorizationContext(context: IAuthorizationPaymentContext): IPaymentValidationResult {
-    const { shouldRedirectToWaitList, isClientCorporate } = context;
+    const { waitListContext, isClientCorporate } = context;
 
-    if (shouldRedirectToWaitList) {
+    if (waitListContext.shouldRedirectToWaitList) {
       return this.validateWaitListAuthorizationContext(context);
     }
 
@@ -39,12 +39,6 @@ export class AuthorizationContextValidationService {
 
     if (missingFields.length > 0) {
       errors.push("Invalid context state for corporate authorization.");
-    }
-
-    if (depositChargeContext && prices) {
-      if (depositChargeContext.depositAmount < prices.clientFullAmount) {
-        errors.push("Insufficient funds on deposit.");
-      }
     }
 
     if (existingPayment) {

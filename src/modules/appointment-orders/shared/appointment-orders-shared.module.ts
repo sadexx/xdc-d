@@ -9,10 +9,11 @@ import { NotificationModule } from "src/modules/notifications/notification.modul
 import { AppointmentOrder, AppointmentOrderGroup } from "src/modules/appointment-orders/appointment-order/entities";
 import { BookingSlotManagementModule } from "src/modules/booking-slot-management/booking-slot-management.module";
 import { InterpreterProfile } from "src/modules/interpreters/profile/entities";
+import { Appointment } from "src/modules/appointments/appointment/entities";
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([AppointmentOrder, AppointmentOrderGroup, InterpreterProfile]),
+    TypeOrmModule.forFeature([AppointmentOrder, AppointmentOrderGroup, Appointment, InterpreterProfile]),
     NotificationModule,
     BookingSlotManagementModule,
   ],

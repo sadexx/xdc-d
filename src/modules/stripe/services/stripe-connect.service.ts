@@ -86,18 +86,23 @@ export class StripeConnectService {
    * @param amount - The amount to transfer (in the smallest currency unit, e.g., cents).
    * @param currency - The three-letter ISO currency code.
    * @param destinationAccountId - The Stripe ID of the destination connected account.
+   * @param idempotencyKey -  The idempotency key for the transfer operation.
    * @returns {Promise<ICreateTransfer>}
    */
   public async createTransfer(
     amount: number,
     currency: string,
     destinationAccountId: string,
+    idempotencyKey: string,
   ): Promise<ICreateTransfer> {
-    const transfer = await this.stripeSdkService.createTransfer({
-      amount: amount,
-      currency: currency,
-      destination: destinationAccountId,
-    });
+    const transfer = await this.stripeSdkService.createTransfer(
+      {
+        amount: amount,
+        currency: currency,
+        destination: destinationAccountId,
+      },
+      { idempotencyKey },
+    );
 
     return { transferId: transfer.id };
   }
@@ -108,10 +113,16 @@ export class StripeConnectService {
    * @param amount - The payout amount (in the smallest currency unit).
    * @param currency - The three-letter ISO currency code.
    * @param stripeAccountId - The Stripe ID of the connected account.
+   * @param idempotencyKey -  The idempotency key for the transfer operation.
    * @returns {Promise<ICreatePayout>}
    * @throws {BadRequestException}
    */
-  public async createPayout(amount: number, currency: string, stripeAccountId: string): Promise<ICreatePayout> {
+  public async createPayout(
+    amount: number,
+    currency: string,
+    stripeAccountId: string,
+    idempotencyKey: string,
+  ): Promise<ICreatePayout> {
     const balance = await this.stripeSdkService.retrieveBalance(
       { expand: ["instant_available.net_available"] },
       { stripeAccount: stripeAccountId },
@@ -137,7 +148,7 @@ export class StripeConnectService {
         method: "instant",
         destination: destinationId,
       },
-      { stripeAccount: stripeAccountId },
+      { stripeAccount: stripeAccountId, idempotencyKey },
     );
 
     return { payoutId: payout.id };

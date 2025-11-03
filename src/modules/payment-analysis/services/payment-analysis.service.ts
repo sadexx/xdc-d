@@ -17,12 +17,18 @@ import {
   TransferContextValidationService,
 } from "src/modules/payment-analysis/services/transfer";
 import { EPaymentOperation } from "src/modules/payment-analysis/common/enums";
+import {
+  AuthorizationCancelContextService,
+  AuthorizationCancelContextValidationService,
+} from "src/modules/payment-analysis/services/authorization-cancel";
 
 @Injectable()
 export class PaymentAnalysisService {
   constructor(
     private readonly authorizationContextService: AuthorizationContextService,
     private readonly authorizationContextValidationService: AuthorizationContextValidationService,
+    private readonly authorizationCancelContextService: AuthorizationCancelContextService,
+    private readonly authorizationCancelContextValidationService: AuthorizationCancelContextValidationService,
     private readonly captureContextService: CaptureContextService,
     private readonly captureContextValidationService: CaptureContextValidationService,
     private readonly transferContextService: TransferContextService,
@@ -61,7 +67,23 @@ export class PaymentAnalysisService {
   ): Promise<TPaymentContext | null> {
     switch (operation) {
       case EPaymentOperation.AUTHORIZE_PAYMENT:
-        return await this.authorizationContextService.loadPaymentContextForAuthorization(appointmentId);
+        if (!additionalData || !additionalData.isShortTimeSlot) {
+          throw new BadRequestException("For authorization operation additional data is required.");
+        }
+
+        return await this.authorizationContextService.loadPaymentContextForAuthorization(
+          appointmentId,
+          additionalData.isShortTimeSlot,
+        );
+      case EPaymentOperation.AUTHORIZATION_CANCEL_PAYMENT:
+        if (!additionalData || !additionalData.isCancelByClient) {
+          throw new BadRequestException("For transfer operation additional data is required.");
+        }
+
+        return await this.authorizationCancelContextService.loadPaymentContextForAuthorizationCancel(
+          appointmentId,
+          additionalData.isCancelByClient,
+        );
       case EPaymentOperation.CAPTURE_PAYMENT:
         return await this.captureContextService.loadPaymentContextForCapture(appointmentId);
       case EPaymentOperation.TRANSFER_PAYMENT:
@@ -77,6 +99,8 @@ export class PaymentAnalysisService {
     switch (context.operation) {
       case EPaymentOperation.AUTHORIZE_PAYMENT:
         return this.authorizationContextValidationService.validateAuthorizationContext(context);
+      case EPaymentOperation.AUTHORIZATION_CANCEL_PAYMENT:
+        return this.authorizationCancelContextValidationService.validateAuthorizationCancelContext(context);
       case EPaymentOperation.CAPTURE_PAYMENT:
         return this.captureContextValidationService.validateCaptureContext(context);
       case EPaymentOperation.TRANSFER_PAYMENT:
@@ -88,8 +112,12 @@ export class PaymentAnalysisService {
     switch (data.operation) {
       case EPaymentOperation.AUTHORIZE_PAYMENT:
         return await this.queueInitializeService.addProcessPaymentPreAuthorizationQueue(data);
+      case EPaymentOperation.AUTHORIZATION_CANCEL_PAYMENT:
+        return await this.queueInitializeService.addProcessPaymentAuthorizationCancelQueue(data);
       case EPaymentOperation.CAPTURE_PAYMENT:
-        break;
+        return await this.queueInitializeService.addProcessPaymentCaptureQueue(data);
+      case EPaymentOperation.TRANSFER_PAYMENT:
+        return await this.queueInitializeService.addProcessPaymentTransferQueue(data);
     }
   }
 }

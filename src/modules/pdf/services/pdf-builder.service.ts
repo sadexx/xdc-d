@@ -38,7 +38,6 @@ import { UserProfile } from "src/modules/users/entities";
 import { OldCalculatePriceDto } from "src/modules/rates-old/common/dto";
 import { Appointment } from "src/modules/appointments/appointment/entities";
 import { OldIIsGstPayers } from "src/modules/payments/common/interfaces";
-import { HelperService } from "src/modules/helper/services";
 import { OldRatesService } from "src/modules/rates-old/services";
 import { Address } from "src/modules/addresses/entities";
 import {
@@ -49,6 +48,7 @@ import {
 import { toZonedTime } from "date-fns-tz";
 import { TGenerateMembershipInvoiceUserRole } from "src/modules/pdf/common/types";
 import { EPdfErrorCodes } from "src/modules/pdf/common/enums";
+import { isCorporateGstPayer, isIndividualGstPayer } from "src/modules/payments-new/common/helpers";
 
 @Injectable()
 export class PdfBuilderService {
@@ -62,7 +62,6 @@ export class PdfBuilderService {
     private readonly pdfTemplatesService: PdfTemplatesService,
     private readonly pdfService: PdfService,
     private readonly awsS3Service: AwsS3Service,
-    private readonly helperService: HelperService,
     private readonly ratesService: OldRatesService,
   ) {}
 
@@ -776,9 +775,9 @@ export class PdfBuilderService {
     let isGstPayers: OldIIsGstPayers;
 
     if (isCorporate) {
-      isGstPayers = this.helperService.isCorporateGstPayer(country);
+      isGstPayers = isCorporateGstPayer(country);
     } else {
-      isGstPayers = this.helperService.isIndividualGstPayer(country);
+      isGstPayers = isIndividualGstPayer(country);
     }
 
     const estimatedCostPrice = await this.ratesService.calculatePriceByOneDay(

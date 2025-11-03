@@ -26,7 +26,7 @@
                 <td style="text-align: right">
                   <div style="text-align: right">
                     <p style="font-size: 30px; margin: 0">REMITTANCE ADVICE</p>
-                    <p style="font-size: 14px; margin: 0"><b>Invoice # </b>{{receiptNumber}}</p>
+                    <p style="font-size: 14px; margin: 0"><b>Invoice # </b>{{appointment.platformId}}</p>
                     <p style="font-size: 16px; margin: 0">
                       <b>From: Lingua Franca Hub PTY LTD</b>
                     </p>
@@ -35,9 +35,9 @@
                       36/1 Thread Lane, Waterloo, NSW, 2017, Australia
                     </p>
                     <p style="font-size: 16px; margin: 0">
-                      <b>To: {{userName}}</b>
+                      <b>To: {{recipientData.recipientName}}</b>
                     </p>
-                    <p style="font-size: 16px; margin: 0">(Interpreter ID {{interpreterId}})</p>
+                    <p style="font-size: 16px; margin: 0">(Interpreter ID {{interpreter.user.platformId}})</p>
                   </div>
                 </td>
               </tr>
@@ -54,7 +54,7 @@
               font-size: 14px;
             "
           >
-            <p style="margin-bottom: 10px"><br />Hi, {{firstName}},</p>
+            <p style="margin-bottom: 10px"><br />Hi, {{interpreter.profile.firstName}},</p>
             <p style="margin-bottom: 10px">
               I am attaching your remittance advice for payment.<br />
               If you have any questions or need further assistance, feel free to reach out to us
@@ -150,7 +150,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{paymentDate}}
+                    {{issueDate}}
                   </td>
                   <td
                     style="
@@ -162,7 +162,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{bookingId}}
+                    #{{appointment.platformId}}
                   </td>
                   <td
                     style="
@@ -174,7 +174,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{service}}
+                    {{appointmentServiceType}}
                   </td>
                   <td
                     style="
@@ -186,7 +186,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{duration}}
+                    {{totalDuration}}
                   </td>
                   <td
                     style="
@@ -198,7 +198,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{currency}} {{fullAmount}}
+                    {{payment.currency}} {{payment.totalFullAmount}}
                   </td>
                 </tr>
                 <tr>
@@ -279,7 +279,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{paymentDate}}
+                    {{issueDate}}
                   </td>
                   <td
                     style="
@@ -291,7 +291,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{serviceDate}}
+                    {{appointmentDate}}
                   </td>
                   <td
                     style="
@@ -303,7 +303,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{topic}}
+                    {{appointment.topic}}
                   </td>
                   <td
                     style="
@@ -315,7 +315,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{currency}} {{amount}}
+                    {{payment.currency}} {{payment.totalAmount}}
                   </td>
                   <td
                     style="
@@ -327,7 +327,7 @@
                       font-size: 14px;
                     "
                   >
-                    {{currency}} {{gstAmount}}
+                    {{payment.currency}} {{payment.totalFullAmount}}
                   </td>
                   <br /><br /><br /><br /><br />
                 </tr>

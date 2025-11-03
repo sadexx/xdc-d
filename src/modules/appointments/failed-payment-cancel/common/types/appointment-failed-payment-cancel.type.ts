@@ -3,7 +3,7 @@ import { QueryResultType } from "src/common/types";
 import { Appointment } from "src/modules/appointments/appointment/entities";
 
 /**
- ** Types
+ ** Type
  */
 
 export type THandleOrderRemoval = NonNullable<TCancelAppointmentPaymentFailed["appointmentOrder"]>;

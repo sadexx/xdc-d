@@ -2,7 +2,7 @@ import { FindOptionsSelect, FindOptionsRelations } from "typeorm";
 import { NonNullableProperties, QueryResultType } from "src/common/types";
 import { Appointment } from "src/modules/appointments/appointment/entities";
 import { Company } from "src/modules/companies/entities";
-import { Payment } from "../../../../payments-new/entities";
+import { Payment } from "src/modules/payments-new/entities";
 
 /**
  ** Type
@@ -10,15 +10,22 @@ import { Payment } from "../../../../payments-new/entities";
 
 export type TLoadAppointmentTransferContext = NonNullableProperties<
   TBaseAppointmentTransferContext,
-  "appointmentAdminInfo"
+  "appointmentAdminInfo" | "businessStartTime"
 > & {
   interpreter: TInterpreterTransferContext;
 };
 
 export type TInterpreterTransferContext = NonNullableProperties<
   NonNullable<TBaseAppointmentTransferContext["interpreter"]>,
-  "country"
->;
+  "country" | "timezone"
+> & {
+  paymentInformation: NonNullableProperties<
+    NonNullable<NonNullable<TBaseAppointmentTransferContext["interpreter"]>["paymentInformation"]>,
+    "interpreterSystemForPayout" | "stripeInterpreterAccountId" | "paypalPayerId"
+  >;
+  user: NonNullableProperties<NonNullable<TBaseAppointmentTransferContext["interpreter"]>["user"], "platformId">;
+  address: NonNullable<NonNullable<TBaseAppointmentTransferContext["interpreter"]>["address"]>;
+};
 
 /**
  ** Query types
@@ -27,18 +34,39 @@ export type TInterpreterTransferContext = NonNullableProperties<
 export const LoadAppointmentTransferContextQuery = {
   select: {
     id: true,
+    platformId: true,
+    communicationType: true,
+    schedulingType: true,
+    topic: true,
+    interpreterType: true,
+    interpretingType: true,
+    businessStartTime: true,
+    businessEndTime: true,
     interpreter: {
       id: true,
       operatedByCompanyId: true,
       country: true,
+      timezone: true,
       role: { name: true },
-      abnCheck: { abnStatus: true },
-      paymentInformation: { interpreterSystemForPayout: true },
+      abnCheck: { abnStatus: true, abnNumber: true },
+      paymentInformation: {
+        interpreterSystemForPayout: true,
+        stripeInterpreterAccountId: true,
+        stripeInterpreterCardId: true,
+        stripeInterpreterCardLast4: true,
+        stripeInterpreterBankAccountLast4: true,
+        stripeClientLastFour: true,
+        paypalEmail: true,
+        paypalPayerId: true,
+      },
+      user: { platformId: true },
+      profile: { title: true, firstName: true, middleName: true, lastName: true, contactEmail: true },
+      address: { streetNumber: true, streetName: true, suburb: true, state: true, postcode: true, country: true },
     },
     appointmentAdminInfo: { isInterpreterFound: true },
   } as const satisfies FindOptionsSelect<Appointment>,
   relations: {
-    interpreter: { role: true, abnCheck: true, paymentInformation: true },
+    interpreter: { role: true, abnCheck: true, paymentInformation: true, user: true, profile: true, address: true },
     appointmentAdminInfo: true,
   } as const satisfies FindOptionsRelations<Appointment>,
 };
@@ -48,15 +76,17 @@ export const LoadCompanyTransferContextQuery = {
   select: {
     id: true,
     country: true,
+    platformId: true,
+    paymentInformation: { id: true },
   } as const satisfies FindOptionsSelect<Company>,
-  relations: {} as const satisfies FindOptionsRelations<Company>,
+  relations: { paymentInformation: true } as const satisfies FindOptionsRelations<Company>,
 };
 export type TLoadCompanyTransferContext = QueryResultType<Company, typeof LoadCompanyTransferContextQuery.select>;
 
 export const LoadPaymentTransferContextQuery = {
   select: {
     id: true,
-    items: { id: true },
+    items: { id: true, status: true },
   } as const satisfies FindOptionsSelect<Payment>,
   relations: { items: true } as const satisfies FindOptionsRelations<Payment>,
 };

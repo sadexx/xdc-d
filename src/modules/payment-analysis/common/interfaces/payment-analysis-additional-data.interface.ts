@@ -2,4 +2,6 @@ import { IPaymentCalculationResult } from "src/modules/payments-new/common/inter
 
 export interface IPaymentAnalysisAdditionalData {
   prices?: IPaymentCalculationResult;
+  isCancelByClient?: boolean;
+  isShortTimeSlot?: boolean;
 }

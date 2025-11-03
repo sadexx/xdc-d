@@ -73,6 +73,15 @@ export class QueueProcessorService implements IQueueProcessor {
       case EJobType.PROCESS_PAYMENT_PRE_AUTHORIZATION: {
         return this.paymentsExecutionService.makePreAuthorization(job.data.payload);
       }
+      case EJobType.PROCESS_PAYMENT_AUTHORIZATION_CANCEL: {
+        return this.paymentsExecutionService.makeAuthorizationCancel(job.data.payload);
+      }
+      case EJobType.PROCESS_PAYMENT_CAPTURE: {
+        return this.paymentsExecutionService.makeCaptureAndTransfer(job.data.payload);
+      }
+      case EJobType.PROCESS_PAYMENT_TRANSFER: {
+        return this.paymentsExecutionService.makeTransfer(job.data.payload);
+      }
       default:
         return this.handleUnknownJob(job);
     }
@@ -82,6 +91,27 @@ export class QueueProcessorService implements IQueueProcessor {
     switch (job.data.jobName) {
       case EJobType.PROCESS_PAY_IN_RECEIPT_PDF_GENERATION: {
         return this.pdfService.generatePayInReceipt(job.data.payload);
+      }
+      case EJobType.PROCESS_PAY_OUT_RECEIPT_PDF_GENERATION: {
+        return this.pdfService.generatePayOutReceipt(job.data.payload);
+      }
+      case EJobType.PROCESS_TAX_INVOICE_RECEIPT_PDF_GENERATION: {
+        return this.pdfService.generateTaxInvoiceReceipt(job.data.payload);
+      }
+      case EJobType.PROCESS_MEMBERSHIP_INVOICE_PDF_GENERATION: {
+        return this.pdfService.generateMembershipInvoice(job.data.payload);
+      }
+      case EJobType.PROCESS_INTERPRETER_BADGE_PDF_GENERATION: {
+        return this.pdfService.generateInterpreterBadge(job.data.payload);
+      }
+      case EJobType.PROCESS_DEPOSIT_CHARGE_PDF_GENERATION: {
+        return this.pdfService.generateDepositCharge(job.data.payload);
+      }
+      case EJobType.PROCESS_CORPORATE_PAYOUT_RECEIPT_PDF_GENERATION: {
+        return this.pdfService.generateCorporatePayOutReceipt(job.data.payload);
+      }
+      case EJobType.PROCESS_CORPORATE_TAX_INVOICE_RECEIPT_PDF_GENERATION: {
+        return this.pdfService.generateCorporateTaxInvoiceReceipt(job.data.payload);
       }
       default:
         return this.handleUnknownJob(job);

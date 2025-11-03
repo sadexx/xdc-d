@@ -10,8 +10,22 @@ import { TAppointmentsWithoutClientVisit } from "src/modules/appointments/appoin
 import { CheckInOutAppointmentDto } from "src/modules/appointments/appointment/common/dto";
 import { ITokenUserData } from "src/modules/tokens/common/interfaces";
 import { EPaymentOperation } from "src/modules/payment-analysis/common/enums";
-import { IMakePreAuthorization } from "src/modules/payments-new/common/interfaces";
-import { IGeneratePayInReceipt } from "src/modules/pdf-new/common/interfaces";
+import {
+  IMakeAuthorizationCancel,
+  IMakeCaptureAndTransfer,
+  IMakePreAuthorization,
+  IMakeTransfer,
+} from "src/modules/payments-new/common/interfaces";
+import {
+  IGenerateCorporatePayOutReceipt,
+  IGenerateCorporateTaxInvoiceReceipt,
+  IGenerateInterpreterBadge,
+  IGenerateMembershipInvoice,
+  IGeneratePayInReceipt,
+  IGeneratePayOutReceipt,
+  IGenerateTaxInvoiceReceipt,
+} from "src/modules/pdf-new/common/interfaces";
+import { TWebhookPaymentIntentSucceededPayment } from "src/modules/webhook-processor/common/types";
 
 @Injectable()
 export class QueueInitializeService {
@@ -154,6 +168,48 @@ export class QueueInitializeService {
     });
   }
 
+  public async addProcessPaymentAuthorizationCancelQueue(data: IMakeAuthorizationCancel): Promise<void> {
+    const jobData: IQueueData = {
+      queueEnum: EQueueType.PAYMENTS_EXECUTION_QUEUE,
+      jobItem: {
+        jobName: EJobType.PROCESS_PAYMENT_AUTHORIZATION_CANCEL,
+        payload: data,
+      },
+    };
+
+    await this.queueManagementService.addJob(jobData, {
+      jobId: `payment-operation:${EPaymentOperation.AUTHORIZATION_CANCEL_PAYMENT}:${data.context.appointment.id}`,
+    });
+  }
+
+  public async addProcessPaymentCaptureQueue(data: IMakeCaptureAndTransfer): Promise<void> {
+    const jobData: IQueueData = {
+      queueEnum: EQueueType.PAYMENTS_EXECUTION_QUEUE,
+      jobItem: {
+        jobName: EJobType.PROCESS_PAYMENT_CAPTURE,
+        payload: data,
+      },
+    };
+
+    await this.queueManagementService.addJob(jobData, {
+      jobId: `payment-operation:${EPaymentOperation.CAPTURE_PAYMENT}:${data.context.appointment.id}`,
+    });
+  }
+
+  public async addProcessPaymentTransferQueue(data: IMakeTransfer): Promise<void> {
+    const jobData: IQueueData = {
+      queueEnum: EQueueType.PAYMENTS_EXECUTION_QUEUE,
+      jobItem: {
+        jobName: EJobType.PROCESS_PAYMENT_TRANSFER,
+        payload: data,
+      },
+    };
+
+    await this.queueManagementService.addJob(jobData, {
+      jobId: `payment-operation:${EPaymentOperation.TRANSFER_PAYMENT}:${data.context.appointment.id}`,
+    });
+  }
+
   public async addProcessPayInReceiptGenerationQueue(data: IGeneratePayInReceipt): Promise<void> {
     const jobData: IQueueData = {
       queueEnum: EQueueType.PDF_GENERATION_QUEUE,
@@ -164,7 +220,107 @@ export class QueueInitializeService {
     };
 
     await this.queueManagementService.addJob(jobData, {
-      jobId: `pdf-generation:pay-in-receipt:${data.appointment.id}`,
+      jobId: `pdf-generation:${EJobType.PROCESS_PAY_IN_RECEIPT_PDF_GENERATION}:${data.appointment.id}`,
+    });
+  }
+
+  public async addProcessPayOutReceiptGenerationQueue(data: IGeneratePayOutReceipt): Promise<void> {
+    const jobData: IQueueData = {
+      queueEnum: EQueueType.PDF_GENERATION_QUEUE,
+      jobItem: {
+        jobName: EJobType.PROCESS_PAY_OUT_RECEIPT_PDF_GENERATION,
+        payload: data,
+      },
+    };
+
+    await this.queueManagementService.addJob(jobData, {
+      jobId: `pdf-generation:${EJobType.PROCESS_PAY_OUT_RECEIPT_PDF_GENERATION}:${data.appointment.id}`,
+    });
+  }
+
+  public async addProcessTaxInvoiceReceiptGenerationQueue(data: IGenerateTaxInvoiceReceipt): Promise<void> {
+    const jobData: IQueueData = {
+      queueEnum: EQueueType.PDF_GENERATION_QUEUE,
+      jobItem: {
+        jobName: EJobType.PROCESS_TAX_INVOICE_RECEIPT_PDF_GENERATION,
+        payload: data,
+      },
+    };
+
+    await this.queueManagementService.addJob(jobData, {
+      jobId: `pdf-generation:${EJobType.PROCESS_TAX_INVOICE_RECEIPT_PDF_GENERATION}:${data.appointment.id}`,
+    });
+  }
+
+  public async addProcessMembershipInvoiceGenerationQueue(data: IGenerateMembershipInvoice): Promise<void> {
+    const jobData: IQueueData = {
+      queueEnum: EQueueType.PDF_GENERATION_QUEUE,
+      jobItem: {
+        jobName: EJobType.PROCESS_MEMBERSHIP_INVOICE_PDF_GENERATION,
+        payload: data,
+      },
+    };
+
+    await this.queueManagementService.addJob(jobData, {
+      jobId: `pdf-generation:${EJobType.PROCESS_MEMBERSHIP_INVOICE_PDF_GENERATION}:${data.payment.id}`,
+    });
+  }
+
+  public async addProcessInterpreterBadgeGenerationQueue(data: IGenerateInterpreterBadge): Promise<void> {
+    const jobData: IQueueData = {
+      queueEnum: EQueueType.PDF_GENERATION_QUEUE,
+      jobItem: {
+        jobName: EJobType.PROCESS_INTERPRETER_BADGE_PDF_GENERATION,
+        payload: data,
+      },
+    };
+
+    await this.queueManagementService.addJob(jobData, {
+      jobId: `pdf-generation:${EJobType.PROCESS_INTERPRETER_BADGE_PDF_GENERATION}:${data.userRole.id}`,
+    });
+  }
+
+  public async addProcessDepositChargeGenerationQueue(payment: TWebhookPaymentIntentSucceededPayment): Promise<void> {
+    const jobData: IQueueData = {
+      queueEnum: EQueueType.PDF_GENERATION_QUEUE,
+      jobItem: {
+        jobName: EJobType.PROCESS_DEPOSIT_CHARGE_PDF_GENERATION,
+        payload: payment,
+      },
+    };
+
+    await this.queueManagementService.addJob(jobData, {
+      jobId: `pdf-generation:${EJobType.PROCESS_DEPOSIT_CHARGE_PDF_GENERATION}:${payment.id}`,
+    });
+  }
+
+  public async addProcessCorporatePayOutReceiptGenerationQueue(data: IGenerateCorporatePayOutReceipt): Promise<void> {
+    const jobData: IQueueData = {
+      queueEnum: EQueueType.PDF_GENERATION_QUEUE,
+      jobItem: {
+        jobName: EJobType.PROCESS_CORPORATE_PAYOUT_RECEIPT_PDF_GENERATION,
+        payload: data,
+      },
+    };
+
+    await this.queueManagementService.addJob(jobData, {
+      jobId: `pdf-generation:${EJobType.PROCESS_CORPORATE_PAYOUT_RECEIPT_PDF_GENERATION}:${data.company.id}`,
+    });
+  }
+
+  public async addProcessCorporateTaxInvoiceReceiptGenerationQueue(
+    data: IGenerateCorporateTaxInvoiceReceipt,
+  ): Promise<void> {
+    const jobData: IQueueData = {
+      queueEnum: EQueueType.PDF_GENERATION_QUEUE,
+      jobItem: {
+        jobName: EJobType.PROCESS_CORPORATE_TAX_INVOICE_RECEIPT_PDF_GENERATION,
+        payload: data,
+      },
+    };
+
+    await this.queueManagementService.addJob(jobData, {
+      jobId: `pdf-generation:${EJobType.PROCESS_CORPORATE_TAX_INVOICE_RECEIPT_PDF_GENERATION}:${data.company.id}`,
     });
   }
 }

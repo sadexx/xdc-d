@@ -1,7 +1,7 @@
 import { User, UserProfile, UserRole } from "src/modules/users/entities";
 
 /**
- ** Types
+ ** Type
  */
 
 export type TSendClientCanceledAppointmentNotification = Pick<UserRole, "id"> & {

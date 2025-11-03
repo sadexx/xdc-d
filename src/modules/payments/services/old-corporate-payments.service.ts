@@ -44,11 +44,15 @@ import { User } from "src/modules/users/entities";
 import { format } from "date-fns";
 import { MINIMUM_DEPOSIT_CHARGE_AMOUNT } from "src/modules/companies-deposit-charge/common/constants";
 import { EUserRoleName } from "src/modules/users/common/enums";
-import { HelperService } from "src/modules/helper/services";
 import { EPaymentSystem } from "src/modules/payments-new/common/enums";
 import { CompaniesDepositChargeManagementService } from "src/modules/companies-deposit-charge/services";
 import { ICreateTransfer } from "src/modules/stripe/common/interfaces";
-import { IPayInReceipt } from "src/modules/pdf-new/common/interfaces";
+import {
+  ICorporatePayOutReceipt,
+  ICorporateTaxInvoiceReceipt,
+  IPayInReceipt,
+} from "src/modules/pdf-new/common/interfaces";
+import { isCorporateGstPayer } from "src/modules/payments-new/common/helpers";
 
 @Injectable()
 export class OldCorporatePaymentsService {
@@ -74,7 +78,6 @@ export class OldCorporatePaymentsService {
     private readonly stripeConnectService: StripeConnectService,
     private readonly paypalSdkService: PaypalSdkService,
     private readonly paymentsHelperService: OldPaymentsHelperService,
-    private readonly helperService: HelperService,
     private readonly dataSource: DataSource,
   ) {
     this.BACK_END_URL = this.configService.getOrThrow<string>("appUrl");
@@ -415,7 +418,7 @@ export class OldCorporatePaymentsService {
 
       await this.paymentItemRepository.save(refundPaymentItem);
 
-      const isGstPayers = this.helperService.isCorporateGstPayer(null, company.country);
+      const isGstPayers = isCorporateGstPayer(null, company.country);
       let commissionAmountWithoutGst = commissionAmount;
       let commissionGstAmount = 0;
 
@@ -804,7 +807,7 @@ export class OldCorporatePaymentsService {
         await this.emailsService.sendOutgoingCorporatePaymentReceipt(
           company!.contactEmail,
           receiptLink,
-          receipt.receiptData,
+          receipt.receiptData as unknown as ICorporatePayOutReceipt,
         );
 
         const taxInvoice = await this.pdfBuilderService.generateCorporateTaxInvoiceReceipt(
@@ -824,7 +827,7 @@ export class OldCorporatePaymentsService {
         await this.emailsService.sendTaxInvoiceCorporatePaymentReceipt(
           company!.contactEmail,
           taxInvoiceLink,
-          taxInvoice.receiptData,
+          taxInvoice.receiptData as unknown as ICorporateTaxInvoiceReceipt,
         );
       } catch (error) {
         this.lokiLogger.error(`Error in makeCorporatePayouts: ${(error as Error).message}, ${(error as Error).stack}`);
@@ -963,7 +966,12 @@ export class OldCorporatePaymentsService {
     let paymentNote: string | null | undefined = null;
 
     try {
-      transfer = await this.stripeConnectService.createTransfer(fullAmount, currency, stripeInterpreterAccountId);
+      transfer = await this.stripeConnectService.createTransfer(
+        fullAmount,
+        currency,
+        stripeInterpreterAccountId,
+        stripeInterpreterAccountId,
+      );
     } catch (error) {
       paymentStatus = OldEPaymentStatus.TRANSFER_FAILED;
       paymentNote = (error as Stripe.Response<Stripe.StripeRawError>).message ?? null;
@@ -1010,6 +1018,7 @@ export class OldCorporatePaymentsService {
         totalAmount,
         currency,
         companyPaymentInfo.stripeInterpreterAccountId,
+        companyPaymentInfo.stripeInterpreterAccountId,
       );
 
       paymentStatus = OldEPaymentStatus.PAYOUT_SUCCESS;
@@ -1043,12 +1052,14 @@ export class OldCorporatePaymentsService {
     let paymentNote: string | null | undefined = null;
 
     try {
-      transfer = await this.paypalSdkService.makeTransfer(
-        paypalPayerId,
-        String(fullAmount),
-        companyPlatformId,
+      transfer = await this.paypalSdkService.makeTransfer({
+        payerId: paypalPayerId,
+        fullAmount: String(fullAmount),
+        platformId: companyPlatformId,
         currency,
-      );
+        idempotencyKey: companyPlatformId,
+        isCorporate: true,
+      });
     } catch (error) {
       paymentStatus = OldEPaymentStatus.TRANSFER_FAILED;
       paymentNote = (error as Error).message ?? null;

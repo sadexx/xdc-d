@@ -117,7 +117,6 @@ export class CompaniesDepositChargeManagementService {
 
   private async constructAndCreateDepositCharge(data: IConstructAndCreateDepositChargeData): Promise<void> {
     const { manager, company, chargeAmount, depositDefaultChargeAmount } = data;
-
     const newDepositChargeDto = this.createDepositChargeDto(company, chargeAmount);
     await this.createDepositCharge(manager, newDepositChargeDto);
 

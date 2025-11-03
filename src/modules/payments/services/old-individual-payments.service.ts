@@ -38,7 +38,7 @@ import {
 } from "src/common/constants";
 import { differenceInMinutes } from "date-fns";
 import { IAuthorizePayment, ICreateTransfer } from "src/modules/stripe/common/interfaces";
-import { IPayInReceipt } from "src/modules/pdf-new/common/interfaces";
+import { IPayInReceipt, IPayOutReceipt, ITaxInvoiceReceipt } from "src/modules/pdf-new/common/interfaces";
 
 @Injectable()
 export class OldIndividualPaymentsService {
@@ -488,7 +488,7 @@ export class OldIndividualPaymentsService {
 
       try {
         if (paymentItem.fullAmount > 0 && paymentItem.externalId) {
-          await this.stripePaymentsService.cancelAuthorization(paymentItem.externalId);
+          await this.stripePaymentsService.cancelAuthorization(paymentItem.externalId, paymentItem.externalId);
         }
 
         await this.paymentItemRepository.update({ id: paymentItem.id }, { status: OldEPaymentStatus.CANCELED });
@@ -609,7 +609,12 @@ export class OldIndividualPaymentsService {
     let paymentNote: string | null | undefined = null;
 
     try {
-      transfer = await this.stripeConnectService.createTransfer(fullAmount, currency, stripeInterpreterAccountId);
+      transfer = await this.stripeConnectService.createTransfer(
+        fullAmount,
+        currency,
+        stripeInterpreterAccountId,
+        stripeInterpreterAccountId,
+      );
     } catch (error) {
       paymentStatus = OldEPaymentStatus.TRANSFER_FAILED;
       paymentNote = (error as Stripe.Response<Stripe.StripeRawError>).message ?? null;
@@ -694,6 +699,7 @@ export class OldIndividualPaymentsService {
         payment.totalAmount,
         payment.currency,
         appointment.interpreter.paymentInformation.stripeInterpreterAccountId,
+        appointment.interpreter.paymentInformation.stripeInterpreterAccountId,
       );
 
       await this.paymentItemRepository.update(
@@ -732,12 +738,14 @@ export class OldIndividualPaymentsService {
     let paymentNote: string | null | undefined = null;
 
     try {
-      transfer = await this.paypalSdkService.makeTransfer(
-        paypalPayerId,
-        String(fullAmount),
-        appointmentPlatformId,
+      transfer = await this.paypalSdkService.makeTransfer({
+        payerId: paypalPayerId,
+        fullAmount: String(fullAmount),
+        platformId: appointmentPlatformId,
         currency,
-      );
+        idempotencyKey: appointmentPlatformId,
+        isCorporate: false,
+      });
     } catch (error) {
       paymentStatus = OldEPaymentStatus.TRANSFER_FAILED;
       paymentNote = (error as Error).message ?? null;
@@ -796,7 +804,7 @@ export class OldIndividualPaymentsService {
     await this.emailsService.sendOutgoingPaymentReceipt(
       interpreterPaymentInfo.profile.contactEmail,
       receiptLink,
-      receipt.receiptData,
+      receipt.receiptData as unknown as IPayOutReceipt,
     );
 
     let taxInvoiceReceiptKey: string | null = null;
@@ -810,7 +818,7 @@ export class OldIndividualPaymentsService {
     await this.emailsService.sendTaxInvoicePaymentReceipt(
       interpreterPaymentInfo.profile.contactEmail,
       taxInvoiceLink,
-      taxInvoice.receiptData,
+      taxInvoice.receiptData as unknown as ITaxInvoiceReceipt,
     );
 
     await this.paymentRepository.update(

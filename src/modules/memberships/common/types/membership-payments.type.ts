@@ -1,9 +1,7 @@
 import { FindOptionsRelations, FindOptionsSelect } from "typeorm";
-import { QueryResultType } from "src/common/types";
+import { NonNullableProperties, QueryResultType } from "src/common/types";
 import { UserRole } from "src/modules/users/entities";
 import { Membership } from "src/modules/memberships/entities";
-import { PaymentInformation } from "src/modules/payment-information/entities";
-import { TGenerateMembershipInvoiceUserRole } from "src/modules/pdf/common/types";
 
 /**
  ** Type
@@ -11,12 +9,7 @@ import { TGenerateMembershipInvoiceUserRole } from "src/modules/pdf/common/types
 
 export type TProcessAndSavePaymentMembership = Pick<Membership, "id" | "type">;
 
-export type TProcessAndSavePaymentUserRole = Pick<UserRole, "id" | "country"> & {
-  paymentInformation: Pick<PaymentInformation, "id" | "stripeClientLastFour"> | null;
-  address: TGenerateMembershipInvoiceUserRole["address"];
-  profile: TGenerateMembershipInvoiceUserRole["profile"];
-  user: TGenerateMembershipInvoiceUserRole["user"];
-};
+export type TProcessMembershipPaymentUserRole = NonNullableProperties<TBaseProcessMembershipPaymentUserRole, "address">;
 
 /**
  ** Query types
@@ -50,7 +43,7 @@ export const ProcessMembershipPaymentUserRoleQuery = {
     discountHolder: { userRole: true },
   } as const satisfies FindOptionsRelations<UserRole>,
 };
-export type TProcessMembershipPaymentUserRole = QueryResultType<
+type TBaseProcessMembershipPaymentUserRole = QueryResultType<
   UserRole,
   typeof ProcessMembershipPaymentUserRoleQuery.select
 >;

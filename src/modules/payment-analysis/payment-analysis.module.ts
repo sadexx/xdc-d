@@ -1,4 +1,4 @@
-import { Module } from "@nestjs/common";
+import { forwardRef, Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { PaymentAnalysisService, PaymentStrategyService } from "src/modules/payment-analysis/services";
 import {
@@ -16,12 +16,24 @@ import {
   CaptureContextService,
   CaptureContextValidationService,
 } from "src/modules/payment-analysis/services/capture";
+import {
+  TransferContextQueryOptionsService,
+  TransferContextService,
+  TransferContextValidationService,
+} from "src/modules/payment-analysis/services/transfer";
+import {
+  AuthorizationCancelContextQueryOptionsService,
+  AuthorizationCancelContextService,
+  AuthorizationCancelContextValidationService,
+} from "src/modules/payment-analysis/services/authorization-cancel";
+import { AppointmentsSharedModule } from "src/modules/appointments/shared/appointments-shared.module";
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Appointment, Company, Payment, IncomingPaymentWaitList]),
-    PaymentsModule,
+    forwardRef(() => PaymentsModule),
     QueueModule,
+    AppointmentsSharedModule,
   ],
   providers: [
     PaymentAnalysisService,
@@ -31,9 +43,17 @@ import {
     AuthorizationContextValidationService,
     AuthorizationContextQueryOptionsService,
 
+    AuthorizationCancelContextService,
+    AuthorizationCancelContextValidationService,
+    AuthorizationCancelContextQueryOptionsService,
+
     CaptureContextService,
     CaptureContextValidationService,
     CaptureContextQueryOptionsService,
+
+    TransferContextService,
+    TransferContextValidationService,
+    TransferContextQueryOptionsService,
   ],
   exports: [PaymentAnalysisService],
 })

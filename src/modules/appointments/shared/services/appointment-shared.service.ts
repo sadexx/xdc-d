@@ -57,8 +57,6 @@ export class AppointmentSharedService {
   private readonly lokiLogger = new LokiLogger(AppointmentSharedService.name);
 
   constructor(
-    @InjectRepository(Appointment)
-    private readonly appointmentRepository: Repository<Appointment>,
     @InjectRepository(AppointmentAdminInfo)
     private readonly appointmentAdminInfoRepository: Repository<AppointmentAdminInfo>,
     @InjectRepository(AppointmentReminder)
@@ -465,10 +463,6 @@ export class AppointmentSharedService {
     }
 
     return adminInfoIds;
-  }
-
-  public async changeAppointmentStatus(appointmentId: string, status: EAppointmentStatus): Promise<void> {
-    await this.appointmentRepository.update({ id: appointmentId }, { status });
   }
 
   public async deleteAppointmentReminder(appointmentId: string): Promise<void> {

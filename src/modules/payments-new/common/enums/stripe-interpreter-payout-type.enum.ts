@@ -1,8 +1,8 @@
 import { ValuesOf } from "src/common/types";
 
-export const EStripeInterpreterPayoutType = {
+export const EStripeInterpreterPayOutType = {
   INTERNAL: "internal",
   EXTERNAL: "external",
 } as const;
 
-export type EStripeInterpreterPayoutType = ValuesOf<typeof EStripeInterpreterPayoutType>;
+export type EStripeInterpreterPayOutType = ValuesOf<typeof EStripeInterpreterPayOutType>;

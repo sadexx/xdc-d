@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
-import { Payment, PaymentItem } from "src/modules/payments-new/entities";
+import { PaymentItem } from "src/modules/payments-new/entities";
 import { IPaymentCalculationResult } from "src/modules/payments-new/common/interfaces";
-import { PaymentsPriceCalculationService } from "src/modules/payments-new/services";
+import { PaymentsManagementService, PaymentsPriceCalculationService } from "src/modules/payments-new/services";
 import { EntityManager } from "typeorm";
 import { EPaymentStatus } from "src/modules/payments-new/common/enums";
 import { round2 } from "src/common/utils";
@@ -16,7 +16,10 @@ import { ICorporateCaptureContext } from "src/modules/payment-analysis/common/in
 
 @Injectable()
 export class PaymentsPriceRecalculationService {
-  constructor(private readonly paymentsPriceCalculationService: PaymentsPriceCalculationService) {}
+  constructor(
+    private readonly paymentsManagementService: PaymentsManagementService,
+    private readonly paymentsPriceCalculationService: PaymentsPriceCalculationService,
+  ) {}
 
   public async calculateFinalPaymentPrice(
     manager: EntityManager,
@@ -70,7 +73,7 @@ export class PaymentsPriceRecalculationService {
     priceChanged: boolean,
   ): Promise<void> {
     const updatePayload = this.buildPaymentItemUpdatePayload(calculatedPrice, priceChanged);
-    await manager.getRepository(PaymentItem).update({ id: paymentItem.id }, updatePayload);
+    await this.paymentsManagementService.updatePaymentItem(manager, { id: paymentItem.id }, updatePayload);
   }
 
   private buildPaymentItemUpdatePayload(
@@ -112,8 +115,8 @@ export class PaymentsPriceRecalculationService {
     });
 
     const recalculatedTotals = this.calculateTotalsFromItems(authorizedItems);
-
-    await manager.getRepository(Payment).update(
+    await this.paymentsManagementService.updatePayment(
+      manager,
       { id: paymentId },
       {
         totalAmount: recalculatedTotals.amount,

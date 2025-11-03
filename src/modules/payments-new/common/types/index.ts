@@ -5,3 +5,8 @@ export * from "src/modules/payments-new/common/types/payments-corporate-deposit.
 export * from "src/modules/payments-new/common/types/payments-price-recalculation.type";
 export * from "src/modules/payments-new/common/types/payments-capture.type";
 export * from "src/modules/payments-new/common/types/payments-creation.type";
+export * from "src/modules/payments-new/common/types/payments-corporate-same-company-commission.type";
+export * from "src/modules/payments-new/common/types/payments-authorization-cancel.service.type";
+export * from "src/modules/payments-new/common/types/payments-external-operations.type";
+export * from "src/modules/payments-new/common/types/payments-corporate-transfer.type";
+export * from "src/modules/payments-new/common/types/payments-wait-list.type";

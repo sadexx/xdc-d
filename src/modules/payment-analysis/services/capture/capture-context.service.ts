@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { forwardRef, Inject, Injectable } from "@nestjs/common";
 import {
   TClientCaptureContext,
   TInterpreterCaptureContext,
@@ -8,19 +8,21 @@ import {
 } from "src/modules/payment-analysis/common/types/capture";
 import {
   ICapturePaymentContext,
+  ICommissionAmountsCaptureContext,
   ICorporateCaptureContext,
 } from "src/modules/payment-analysis/common/interfaces/capture";
 import { CaptureContextQueryOptionsService } from "src/modules/payment-analysis/services/capture";
-import { findOneOrFailTyped, isInRoles } from "src/common/utils";
+import { findOneOrFailTyped, isInRoles, round2 } from "src/common/utils";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Appointment } from "src/modules/appointments/appointment/entities";
 import { DataSource, Repository } from "typeorm";
-import { CORPORATE_CLIENT_ROLES } from "src/common/constants";
+import { CORPORATE_CLIENT_ROLES, GST_COEFFICIENT, ONE_HUNDRED } from "src/common/constants";
 import { Payment } from "src/modules/payments-new/entities";
 import { PaymentsPriceRecalculationService } from "src/modules/payments-new/services";
 import { EPaymentOperation } from "src/modules/payment-analysis/common/enums";
 import { EUserRoleName } from "src/modules/users/common/enums";
 import { Company } from "src/modules/companies/entities";
+import { isCorporateGstPayer } from "src/modules/payments-new/common/helpers";
 
 @Injectable()
 export class CaptureContextService {
@@ -31,16 +33,29 @@ export class CaptureContextService {
     private readonly appointmentRepository: Repository<Appointment>,
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
-    private readonly captureContextQueryOptionsService: CaptureContextQueryOptionsService,
+    @Inject(forwardRef(() => PaymentsPriceRecalculationService))
     private readonly paymentsPriceRecalculationService: PaymentsPriceRecalculationService,
+    private readonly captureContextQueryOptionsService: CaptureContextQueryOptionsService,
     private readonly dataSource: DataSource,
   ) {}
 
+  /**
+   * Loads the capture context for finalizing a payment.
+   * @param appointmentId - ID of the appointment to capture.
+   * @returns Full context including recalculated prices.
+   * @throws {NotFoundException} If required entities not found.
+   */
   public async loadPaymentContextForCapture(appointmentId: string): Promise<ICapturePaymentContext> {
     const appointment = await this.loadAppointmentContext(appointmentId);
+
     const payment = await this.loadPaymentContext(appointmentId);
 
     const corporateContext = await this.determineCorporateContext(appointment, payment);
+
+    const commissionAmounts = corporateContext.isSameCorporateCompany
+      ? this.calculateSameCompanyCommissionAmounts(payment)
+      : null;
+
     const prices = await this.dataSource.manager.transaction(async (manager) => {
       return await this.paymentsPriceRecalculationService.calculateFinalPaymentPrice(
         manager,
@@ -49,6 +64,7 @@ export class CaptureContextService {
         corporateContext,
       );
     });
+
     const updatedPayment = await this.loadPaymentContext(appointmentId);
 
     return {
@@ -56,6 +72,7 @@ export class CaptureContextService {
       prices,
       corporateContext,
       appointment,
+      commissionAmounts,
       payment: updatedPayment,
     };
   }
@@ -86,12 +103,41 @@ export class CaptureContextService {
     );
   }
 
+  private calculateSameCompanyCommissionAmounts(payment: TLoadPaymentCaptureContext): ICommissionAmountsCaptureContext {
+    const { company } = payment;
+    const commissionRate = company.platformCommissionRate / ONE_HUNDRED;
+    const originalAmount = payment.totalFullAmount;
+    const commissionAmount = round2(originalAmount * commissionRate);
+    const refundAmount = round2(originalAmount - commissionAmount);
+
+    const commissionPercent = ((commissionAmount / originalAmount) * ONE_HUNDRED).toFixed(1);
+    const refundPercent = ((refundAmount / originalAmount) * ONE_HUNDRED).toFixed(1);
+
+    let commissionWithoutGst = commissionAmount;
+    let commissionGstAmount = 0;
+
+    const isGstPayer = isCorporateGstPayer(company.country);
+
+    if (isGstPayer.client) {
+      commissionWithoutGst = round2(commissionAmount / GST_COEFFICIENT);
+      commissionGstAmount = round2(commissionAmount - commissionWithoutGst);
+    }
+
+    return {
+      commissionAmount,
+      commissionWithoutGst,
+      commissionGstAmount,
+      refundAmount,
+      commissionPercent,
+      refundPercent,
+    };
+  }
+
   private async determineCorporateContext(
     appointment: TLoadAppointmentCaptureContext,
     payment: TLoadPaymentCaptureContext,
   ): Promise<ICorporateCaptureContext> {
     const { client, interpreter } = appointment;
-
     const isClientCorporate = this.determineIfClientCorporate(client);
     const isInterpreterCorporate = this.determineIfInterpreterCorporate(interpreter);
 

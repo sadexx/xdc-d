@@ -22,8 +22,9 @@ import {
   IPaymentTransferContext,
   ITransferPaymentContext,
 } from "src/modules/payment-analysis/common/interfaces/transfer";
-import { EPaymentCurrency } from "src/modules/payments-new/common/enums";
+import { EPaymentCurrency, EPaymentSystem } from "src/modules/payments-new/common/enums";
 import { EPaymentOperation } from "src/modules/payment-analysis/common/enums";
+import { Payment } from "src/modules/payments-new/entities";
 
 @Injectable()
 export class TransferContextService {
@@ -33,9 +34,18 @@ export class TransferContextService {
     private readonly appointmentRepository: Repository<Appointment>,
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
+    @InjectRepository(Payment)
+    private readonly paymentRepository: Repository<Payment>,
     private readonly transferContextQueryOptionsService: TransferContextQueryOptionsService,
   ) {}
 
+  /**
+   * Loads transfer context for interpreter payout.
+   * @param appointmentId - Appointment to process.
+   * @param prices - Pre-calculated end prices.
+   * @returns Context or null if no interpreter.
+   * @throws {NotFoundException} If required entities missing.
+   */
   public async loadPaymentContextForTransfer(
     appointmentId: string,
     prices: IPaymentCalculationResult,
@@ -51,7 +61,13 @@ export class TransferContextService {
     }
 
     const interpreterPrices = this.calculateInterpreterPrices(appointment.interpreter, prices);
+
+    const paymentMethodInfo = this.determinePaymentMethodInfo(appointment.interpreter);
+
+    const isPersonalCard = this.determineIfPersonalCard(appointment.interpreter);
+
     const isInterpreterCorporate = this.determineIfInterpreterCorporate(appointment.interpreter);
+
     const currency = this.determineCurrency();
 
     const company = isInterpreterCorporate
@@ -65,6 +81,8 @@ export class TransferContextService {
       appointment,
       interpreter: appointment.interpreter,
       interpreterPrices,
+      paymentMethodInfo,
+      isPersonalCard,
       isInterpreterCorporate,
       currency,
       paymentContext,
@@ -93,12 +111,12 @@ export class TransferContextService {
 
     const incomingPayment = await findOneOrFailTyped<TLoadPaymentTransferContext>(
       appointmentId,
-      this.appointmentRepository,
+      this.paymentRepository,
       queryOptions.incomingPayment,
     );
     const outcomingPayment = await findOneOrFailTyped<TLoadPaymentTransferContext>(
       appointmentId,
-      this.appointmentRepository,
+      this.paymentRepository,
       queryOptions.outcomingPayment,
     );
 
@@ -111,21 +129,53 @@ export class TransferContextService {
   ): ICalculateInterpreterPrices {
     const { role, country, abnCheck } = interpreter;
     const hasActiveAbn = abnCheck?.abnStatus === EExtAbnStatus.ACTIVE;
+
     let adjustedInterpreterAmount = prices.interpreterAmount;
 
-    if (
-      role.name === EUserRoleName.IND_LANGUAGE_BUDDY_INTERPRETER &&
-      country === EExtCountry.AUSTRALIA &&
-      (!abnCheck || !hasActiveAbn)
-    ) {
+    if (this.shouldAdjustForLangBuddyWithoutABN(role, country, abnCheck, hasActiveAbn)) {
       adjustedInterpreterAmount = round2(prices.interpreterAmount / DIVIDER_FOR_LANG_BUDDIES_WITHOUT_ABN);
     }
 
     return {
       interpreterAmount: adjustedInterpreterAmount,
       interpreterGstAmount: prices.interpreterGstAmount,
-      interpreterFullAmount: prices.interpreterFullAmount,
+      interpreterFullAmount: adjustedInterpreterAmount + prices.interpreterGstAmount,
     };
+  }
+
+  private shouldAdjustForLangBuddyWithoutABN(
+    role: TInterpreterTransferContext["role"],
+    country: string,
+    abnCheck: TInterpreterTransferContext["abnCheck"],
+    hasActiveAbn: boolean,
+  ): boolean {
+    return (
+      role.name === EUserRoleName.IND_LANGUAGE_BUDDY_INTERPRETER &&
+      country === EExtCountry.AUSTRALIA &&
+      (!abnCheck || !hasActiveAbn)
+    );
+  }
+
+  private determinePaymentMethodInfo(interpreter: TInterpreterTransferContext): string {
+    const { paymentInformation } = interpreter;
+    switch (paymentInformation.interpreterSystemForPayout) {
+      case EPaymentSystem.STRIPE: {
+        const isPersonalCard =
+          paymentInformation.stripeInterpreterCardId && paymentInformation.stripeInterpreterCardLast4;
+
+        return isPersonalCard
+          ? `Credit Card ${paymentInformation.stripeInterpreterCardLast4}`
+          : `Bank Account ${paymentInformation.stripeInterpreterBankAccountLast4}`;
+      }
+      default:
+        return `Paypal Account ${paymentInformation.paypalEmail}`;
+    }
+  }
+
+  private determineIfPersonalCard(interpreter: TInterpreterTransferContext): boolean {
+    const { paymentInformation } = interpreter;
+
+    return Boolean(paymentInformation.stripeInterpreterCardId && paymentInformation.stripeInterpreterCardLast4);
   }
 
   private determineIfInterpreterCorporate(interpreter: TInterpreterTransferContext): boolean {

@@ -50,11 +50,11 @@ export type TAppointmentCalculation = Pick<
   | "schedulingType"
   | "interpreterType"
   | "interpretingType"
-  | "businessStartTime"
-  | "businessEndTime"
   | "acceptOvertimeRates"
   | "timezone"
 > & {
+  businessStartTime: string;
+  businessEndTime: string;
   scheduledStartTime: string;
   interpreterTimezone: string;
 };

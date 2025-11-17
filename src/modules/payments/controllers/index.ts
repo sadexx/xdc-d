@@ -1,1 +1,1 @@
-export * from "src/modules/payments/controllers/old-payments.controller";
+export * from "src/modules/payments/controllers/payments.controller";

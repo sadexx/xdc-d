@@ -34,16 +34,13 @@ import { InterpreterProfileModule } from "src/modules/interpreters/profile/inter
 import { AppointmentsSharedModule } from "src/modules/appointments/shared/appointments-shared.module";
 import { DiscountsModule } from "src/modules/discounts/discounts.module";
 import { MembershipsModule } from "src/modules/memberships/memberships.module";
-import { OldPaymentsModule } from "src/modules/payments/old-payments.module";
 import { Address } from "src/modules/addresses/entities";
-import { AppointmentFailedPaymentCancelModule } from "src/modules/appointments/failed-payment-cancel/appointment-failed-payment-cancel.module";
 import { AppointmentOrdersSharedModule } from "src/modules/appointment-orders/shared/appointment-orders-shared.module";
 import { AppointmentOrdersWorkflowModule } from "src/modules/appointment-orders/workflow/appointment-orders-workflow.module";
 import { HelperModule } from "src/modules/helper/helper.module";
 import { PromoCampaignsModule } from "src/modules/promo-campaigns/promo-campaigns.module";
 import { Rate } from "src/modules/rates/entities";
 import { QueueModule } from "src/modules/queues/queues.module";
-import { PaymentAnalysisModule } from "src/modules/payment-analysis/payment-analysis.module";
 
 @Module({
   imports: [
@@ -69,11 +66,8 @@ import { PaymentAnalysisModule } from "src/modules/payment-analysis/payment-anal
     InterpreterProfileModule,
     DiscountsModule,
     MembershipsModule,
-    OldPaymentsModule,
-    AppointmentFailedPaymentCancelModule,
     HelperModule,
     PromoCampaignsModule,
-    PaymentAnalysisModule,
   ],
   controllers: [AppointmentsCommandController, AppointmentsQueryController],
   providers: [

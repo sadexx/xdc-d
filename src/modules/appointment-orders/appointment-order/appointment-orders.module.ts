@@ -24,8 +24,8 @@ import { ChimeMeetingConfigurationModule } from "src/modules/chime-meeting-confi
 import { ChimeMeetingConfiguration } from "src/modules/chime-meeting-configuration/entities";
 import { HelperModule } from "src/modules/helper/helper.module";
 import { EmailsModule } from "src/modules/emails/emails.module";
-import { OldPaymentsModule } from "src/modules/payments/old-payments.module";
 import { AppointmentsSharedModule } from "src/modules/appointments/shared/appointments-shared.module";
+import { QueueModule } from "src/modules/queues/queues.module";
 
 @Module({
   imports: [
@@ -47,7 +47,7 @@ import { AppointmentsSharedModule } from "src/modules/appointments/shared/appoin
     NotificationModule,
     HelperModule,
     EmailsModule,
-    OldPaymentsModule,
+    QueueModule,
   ],
   controllers: [AppointmentOrdersCommandController, AppointmentOrdersQueryController],
   providers: [

@@ -2,7 +2,7 @@ import { forwardRef, Inject, Injectable, NotFoundException } from "@nestjs/commo
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { UNDEFINED_VALUE } from "src/common/constants";
-import { findOneOrFailTyped } from "src/common/utils";
+import { findOneOrFailTyped, formatDecimalString, parseDecimalNumber } from "src/common/utils";
 import { EExtCountry } from "src/modules/addresses/common/enums";
 import { QueueInitializeService } from "src/modules/queues/services";
 import { membershipRegionPricingMap } from "src/modules/memberships/common/constants";
@@ -16,8 +16,9 @@ import { IGetMembershipPrice } from "src/modules/memberships/common/interfaces";
 import {
   TGetMembershipPriceMembership,
   TGetMembershipPriceUserRole,
-  TUpdateMembershipPrice,
   TUpdateExistingMembershipSubscriptions,
+  TMembershipPriceForUpdate,
+  TLoadMembershipPriceForUpdate,
 } from "src/modules/memberships/common/types";
 import { Membership, MembershipPrice } from "src/modules/memberships/entities";
 import { MembershipPaymentsService, MembershipsQueryOptionsService } from "src/modules/memberships/services";
@@ -50,7 +51,7 @@ export class MembershipsPriceService {
     }
 
     return {
-      price: Number(membershipPrice.price) + Number(membershipPrice.gstAmount || 0),
+      price: parseDecimalNumber(membershipPrice.price) + parseDecimalNumber(membershipPrice.gstAmount || "0"),
       gstAmount: Number(membershipPrice.gstAmount),
       currency: membershipPrice.currency,
       stripePriceId: membershipPrice.stripePriceId,
@@ -62,12 +63,7 @@ export class MembershipsPriceService {
   }
 
   public async updateMembershipPrice(id: string, dto: UpdateMembershipPriceDto): Promise<void> {
-    const membershipPriceQueryOptions = this.membershipsQueryOptionsService.updateMembershipPriceOptions(id);
-    const membershipPrice = await findOneOrFailTyped<TUpdateMembershipPrice>(
-      id,
-      this.membershipPriceRepository,
-      membershipPriceQueryOptions,
-    );
+    const membershipPrice = await this.loadMembershipForPriceUpdate(id);
 
     const isPriceChanged = dto.price !== UNDEFINED_VALUE && dto.price !== membershipPrice.price;
     const isGstAmountChanged = dto.gstAmount !== UNDEFINED_VALUE && dto.gstAmount !== membershipPrice.gstAmount;
@@ -78,16 +74,31 @@ export class MembershipsPriceService {
 
     const newStripePriceId = await this.membershipPaymentsService.updateStripePrice(dto, membershipPrice);
     await this.membershipPriceRepository.update(id, {
-      price: dto.price,
-      gstAmount: dto.gstAmount,
+      price: dto.price !== UNDEFINED_VALUE ? formatDecimalString(dto.price) : UNDEFINED_VALUE,
+      gstAmount: dto.gstAmount !== UNDEFINED_VALUE ? formatDecimalString(dto.gstAmount) : UNDEFINED_VALUE,
       stripePriceId: newStripePriceId,
     });
 
     await this.updateExistingMembershipSubscriptions(membershipPrice, newStripePriceId);
   }
 
+  private async loadMembershipForPriceUpdate(id: string): Promise<TMembershipPriceForUpdate> {
+    const membershipPriceQueryOptions = this.membershipsQueryOptionsService.loadMembershipForPriceUpdateOptions(id);
+    const membershipPrice = await findOneOrFailTyped<TLoadMembershipPriceForUpdate>(
+      id,
+      this.membershipPriceRepository,
+      membershipPriceQueryOptions,
+    );
+
+    return {
+      ...membershipPrice,
+      price: parseDecimalNumber(membershipPrice.price),
+      gstAmount: membershipPrice.gstAmount ? parseDecimalNumber(membershipPrice.gstAmount) : null,
+    };
+  }
+
   private async updateExistingMembershipSubscriptions(
-    membershipPrice: TUpdateMembershipPrice,
+    membershipPrice: TMembershipPriceForUpdate,
     newStripePriceId: string,
   ): Promise<void> {
     const { membership } = membershipPrice;

@@ -1,3 +1,5 @@
+import { EPaymentOperation } from "src/modules/payments-analysis/common/enums/core";
+
 export interface IErrorMessageVariables {
   passedSteps?: string[];
   failedSteps?: string[];
@@ -8,4 +10,5 @@ export interface IErrorMessageVariables {
   fileSize?: number;
   language?: string;
   fields?: string;
+  operation?: EPaymentOperation;
 }

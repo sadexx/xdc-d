@@ -1,942 +1,374 @@
-import { BadRequestException, Injectable, InternalServerErrorException } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { OldPayment } from "src/modules/payments/entities";
 import { Repository } from "typeorm";
-import { UserRole } from "src/modules/users/entities";
 import { Company } from "src/modules/companies/entities";
-import { findOneOrFail, getDifferenceInHHMMSS, isInRoles, round2 } from "src/common/utils";
+import { findOneOrFailTyped, getDifferenceInHHMMSS } from "src/common/utils";
 import {
+  ICorporatePayOutReceipt,
+  ICorporatePayOutReceiptPayment,
+  ICorporateTaxInvoiceReceipt,
+  ICorporateTaxInvoiceReceiptPayment,
   IDepositChargeReceipt,
-  IDepositChargeReceiptWithKey,
+  IGenerateCorporatePayOutReceipt,
+  IGenerateCorporateTaxInvoiceReceipt,
+  IGenerateInterpreterBadge,
+  IGenerateMembershipInvoice,
+  IGeneratePayInReceipt,
+  IGeneratePayOutReceipt,
+  IGenerateTaxInvoiceReceipt,
   IInterpreterBadge,
-  IInterpreterBadgeWithKey,
+  ILfhCompanyPdfData,
   IMembershipInvoice,
-  IMembershipInvoiceWithKey,
-  IPayInDiscounts,
   IPayInReceipt,
-  IPayInReceiptWithKey,
+  IPayInReceiptDiscountsSummary,
   IPayOutReceipt,
-  IPayOutReceiptWithKey,
-  ITaxInvoiceCorporateReceipt,
-  ITaxInvoiceCorporateReceiptPaymentData,
-  ITaxInvoiceCorporateReceiptWithKey,
+  IRecipientPdfData,
   ITaxInvoiceReceipt,
-  ITaxInvoiceReceiptWithKey,
 } from "src/modules/pdf/common/interfaces";
-import { differenceInMinutes, format } from "date-fns";
-import { getInterpretingType } from "src/modules/pdf/common/helpers";
-import { randomUUID } from "node:crypto";
-import { PdfService, PdfTemplatesService } from "src/modules/pdf/services";
-import { AwsS3Service } from "src/modules/aws/s3/aws-s3.service";
+import { format } from "date-fns";
 import { COMPANY_LFH_ID } from "src/modules/companies/common/constants/constants";
-import { CORPORATE_CLIENT_ROLES, UNDEFINED_VALUE } from "src/common/constants";
-import { EUserRoleName } from "src/modules/users/common/enums";
-import { EMembershipType } from "src/modules/memberships/common/enums";
-import { OldECurrencies, OldEPaymentStatus, OldERoleType } from "src/modules/payments/common/enums";
-import { ESortOrder } from "src/common/enums";
-import { UserProfile } from "src/modules/users/entities";
-import { OldCalculatePriceDto } from "src/modules/rates-old/common/dto";
-import { Appointment } from "src/modules/appointments/appointment/entities";
-import { OldIIsGstPayers } from "src/modules/payments/common/interfaces";
-import { OldRatesService } from "src/modules/rates-old/services";
-import { Address } from "src/modules/addresses/entities";
-import {
-  IPayOutCorporateReceipt,
-  IPayOutCorporateReceiptPaymentData,
-  IPayOutCorporateReceiptWithKey,
-} from "src/modules/pdf/common/interfaces/payout-corporate-receipt.interface";
 import { toZonedTime } from "date-fns-tz";
-import { TGenerateMembershipInvoiceUserRole } from "src/modules/pdf/common/types";
-import { EPdfErrorCodes } from "src/modules/pdf/common/enums";
-import { isCorporateGstPayer, isIndividualGstPayer } from "src/modules/payments-new/common/helpers";
+import {
+  LoadLfhCompanyPdfDataQuery,
+  TGetAppointmentDate,
+  TGetAppointmentServiceType,
+  TGetFullAddress,
+  TGetFullUserName,
+  TLoadLfhCompanyPdfData,
+  TLoadRecipientPdfDataCompany,
+  TLoadRecipientPdfDataUserRole,
+} from "src/modules/pdf/common/types";
+import { EAppointmentInterpreterType } from "src/modules/appointments/appointment/common/enums";
+import { UNDEFINED_VALUE } from "src/common/constants";
+import { EExtCountry } from "src/modules/addresses/common/enums";
+import { EUserRoleName } from "src/modules/users/common/enums";
+import { TWebhookPaymentIntentSucceededPayment } from "src/modules/webhook-processor/common/types";
+import { IPaymentCalculationResult } from "src/modules/payments/common/interfaces/pricing";
 
 @Injectable()
 export class PdfBuilderService {
   constructor(
-    @InjectRepository(OldPayment)
-    private readonly paymentRepository: Repository<OldPayment>,
-    @InjectRepository(UserRole)
-    private readonly userRoleRepository: Repository<UserRole>,
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
-    private readonly pdfTemplatesService: PdfTemplatesService,
-    private readonly pdfService: PdfService,
-    private readonly awsS3Service: AwsS3Service,
-    private readonly ratesService: OldRatesService,
   ) {}
 
-  public async generatePayInReceipt(paymentId: string): Promise<IPayInReceiptWithKey> {
-    const lfhCompany = await findOneOrFail(COMPANY_LFH_ID, this.companyRepository, {
-      where: { id: COMPANY_LFH_ID },
-      relations: { address: true },
-    });
+  public async buildPayInReceiptData(data: IGeneratePayInReceipt): Promise<IPayInReceipt> {
+    const { payment, appointment, prices } = data;
 
-    const payment = await findOneOrFail(paymentId, this.paymentRepository, {
-      where: { id: paymentId },
-      relations: {
-        appointment: {
-          client: { profile: true, user: true, address: true, paymentInformation: true, role: true },
-          interpreter: { user: true },
-        },
-        items: true,
-        company: {
-          address: true,
-        },
-      },
-      order: { items: { creationDate: ESortOrder.ASC } },
-    });
+    const lfhCompanyData = await this.loadLfhCompanyPdfData();
+    const recipientData = this.loadRecipientPdfData(payment.company, appointment.client);
+    const discountSummary = this.calculatePdfDiscountSummary(prices);
 
-    let isCorporate = false;
-    let isSameCompanyCommission = false;
+    const isSameCompanyCommission = appointment.interpreter
+      ? appointment.client.operatedByMainCorporateCompanyId === appointment.interpreter.operatedByCompanyId
+      : false;
+    const determinedAppointmentServiceType = isSameCompanyCommission
+      ? "Platform Service Fee"
+      : this.getAppointmentServiceType(appointment);
 
-    if (payment.company) {
-      isCorporate = true;
-    }
-
-    if (!payment.appointment) {
-      throw new BadRequestException(EPdfErrorCodes.APPOINTMENT_NOT_EXIST);
-    }
-
-    if (!payment.appointment.client) {
-      throw new BadRequestException(EPdfErrorCodes.APPOINTMENT_CLIENT_NOT_EXIST);
-    }
-
-    const clientRole = payment.appointment.client;
-    const interpreterRole = payment.appointment.interpreter;
-
-    if (clientRole.operatedByMainCorporateCompanyId === interpreterRole?.operatedByCompanyId) {
-      isSameCompanyCommission = true;
-    }
-
-    let toUserName: string | null = null;
-    let toClientId: string | null = null;
-    let clientAddress: Address | null = null;
-    let paymentDescription: string | null = null;
-
-    if (isCorporate) {
-      if (!payment.company) {
-        throw new BadRequestException(EPdfErrorCodes.PAYMENT_COMPANY_NOT_EXIST);
-      }
-
-      toUserName = payment.company.name;
-      toClientId = payment.company.platformId;
-      clientAddress = payment.company.address;
-      paymentDescription = `Deposit of the company ${payment.company.platformId}`;
-    } else {
-      if (!clientRole.paymentInformation) {
-        throw new BadRequestException(EPdfErrorCodes.PAYMENT_INFO_NOT_FILLED);
-      }
-
-      toUserName = this.getUserName(clientRole.profile);
-      toClientId = clientRole.user.platformId || "";
-      clientAddress = clientRole.address;
-      paymentDescription = `Online Credit Card Payment Card# ************${clientRole.paymentInformation.stripeClientLastFour}`; // TODO R: `Online Credit Card Payment ${client.paymentInformation.card.display_brand} Card# ************${client.paymentInformation.stripeClientLastFour}`
-    }
-
-    const issueDate = format(new Date(payment.updatingDate), "dd/MM/yyyy");
-
-    let serviceDate = payment.appointment.businessStartTime || payment.appointment.scheduledStartTime;
-
-    if (payment?.appointment?.client?.timezone) {
-      serviceDate = toZonedTime(serviceDate, payment.appointment.client.timezone);
-    }
-
-    const timezoneForDiscounts = payment.appointment?.interpreter?.timezone ?? payment.appointment.client.timezone;
-
-    const {
-      estimatedCostAmount,
-      actualTimeAmount,
-      promoCodeName,
-      promoCodeDiscount,
-      promoCodeDiscountAmount,
-      mixedPromoCodeName,
-      mixedPromoCodeDescription,
-      mixedPromoCodeDiscountAmount,
-      membershipDescription,
-      membershipDiscount,
-      membershipDiscountAmount,
-    } = await this.getDiscountsInfo(payment, payment.appointment, clientRole, timezoneForDiscounts);
-
-    const interpreterId = payment.appointment?.interpreter?.user?.platformId ?? "External interpreter";
-
-    if (
-      !clientAddress ||
-      !clientAddress.streetNumber ||
-      !clientAddress.streetName ||
-      !clientAddress.suburb ||
-      !clientAddress.state ||
-      !clientAddress.postcode
-    ) {
-      throw new BadRequestException(EPdfErrorCodes.CLIENT_ADDRESS_NOT_FILLED);
-    }
-
-    const receiptData: IPayInReceipt = {
-      fromCompanyName: lfhCompany.name,
-      fromCompanyABNNumber: lfhCompany.abnNumber!,
-      fromCompanyAddress: `${lfhCompany.address.streetNumber} ${lfhCompany.address.streetName}, ${lfhCompany.address.suburb}, ${lfhCompany.address.state}, ${lfhCompany.address.postcode}, ${lfhCompany.address.country}`,
-      toUserName,
-      toClientId,
-      toAddress: `${clientAddress.streetNumber} ${clientAddress.streetName}, ${clientAddress.suburb}, ${clientAddress.state}, ${clientAddress.postcode}, ${clientAddress.country}`,
-
-      receiptNumber: payment.appointment.platformId,
-
-      currency: payment.currency,
-      issueDate,
-      total: payment.totalAmount,
-      gstAmount: payment.totalGstAmount,
-      invoiceTotal: payment.totalFullAmount,
-      amountPaid: payment.totalFullAmount ? -payment.totalFullAmount : 0,
-      amountDue: "0.00",
-
-      paymentDate: issueDate,
-      paymentDescription,
-      paymentTotal: payment.totalFullAmount ? -payment.totalFullAmount : 0,
-      thisInvoiceAmount: payment.totalFullAmount,
-
-      bookingId: payment.appointment.platformId,
-      service: isSameCompanyCommission
-        ? "Platform Service Fee"
-        : `${payment.appointment.schedulingType} ${payment.appointment.communicationType} ${getInterpretingType(payment.appointment.interpreterType)}`,
-      topic: payment.appointment.topic,
-      appointmentDate: format(serviceDate, "dd MMM yyyy HH:mm"),
-      interpreterId,
-      duration: getDifferenceInHHMMSS(
-        payment.appointment.businessStartTime,
-        payment.appointment.businessEndTime || payment.appointment.scheduledEndTime,
+    return {
+      lfhCompanyData,
+      recipientData,
+      appointment,
+      payment,
+      discountSummary,
+      issueDate: format(new Date(data.payment.updatingDate), "dd/MM/yyyy"),
+      appointmentServiceType: determinedAppointmentServiceType,
+      appointmentDate: this.getAppointmentDate(appointment, appointment.client.timezone),
+      interpreter: appointment.interpreter ? appointment.interpreter.user.platformId : "External Interpreter",
+      totalDuration: getDifferenceInHHMMSS(
+        new Date(appointment.businessStartTime),
+        new Date(appointment.businessEndTime),
       ),
-
-      estimatedCostAmount,
-      actualTimeAmount,
-      promoCodeName,
-      promoCodeDiscount,
-      promoCodeDiscountAmount: promoCodeDiscountAmount ? round2(-promoCodeDiscountAmount) : 0,
-      mixedPromoCodeName,
-      mixedPromoCodeDescription,
-      mixedPromoCodeDiscountAmount: mixedPromoCodeDiscountAmount ? round2(-mixedPromoCodeDiscountAmount) : 0,
-      membershipDescription,
-      membershipDiscount,
-      membershipDiscountAmount: membershipDiscountAmount ? round2(-membershipDiscountAmount) : 0,
-      subTotalAmount: round2(payment.totalAmount),
-      totalAmount: round2(payment.totalFullAmount),
     };
-
-    const docDefinition = this.pdfTemplatesService.payInReceiptTemplate(receiptData);
-
-    const pdfStream = await this.pdfService.generatePdf(docDefinition);
-
-    const key = `payments/lfh-receipts/${randomUUID()}.pdf`;
-    await this.awsS3Service.uploadObject(key, pdfStream, "application/pdf");
-
-    return { receiptKey: key, receiptData };
   }
 
-  public async generatePayOutReceipt(paymentId: string): Promise<IPayOutReceiptWithKey> {
-    const payment = await findOneOrFail(paymentId, this.paymentRepository, {
-      where: { id: paymentId },
-      relations: { appointment: { interpreter: { profile: true, user: true } } },
-    });
+  public async buildPayOutReceiptData(data: IGeneratePayOutReceipt): Promise<IPayOutReceipt> {
+    const { appointment, paymentRecordResult, interpreter } = data;
+    const { payment } = paymentRecordResult;
 
-    if (!payment.appointment) {
-      throw new BadRequestException(EPdfErrorCodes.PAYMENT_NO_APPOINTMENT);
-    }
+    const recipientData = this.loadRecipientPdfData(payment.company, interpreter);
+    const appointmentServiceType = this.getAppointmentServiceType(appointment);
 
-    if (!payment.appointment.interpreter) {
-      throw new BadRequestException(EPdfErrorCodes.APPOINTMENT_INTERPRETER_NOT_FILLED);
-    }
-
-    const interpreterRole = payment.appointment.interpreter;
-
-    if (!interpreterRole.profile) {
-      throw new BadRequestException(EPdfErrorCodes.INTERPRETER_PROFILE_NOT_FILLED);
-    }
-
-    if (!payment.appointment.businessEndTime) {
-      throw new BadRequestException(EPdfErrorCodes.APPOINTMENT_BUSINESS_END_TIME_NOT_FILLED);
-    }
-
-    const currentDay = format(new Date(), "dd/MM/yyyy");
-
-    let serviceDate = payment.appointment.businessStartTime || payment.appointment.scheduledStartTime;
-
-    if (payment?.appointment?.interpreter?.timezone) {
-      serviceDate = toZonedTime(serviceDate, payment.appointment.interpreter.timezone);
-    }
-
-    const receiptData: IPayOutReceipt = {
-      receiptNumber: payment.appointment.platformId,
-      issueDate: currentDay,
-      userName: `${interpreterRole.profile.title}. ${interpreterRole.profile.firstName} ${interpreterRole.profile.lastName}`,
-      interpreterId: interpreterRole.user.platformId || "",
-      firstName: interpreterRole.profile.firstName,
-      fullAmountWithoutCurrency: `${payment.totalFullAmount}`,
-      currency: payment.currency,
-      amount: `${payment.totalAmount}`,
-      gstAmount: `${payment.totalGstAmount}`,
-      fullAmount: `${payment.totalFullAmount}`,
-      paymentDate: currentDay,
-      bookingId: `#${payment.appointment.platformId}`,
-      service: `${payment.appointment.schedulingType} ${payment.appointment.communicationType} ${getInterpretingType(payment.appointment.interpreterType)}`,
-      topic: payment.appointment.topic,
-      duration: getDifferenceInHHMMSS(payment.appointment.businessStartTime, payment.appointment.businessEndTime),
-      serviceDate: format(serviceDate, "dd MMM yyyy HH:mm"),
+    return {
+      recipientData,
+      appointmentServiceType,
+      appointment,
+      payment,
+      interpreter,
+      issueDate: format(new Date(), "dd/MM/yyyy"),
+      totalDuration: getDifferenceInHHMMSS(
+        new Date(appointment.businessStartTime),
+        new Date(appointment.businessEndTime),
+      ),
+      appointmentDate: this.getAppointmentDate(appointment, interpreter.timezone),
     };
-
-    const docDefinition = this.pdfTemplatesService.payOutReceiptTemplate(receiptData);
-
-    const pdfStream = await this.pdfService.generatePdf(docDefinition);
-
-    const key = `payments/lfh-receipts/${randomUUID()}.pdf`;
-
-    await this.awsS3Service.uploadObject(key, pdfStream, "application/pdf");
-
-    return { receiptKey: key, receiptData };
   }
 
-  public async generateTaxInvoiceReceipt(paymentId: string): Promise<ITaxInvoiceReceiptWithKey> {
-    const payment = await findOneOrFail(paymentId, this.paymentRepository, {
-      where: { id: paymentId },
-      relations: {
-        appointment: {
-          interpreter: {
-            profile: true,
-            user: true,
-            address: true,
-            abnCheck: true,
-          },
-        },
-      },
-    });
+  public async buildTaxInvoiceReceiptData(data: IGenerateTaxInvoiceReceipt): Promise<ITaxInvoiceReceipt> {
+    const { paymentRecordResult, interpreter, appointment } = data;
+    const { payment } = paymentRecordResult;
 
-    if (!payment.appointment) {
-      throw new BadRequestException(EPdfErrorCodes.PAYMENT_NO_APPOINTMENT);
-    }
+    const lfhCompanyData = await this.loadLfhCompanyPdfData();
+    const recipientData = this.loadRecipientPdfData(payment.company, interpreter);
 
-    if (!payment.appointment.interpreter) {
-      throw new BadRequestException(EPdfErrorCodes.APPOINTMENT_INTERPRETER_NOT_FILLED);
-    }
-
-    const interpreterRole = payment.appointment.interpreter;
-
-    if (!interpreterRole.profile) {
-      throw new BadRequestException(EPdfErrorCodes.INTERPRETER_PROFILE_NOT_FILLED);
-    }
-
-    if (
-      !interpreterRole.address ||
-      !interpreterRole.address.streetNumber ||
-      !interpreterRole.address.streetName ||
-      !interpreterRole.address.suburb ||
-      !interpreterRole.address.state ||
-      !interpreterRole.address.postcode
-    ) {
-      throw new BadRequestException(EPdfErrorCodes.INTERPRETER_ADDRESS_NOT_FILLED);
-    }
-
-    if (
-      (!interpreterRole.abnCheck || !interpreterRole.abnCheck.abnNumber) &&
-      interpreterRole.role.name !== EUserRoleName.IND_LANGUAGE_BUDDY_INTERPRETER
-    ) {
-      throw new BadRequestException(EPdfErrorCodes.INTERPRETER_ABN_NOT_FILLED);
-    }
-
-    if (!payment.appointment.businessEndTime) {
-      throw new BadRequestException(EPdfErrorCodes.APPOINTMENT_BUSINESS_END_TIME_NOT_FILLED);
-    }
-
-    const lfhCompany = await findOneOrFail(COMPANY_LFH_ID, this.companyRepository, {
-      where: { id: COMPANY_LFH_ID },
-      relations: { address: true },
-    });
-
-    if (
-      !lfhCompany.address.streetNumber ||
-      !lfhCompany.address.streetName ||
-      !lfhCompany.address.suburb ||
-      !lfhCompany.address.state ||
-      !lfhCompany.address.postcode ||
-      !lfhCompany.abnNumber
-    ) {
-      throw new InternalServerErrorException(EPdfErrorCodes.COMPANY_LFH_DATA_NOT_SEEDED);
-    }
-
-    const currentDay = format(new Date(), "dd/MM/yyyy");
-
-    let serviceDate = payment.appointment.businessStartTime || payment.appointment.scheduledStartTime;
-
-    if (payment?.appointment?.interpreter?.timezone) {
-      serviceDate = toZonedTime(serviceDate, payment.appointment.interpreter.timezone);
-    }
-
-    const receiptData: ITaxInvoiceReceipt = {
-      invoiceDate: currentDay,
-
-      fromInterpreterName: this.getUserName(interpreterRole.profile),
-      fromInterpreterId: interpreterRole.user.platformId || "",
-      fromInterpreterABNNumber: interpreterRole?.abnCheck?.abnNumber,
-      fromInterpreterAddress: `${interpreterRole?.address?.streetNumber} ${interpreterRole?.address?.streetName}, ${interpreterRole?.address?.suburb}, ${interpreterRole?.address?.state}, ${interpreterRole?.address?.postcode}, ${interpreterRole?.address?.country}`,
-
-      toCompanyName: lfhCompany.name,
-      toCompanyABNNumber: lfhCompany.abnNumber,
-      toCompanyAddress: `${lfhCompany.address.streetNumber} ${lfhCompany.address.streetName}, ${lfhCompany.address.suburb}, ${lfhCompany.address.state}, ${lfhCompany.address.postcode}, ${lfhCompany.address.country}`,
-
-      bookingId: payment.appointment.platformId,
-      serviceDate: format(serviceDate, "dd MMM yyyy HH:mm"),
-      description: `${payment.appointment.communicationType} interpreting ${payment.appointment.schedulingType} (${payment.appointment.topic})`,
-      duration: getDifferenceInHHMMSS(payment.appointment.businessStartTime, payment.appointment.businessEndTime),
-      valueExclGST: `${payment.totalAmount}`,
-      valueGST: `${payment.totalGstAmount}`,
-      total: `${payment.totalFullAmount}`,
-      currency: payment.currency,
+    return {
+      lfhCompanyData,
+      recipientData,
+      appointment,
+      payment,
+      issueDate: format(new Date(), "dd/MM/yyyy"),
+      appointmentDescription: `${appointment.communicationType} interpreting ${appointment.schedulingType} (${appointment.topic})`,
+      totalDuration: getDifferenceInHHMMSS(
+        new Date(appointment.businessStartTime),
+        new Date(appointment.businessEndTime),
+      ),
+      appointmentDate: this.getAppointmentDate(appointment, interpreter.timezone),
     };
-
-    const docDefinition = this.pdfTemplatesService.taxInvoiceTemplate(receiptData);
-
-    const pdfStream = await this.pdfService.generatePdf(docDefinition);
-
-    const key = `payments/lfh-receipts/${randomUUID()}.pdf`;
-    await this.awsS3Service.uploadObject(key, pdfStream, "application/pdf");
-
-    return { receiptKey: key, receiptData };
   }
 
-  public async generateMembershipInvoice(
-    payment: OldPayment,
-    userRole: TGenerateMembershipInvoiceUserRole,
-    membershipType: EMembershipType,
-    currency: OldECurrencies,
-  ): Promise<IMembershipInvoiceWithKey> {
-    const isUserFromAu: boolean = Boolean(userRole.country);
+  public async buildMembershipInvoiceData(data: IGenerateMembershipInvoice): Promise<IMembershipInvoice> {
+    const { payment, userRole, membershipType } = data;
 
-    if (
-      !userRole.address ||
-      !userRole.address.streetNumber ||
-      !userRole.address.streetName ||
-      !userRole.address.suburb ||
-      !userRole.address.state ||
-      !userRole.address.postcode
-    ) {
-      throw new BadRequestException(EPdfErrorCodes.CLIENT_ADDRESS_NOT_FILLED);
-    }
-
-    const receiptData: IMembershipInvoice = {
-      clientName: `${userRole.profile.firstName} ${userRole.profile.lastName}`,
-      clientAddress: `${userRole.address.streetNumber} ${userRole.address.streetName}`,
-      clientSuburb: userRole.address.suburb,
-      clientState: userRole.address.state,
-      clientPostcode: userRole.address.postcode || "",
-      clientId: userRole.user.platformId || "",
-      invoiceDate: format(new Date(), "dd/MM/yyyy"),
-      membershipType: membershipType,
-      valueExclGST: `${payment.totalAmount} ${currency}`,
-      valueGST: `${payment.totalGstAmount} ${currency}`,
-      total: `${payment.totalAmount + payment.totalGstAmount} ${currency}`,
+    return {
+      payment,
+      userRole,
+      membershipType,
+      isUserFromAu: userRole.country === EExtCountry.AUSTRALIA,
+      issueDate: format(new Date(), "dd/MM/yyyy"),
     };
-
-    const docDefinition = this.pdfTemplatesService.membershipInvoiceTemplate(receiptData, isUserFromAu);
-    const pdfStream = await this.pdfService.generatePdf(docDefinition);
-
-    const key = `payments/lfh-receipts/${randomUUID()}.pdf`;
-    await this.awsS3Service.uploadObject(key, pdfStream, "application/pdf");
-
-    return { receiptKey: key, receiptData };
   }
 
-  public async generateInterpreterBadge(
-    userRoleId: string,
-    interpreterBadge?: string,
-  ): Promise<IInterpreterBadgeWithKey> {
-    const userRole = await findOneOrFail(userRoleId, this.userRoleRepository, {
-      select: {
-        id: true,
-        operatedByCompanyId: true,
-        operatedByCompanyName: true,
-        role: {
-          id: true,
-          name: true,
-        },
-        user: {
-          id: true,
-          platformId: true,
-          avatarUrl: true,
-        },
-        profile: {
-          id: true,
-          firstName: true,
-          preferredName: true,
-          lastName: true,
-          title: true,
-        },
-        interpreterProfile: {
-          id: true,
-          interpreterBadge: true,
-          averageRating: true,
-        },
-      },
-      where: { id: userRoleId },
-      relations: { role: true, user: true, profile: true, interpreterProfile: true },
-    });
-    const { role, user, profile, interpreterProfile } = userRole;
+  public async buildInterpreterBadgeData(data: IGenerateInterpreterBadge): Promise<IInterpreterBadge> {
+    const { userRole, newInterpreterBadge } = data;
 
-    if (!interpreterProfile || !interpreterProfile.averageRating || !user.avatarUrl) {
-      throw new BadRequestException(EPdfErrorCodes.INSUFFICIENT_DATA_FOR_BADGE);
-    }
-
-    const IS_MEDIA_BUCKET = true;
+    const definedInterpreterBadge = newInterpreterBadge ?? userRole.interpreterProfile.interpreterBadge;
     const definedInterpreterRole =
-      role.name === EUserRoleName.IND_LANGUAGE_BUDDY_INTERPRETER ? "Language Buddy" : "Professional Interpreter";
+      userRole.role.name === EUserRoleName.IND_LANGUAGE_BUDDY_INTERPRETER
+        ? "Language Buddy"
+        : "Professional Interpreter";
     const definedCompanyName =
       userRole.operatedByCompanyId !== COMPANY_LFH_ID ? userRole.operatedByCompanyName : UNDEFINED_VALUE;
-    const definedInterpreterBadge = interpreterBadge ?? interpreterProfile.interpreterBadge ?? "";
 
-    const interpreterBadgeData: IInterpreterBadge = {
-      userRoleId: userRole.id,
-      platformId: user.platformId || "",
-      firstName: profile.preferredName || profile.firstName,
-      lastName: profile.lastName,
-      title: profile.title ?? "mr",
-      interpreterRole: definedInterpreterRole,
-      avatar: user.avatarUrl,
-      averageRating: interpreterProfile.averageRating,
+    return {
+      userRole,
       interpreterBadge: definedInterpreterBadge,
+      interpreterRole: definedInterpreterRole,
       companyName: definedCompanyName,
     };
-
-    const docDefinition = await this.pdfTemplatesService.interpreterBadgeTemplate(interpreterBadgeData);
-    const pdfStream = await this.pdfService.generatePdf(docDefinition);
-
-    const key = `users/interpreter-badges/${userRoleId}.pdf`;
-    await this.awsS3Service.uploadObject(key, pdfStream, "application/pdf", IS_MEDIA_BUCKET);
-
-    return { interpreterBadgeKey: key, interpreterBadgeData };
   }
 
-  public async generateDepositChargeReceipt(paymentId: string): Promise<IDepositChargeReceiptWithKey> {
-    const lfhCompany = await findOneOrFail(COMPANY_LFH_ID, this.companyRepository, {
-      where: { id: COMPANY_LFH_ID },
-      relations: { address: true },
-    });
-
-    const payment = await findOneOrFail(paymentId, this.paymentRepository, {
-      where: { id: paymentId },
-      relations: {
-        items: true,
-        company: {
-          paymentInformation: true,
-          address: true,
-          superAdmin: {
-            userRoles: true,
-          },
-        },
-      },
-      order: { items: { creationDate: ESortOrder.ASC } },
-    });
-
-    if (!payment.company) {
-      throw new BadRequestException(EPdfErrorCodes.COMPANY_CLIENT_NOT_EXIST);
-    }
-
-    if (!payment.company.paymentInformation) {
-      throw new BadRequestException(EPdfErrorCodes.PAYMENT_INFO_NOT_FILLED);
-    }
-
-    const issueDate = format(new Date(payment.updatingDate), "dd/MM/yyyy");
+  public async buildDepositChargeReceiptData(
+    payment: TWebhookPaymentIntentSucceededPayment,
+  ): Promise<IDepositChargeReceipt> {
+    const { company } = payment;
+    const lfhCompanyData = await this.loadLfhCompanyPdfData();
+    const recipientData = this.loadRecipientPdfData(payment.company, null);
 
     let paymentDateTime = new Date(payment.updatingDate);
 
-    if (payment?.company?.superAdmin?.userRoles[0]?.timezone) {
-      paymentDateTime = toZonedTime(paymentDateTime, payment?.company?.superAdmin?.userRoles[0]?.timezone);
+    if (company.superAdmin?.userRoles[0].timezone) {
+      paymentDateTime = toZonedTime(paymentDateTime, company.superAdmin?.userRoles[0].timezone);
     }
 
-    const receiptData: IDepositChargeReceipt = {
-      fromCompanyName: lfhCompany.name,
-      fromCompanyABNNumber: lfhCompany.abnNumber!,
-      fromCompanyAddress: `${lfhCompany.address.streetNumber} ${lfhCompany.address.streetName}, ${lfhCompany.address.suburb}, ${lfhCompany.address.state}, ${lfhCompany.address.postcode}, ${lfhCompany.address.country}`,
-      toCompanyName: payment.company.name,
-      toCompanyABNNumber: payment.company.abnNumber,
-      toCompanyId: payment.company.platformId,
-      toCompanyAddress: `${payment.company.address.streetNumber} ${payment.company.address.streetName}, ${payment.company.address.suburb}, ${payment.company.address.state}, ${payment.company.address.postcode}, ${payment.company.address.country}`,
-
-      receiptNumber: payment.platformId || "",
-
-      currency: payment.currency,
-      issueDate,
-      total: payment.totalAmount,
-      gstAmount: payment.totalGstAmount,
-      invoiceTotal: payment.totalFullAmount,
-      amountPaid: payment.totalFullAmount ? -payment.totalFullAmount : 0,
-      amountDue: "0.00",
-
-      paymentDate: issueDate,
+    return {
+      payment,
+      lfhCompanyData,
+      recipientData,
+      issueDate: format(new Date(payment.updatingDate), "dd/MM/yyyy"),
       paymentDescription: `Back Account# ******${payment.company.paymentInformation.stripeClientLastFour}`,
-      paymentTotal: payment.totalFullAmount ? -payment.totalFullAmount : 0,
-      thisInvoiceAmount: payment.totalFullAmount,
-
-      transactionId: payment.platformId || "",
+      paymentDate: format(paymentDateTime, "dd MMM yyyy HH:mm"),
       service: "Company Deposit Charge",
-      paymentDateTime: format(paymentDateTime, "dd MMM yyyy HH:mm"),
     };
-
-    const docDefinition = this.pdfTemplatesService.depositChargeReceiptTemplate(receiptData);
-
-    const pdfStream = await this.pdfService.generatePdf(docDefinition);
-
-    const key = `payments/lfh-receipts/${randomUUID()}.pdf`;
-    await this.awsS3Service.uploadObject(key, pdfStream, "application/pdf");
-
-    return { receiptKey: key, receiptData };
   }
 
-  public async generateCorporatePayOutReceipt(
-    payments: OldPayment[],
-    company: Company | null,
-  ): Promise<IPayOutCorporateReceiptWithKey> {
-    const paymentsData: IPayOutCorporateReceiptPaymentData[] = [];
+  public async buildCorporatePayOutReceipt(data: IGenerateCorporatePayOutReceipt): Promise<ICorporatePayOutReceipt> {
+    const { payments, company } = data;
+    const receiptNumber = payments[0].appointment.platformId;
+    const adminFirstName = company.superAdmin?.userRoles[0].profile.firstName;
+    const recipientData = this.loadRecipientPdfData(company, null);
 
-    const currentDay = format(new Date(), "dd/MM/yyyy");
-
+    const paymentsData: ICorporatePayOutReceiptPayment[] = [];
     for (const payment of payments) {
-      let serviceDate = payment?.appointment?.businessStartTime || payment?.appointment?.scheduledStartTime;
-
-      if (serviceDate && payment?.appointment?.interpreter?.timezone) {
-        serviceDate = toZonedTime(serviceDate, payment.appointment.interpreter.timezone);
-      }
+      const { appointment } = payment;
+      const appointmentDate = this.getAppointmentDate(appointment, appointment.interpreter.timezone);
+      const appointmentServiceType = this.getAppointmentServiceType(appointment);
 
       paymentsData.push({
-        fullAmountWithoutCurrency: `${payment.totalFullAmount}`,
-        currency: payment.currency,
-        amount: `${payment.totalAmount}`,
-        gstAmount: `${payment.totalGstAmount}`,
-        fullAmount: `${payment.totalFullAmount}`,
-        paymentDate: currentDay,
-        bookingId: `#${payment?.appointment?.platformId}`,
-        service: `${payment?.appointment?.schedulingType} ${payment?.appointment?.communicationType} ${getInterpretingType(payment?.appointment?.interpreterType)}`,
-        topic: payment?.appointment?.topic || "",
-        duration: getDifferenceInHHMMSS(payment?.appointment?.businessStartTime, payment?.appointment?.businessEndTime),
-        serviceDate: serviceDate ? format(serviceDate, "dd MMM yyyy HH:mm") : "",
-        interpreterId: payment?.appointment?.interpreter?.user?.platformId || "",
+        payment,
+        appointmentDate,
+        appointmentServiceType,
+        totalDuration: getDifferenceInHHMMSS(
+          new Date(appointment.businessStartTime),
+          new Date(appointment.businessEndTime),
+        ),
       });
     }
 
-    const receiptData: IPayOutCorporateReceipt = {
-      receiptNumber: payments[0]?.appointment?.platformId || "",
-      issueDate: currentDay,
-      companyName: company?.name || "",
-      companyAbnNumber: company?.abnNumber,
-      companyId: company?.platformId || "",
-      adminFirstName: company?.superAdmin?.userRoles[0]?.profile?.firstName || "",
+    return {
+      recipientData,
+      receiptNumber,
+      issueDate: format(new Date(), "dd/MM/yyyy"),
+      adminFirstName,
       paymentsData,
     };
-
-    const docDefinition = this.pdfTemplatesService.payOutCorporateReceiptTemplate(receiptData);
-
-    const pdfStream = await this.pdfService.generatePdf(docDefinition);
-
-    const key = `payments/lfh-receipts/${randomUUID()}.pdf`;
-
-    await this.awsS3Service.uploadObject(key, pdfStream, "application/pdf");
-
-    return { receiptKey: key, receiptData };
   }
 
-  public async generateCorporateTaxInvoiceReceipt(
-    payments: OldPayment[],
-    company: Company | null,
-  ): Promise<ITaxInvoiceCorporateReceiptWithKey> {
-    const paymentsData: ITaxInvoiceCorporateReceiptPaymentData[] = [];
+  public async buildCorporateTaxInvoiceReceipt(
+    data: IGenerateCorporateTaxInvoiceReceipt,
+  ): Promise<ICorporateTaxInvoiceReceipt> {
+    const { payments, company } = data;
+    const lfhCompanyData = await this.loadLfhCompanyPdfData();
+    const recipientData = this.loadRecipientPdfData(company, null);
 
+    const paymentsData: ICorporateTaxInvoiceReceiptPayment[] = [];
     for (const payment of payments) {
-      if (payment.totalGstAmount > 0) {
-        let serviceDate = payment?.appointment?.businessStartTime || payment?.appointment?.scheduledStartTime;
+      const { appointment } = payment;
+      const appointmentDate = this.getAppointmentDate(appointment, appointment.interpreter.timezone);
+      const appointmentServiceType = this.getAppointmentServiceType(appointment);
+      const appointmentDescription = `${appointment.communicationType} interpreting ${appointment.schedulingType} (${appointment.topic})`;
 
-        if (serviceDate && payment?.appointment?.interpreter?.timezone) {
-          serviceDate = toZonedTime(serviceDate, payment.appointment.interpreter.timezone);
-        }
-
-        paymentsData.push({
-          interpreterId: payment?.appointment?.interpreter?.user?.platformId || "",
-          bookingId: payment?.appointment?.platformId || "",
-          serviceDate: serviceDate ? format(serviceDate, "dd MMM yyyy HH:mm") : "",
-          description: `${payment?.appointment?.communicationType} interpreting ${payment?.appointment?.schedulingType} (${payment?.appointment?.topic})`,
-          duration: getDifferenceInHHMMSS(
-            payment?.appointment?.businessStartTime,
-            payment?.appointment?.businessEndTime,
-          ),
-          valueExclGST: `${payment.totalAmount}`,
-          valueGST: `${payment.totalGstAmount}`,
-          total: `${payment.totalFullAmount}`,
-          currency: payment.currency,
-        });
-      }
+      paymentsData.push({
+        payment,
+        appointmentDate,
+        appointmentServiceType,
+        appointmentDescription,
+        totalDuration: getDifferenceInHHMMSS(
+          new Date(appointment.businessStartTime),
+          new Date(appointment.businessEndTime),
+        ),
+      });
     }
 
-    const currentDay = format(new Date(), "dd/MM/yyyy");
+    return {
+      lfhCompanyData,
+      recipientData,
+      issueDate: format(new Date(), "dd/MM/yyyy"),
+      paymentsData,
+    };
+  }
 
-    const lfhCompany = await findOneOrFail(COMPANY_LFH_ID, this.companyRepository, {
+  private async loadLfhCompanyPdfData(): Promise<ILfhCompanyPdfData> {
+    const lfhCompany = await findOneOrFailTyped<TLoadLfhCompanyPdfData>(COMPANY_LFH_ID, this.companyRepository, {
+      select: LoadLfhCompanyPdfDataQuery.select,
       where: { id: COMPANY_LFH_ID },
-      relations: { address: true },
+      relations: LoadLfhCompanyPdfDataQuery.relations,
     });
 
-    const receiptData: ITaxInvoiceCorporateReceipt = {
-      invoiceDate: currentDay,
-
-      fromCompanyName: company?.name || "",
-      fromCompanyId: company?.platformId || "",
-      fromCompanyABNNumber: company?.abnNumber || "",
-      fromCompanyAddress: `${company?.address?.streetNumber} ${company?.address?.streetName}, ${company?.address?.suburb}, ${company?.address?.state}, ${company?.address?.postcode}, ${company?.address?.country}`,
-
-      toCompanyName: lfhCompany.name,
-      toCompanyABNNumber: lfhCompany.abnNumber,
-      toCompanyAddress: `${lfhCompany.address.streetNumber} ${lfhCompany.address.streetName}, ${lfhCompany.address.suburb}, ${lfhCompany.address.state}, ${lfhCompany.address.postcode}, ${lfhCompany.address.country}`,
-
-      paymentsData,
+    return {
+      companyName: lfhCompany.name,
+      abnNumber: lfhCompany.abnNumber,
+      companyAddress: this.getFullAddress(lfhCompany.address),
     };
-
-    const docDefinition = this.pdfTemplatesService.taxInvoiceCorporateTemplate(receiptData);
-
-    const pdfStream = await this.pdfService.generatePdf(docDefinition);
-
-    const key = `payments/lfh-receipts/${randomUUID()}.pdf`;
-    await this.awsS3Service.uploadObject(key, pdfStream, "application/pdf");
-
-    return { receiptKey: key, receiptData };
   }
 
-  private getUserName(clientProfile: UserProfile): string {
-    let userName = "";
-
-    if (clientProfile.title) {
-      userName += `${clientProfile.title} `;
+  private loadRecipientPdfData(
+    company: TLoadRecipientPdfDataCompany | null,
+    userRole: TLoadRecipientPdfDataUserRole | null,
+  ): IRecipientPdfData {
+    if (company) {
+      return {
+        recipientName: company.name,
+        recipientId: company.platformId,
+        recipientAddress: this.getFullAddress(company.address),
+        description: `Deposit of the company ${company.platformId}`,
+      };
+    } else if (userRole) {
+      return {
+        recipientName: this.getFullUserName(userRole),
+        recipientId: userRole.user.platformId,
+        recipientAddress: this.getFullAddress(userRole.address),
+        recipientAbnNumber: userRole.abnCheck?.abnNumber ?? UNDEFINED_VALUE,
+        description: `Online Credit Card Payment Card# ************${userRole.paymentInformation.stripeClientLastFour}`,
+      };
     }
 
-    userName += `${clientProfile.firstName} `;
-
-    if (clientProfile.middleName) {
-      userName += `${clientProfile.middleName} `;
-    }
-
-    userName += clientProfile.lastName;
-
-    return userName;
+    return {
+      recipientName: "",
+      recipientId: "",
+      recipientAddress: "",
+      description: "",
+    };
   }
 
-  private async getDiscountsInfo(
-    payment: OldPayment,
-    appointment: Appointment,
-    clientUserRole: UserRole,
-    interpreterTimezone: string | null,
-  ): Promise<IPayInDiscounts> {
-    let promoCodeName: string | null = null;
-    let promoCodeDiscount: string | null = null;
-    let promoCodeDiscountAmount: number = 0;
-    let mixedPromoCodeName: string | null = null;
-    let mixedPromoCodeDiscount: number | null = null;
-    let mixedPromoCodeDiscountMinutes: number | null = null;
-    let mixedPromoCodeDiscountAmount: number = 0;
-    let membershipType: string | null = null;
-    let membershipAppliedMinutes: number | null = null;
-    let membershipDiscountPercent: number | null = null;
-    let membershipDiscountAmount: number = 0;
+  private getFullUserName(userRole: TGetFullUserName): string {
+    const { title, firstName, middleName, lastName } = userRole.profile;
 
-    const scheduleDateTime = new Date(appointment.businessStartTime || appointment.scheduledStartTime).toISOString();
+    return [title, firstName, middleName, lastName].filter(Boolean).join(" ");
+  }
 
-    const data: OldCalculatePriceDto = {
-      interpreterType: appointment.interpreterType,
-      schedulingType: appointment.schedulingType,
-      communicationType: appointment.communicationType,
-      interpretingType: appointment.interpretingType,
-      topic: appointment.topic,
-      duration: appointment.schedulingDurationMin,
-      scheduleDateTime,
-      extraDays: [],
-      interpreterTimezone,
-    };
+  private getFullAddress(address: TGetFullAddress): string {
+    const { streetNumber, streetName, suburb, state, postcode, country } = address;
 
-    let isNeedCalcAsNormalTime = false;
-    let isNeedCalcAsOvertime = false;
+    return [streetNumber, streetName, suburb, state, postcode, country].filter(Boolean).join(", ");
+  }
 
-    if (appointment.acceptOvertimeRates) {
-      isNeedCalcAsOvertime = true;
+  private getAppointmentServiceType(appointment: TGetAppointmentServiceType): string {
+    let interpretingType: string = "";
+
+    if (appointment.interpreterType === EAppointmentInterpreterType.IND_PROFESSIONAL_INTERPRETER) {
+      interpretingType = "Professional Interpreting";
     } else {
-      isNeedCalcAsNormalTime = true;
+      interpretingType = "Language Buddy";
     }
 
-    let isCorporate = false;
-    let country = clientUserRole.country;
+    return `${appointment.schedulingType} ${appointment.communicationType} ${interpretingType}`;
+  }
 
-    if (isInRoles(CORPORATE_CLIENT_ROLES, clientUserRole.role.name)) {
-      isCorporate = true;
-      const company = await findOneOrFail(clientUserRole.operatedByCompanyId, this.companyRepository, {
-        where: { id: clientUserRole.operatedByCompanyId },
-      });
+  private getAppointmentDate(appointment: TGetAppointmentDate, timezone: string): string {
+    const serviceDate = toZonedTime(appointment.businessStartTime, timezone);
 
-      country = company.country;
+    return format(serviceDate, "dd MMM yyyy HH:mm");
+  }
+
+  private calculatePdfDiscountSummary(prices: IPaymentCalculationResult): IPayInReceiptDiscountsSummary | null {
+    if (!prices.appliedDiscounts || !prices.discountRate) {
+      return null;
     }
 
-    let isGstPayers: OldIIsGstPayers;
-
-    if (isCorporate) {
-      isGstPayers = isCorporateGstPayer(country);
-    } else {
-      isGstPayers = isIndividualGstPayer(country);
-    }
-
-    const estimatedCostPrice = await this.ratesService.calculatePriceByOneDay(
-      data,
-      appointment.schedulingDurationMin,
-      scheduleDateTime,
-      isGstPayers.client,
-      OldERoleType.CLIENT,
-      isNeedCalcAsNormalTime,
-      isNeedCalcAsOvertime,
-    );
-
-    const estimatedCostAmount = round2(estimatedCostPrice.price);
-
-    let fullDuration: number = 0;
-
-    if (appointment.businessEndTime && appointment.businessStartTime) {
-      fullDuration = differenceInMinutes(
-        new Date(appointment.businessEndTime),
-        new Date(appointment.businessStartTime),
-      );
-    } else if (appointment.businessEndTime && appointment.scheduledStartTime) {
-      fullDuration = differenceInMinutes(
-        new Date(appointment.businessEndTime),
-        new Date(appointment.scheduledStartTime),
-      );
-    } else {
-      fullDuration = differenceInMinutes(
-        new Date(appointment.scheduledEndTime),
-        new Date(appointment.scheduledStartTime),
-      );
-    }
-
-    data.duration = fullDuration;
-
-    const finalAmountAfterDiscounts = Number(payment.totalAmount);
-    let totalDiscountsApplied = 0;
-
-    for (const paymentItem of payment.items) {
-      if (paymentItem.status !== OldEPaymentStatus.CAPTURED) {
-        continue;
-      }
-
-      if (!promoCodeName && !paymentItem.appliedPromoDiscountsMinutes && paymentItem.appliedPromoCode) {
-        promoCodeName = paymentItem.appliedPromoCode;
-      }
-
-      if (!promoCodeDiscount && !paymentItem.appliedPromoDiscountsMinutes && paymentItem.appliedPromoDiscountsPercent) {
-        promoCodeDiscount = `${paymentItem.appliedPromoDiscountsPercent}%`;
-      }
-
-      if (paymentItem.amountOfAppliedDiscountByPromoCode && !paymentItem.appliedPromoDiscountsMinutes) {
-        promoCodeDiscountAmount =
-          Number(promoCodeDiscountAmount) + Number(paymentItem.amountOfAppliedDiscountByPromoCode);
-      }
-
-      if (!mixedPromoCodeName && paymentItem.appliedPromoDiscountsMinutes && paymentItem.appliedPromoCode) {
-        mixedPromoCodeName = paymentItem.appliedPromoCode;
-      }
-
-      if (
-        !mixedPromoCodeDiscount &&
-        paymentItem.appliedPromoDiscountsMinutes &&
-        paymentItem.appliedPromoDiscountsPercent
-      ) {
-        mixedPromoCodeDiscount = paymentItem.appliedPromoDiscountsPercent;
-      }
-
-      if (paymentItem.appliedPromoDiscountsMinutes) {
-        if (!mixedPromoCodeDiscountMinutes) {
-          mixedPromoCodeDiscountMinutes = paymentItem.appliedPromoDiscountsMinutes;
-        } else {
-          mixedPromoCodeDiscountMinutes =
-            Number(mixedPromoCodeDiscountMinutes) + Number(paymentItem.appliedPromoDiscountsMinutes);
-        }
-      }
-
-      if (paymentItem.amountOfAppliedDiscountByPromoCode && paymentItem.appliedPromoDiscountsMinutes) {
-        mixedPromoCodeDiscountAmount =
-          Number(mixedPromoCodeDiscountAmount) + Number(paymentItem.amountOfAppliedDiscountByPromoCode);
-      }
-
-      if (!membershipType && paymentItem.appliedMembershipType) {
-        membershipType = paymentItem.appliedMembershipType;
-      }
-
-      if (!membershipDiscountPercent && paymentItem.appliedMembershipDiscountsPercent) {
-        membershipDiscountPercent = paymentItem.appliedMembershipDiscountsPercent;
-      }
-
-      if (paymentItem.appliedMembershipFreeMinutes) {
-        if (!membershipAppliedMinutes) {
-          membershipAppliedMinutes = paymentItem.appliedMembershipFreeMinutes;
-        } else {
-          membershipAppliedMinutes =
-            Number(membershipAppliedMinutes) + Number(paymentItem.appliedMembershipFreeMinutes);
-        }
-      }
-
-      if (paymentItem.amountOfAppliedDiscountByMembershipMinutes) {
-        membershipDiscountAmount =
-          Number(membershipDiscountAmount) + Number(paymentItem.amountOfAppliedDiscountByMembershipMinutes);
-      }
-
-      if (paymentItem.amountOfAppliedDiscountByMembershipDiscount) {
-        membershipDiscountAmount =
-          Number(membershipDiscountAmount) + Number(paymentItem.amountOfAppliedDiscountByMembershipDiscount);
-      }
-
-      if (paymentItem.amountOfAppliedDiscountByPromoCode) {
-        totalDiscountsApplied += Number(paymentItem.amountOfAppliedDiscountByPromoCode);
-      }
-
-      if (paymentItem.amountOfAppliedDiscountByMembershipMinutes) {
-        totalDiscountsApplied += Number(paymentItem.amountOfAppliedDiscountByMembershipMinutes);
-      }
-
-      if (paymentItem.amountOfAppliedDiscountByMembershipDiscount) {
-        totalDiscountsApplied += Number(paymentItem.amountOfAppliedDiscountByMembershipDiscount);
-      }
-    }
-
-    const actualTimeAmount = round2(finalAmountAfterDiscounts + totalDiscountsApplied);
+    const { appliedDiscounts, discountRate } = prices;
 
     let mixedPromoCodeDescription: string | null = null;
+    let promoCodeDiscountDescription: string | null = null;
     let membershipDescription: string | null = null;
-    let membershipDiscount: string | null = null;
+    let membershipDiscountDescription: string | null = null;
 
-    if (mixedPromoCodeDiscount && mixedPromoCodeDiscountMinutes) {
-      mixedPromoCodeDescription = `${mixedPromoCodeDiscount}% for ${mixedPromoCodeDiscountMinutes} minutes`;
+    if (appliedDiscounts.promoCampaignDiscount > 0 && appliedDiscounts.promoCampaignMinutesUsed > 0) {
+      if (discountRate.promoCampaignDiscount && discountRate.promoCampaignDiscount > 0) {
+        mixedPromoCodeDescription = `${discountRate.promoCampaignDiscount}% for ${appliedDiscounts.promoCampaignMinutesUsed} minutes`;
+      }
     }
 
-    if (membershipAppliedMinutes) {
-      membershipDescription = `${membershipType} - free minutes`;
-      membershipDiscount = `${membershipAppliedMinutes} mins`;
+    if (
+      !promoCodeDiscountDescription &&
+      !appliedDiscounts.promoCampaignMinutesUsed &&
+      discountRate.promoCampaignDiscount
+    ) {
+      promoCodeDiscountDescription = `${discountRate.promoCampaignDiscount}%`;
     }
 
-    if (membershipDiscountPercent) {
+    if (appliedDiscounts.membershipFreeMinutesUsed > 0) {
+      membershipDescription = `${discountRate.membershipType} - free minutes`;
+      membershipDiscountDescription = `${appliedDiscounts.membershipFreeMinutesUsed} mins`;
+    }
+
+    if (discountRate.membershipDiscount && discountRate.membershipDiscount > 0) {
       if (!membershipDescription) {
-        membershipDescription = `${membershipType} - discount`;
-        membershipDiscount = `${membershipDiscountPercent}%`;
+        membershipDescription = `${discountRate.membershipType} - discount`;
+        membershipDiscountDescription = `${discountRate.membershipDiscount}%`;
       } else {
         membershipDescription += `, discount`;
-        membershipDiscount += `, ${membershipDiscountPercent}%`;
+        membershipDiscountDescription += `, ${discountRate.membershipDiscount}%`;
       }
     }
 
     return {
-      estimatedCostAmount,
-      actualTimeAmount,
-      promoCodeName,
-      promoCodeDiscount,
-      promoCodeDiscountAmount,
-      mixedPromoCodeName,
       mixedPromoCodeDescription,
-      mixedPromoCodeDiscountAmount,
+      promoCodeDiscountDescription,
       membershipDescription,
-      membershipDiscount,
-      membershipDiscountAmount,
+      membershipDiscountDescription,
+      discountRate,
+      appliedDiscounts,
     };
   }
 }

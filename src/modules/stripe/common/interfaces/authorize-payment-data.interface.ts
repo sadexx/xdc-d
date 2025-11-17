@@ -4,5 +4,5 @@ export interface IAuthorizePaymentData {
   paymentMethodId: string;
   customerId: string;
   appointmentPlatformId: string;
-  idempotencyKey?: string;
+  idempotencyKey: string;
 }

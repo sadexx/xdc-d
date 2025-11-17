@@ -1,8 +1,8 @@
 import { IsDateString, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID } from "class-validator";
 import { PaginationQueryDto } from "src/common/dto";
-import { OldEPaymentMethod, OldEPaymentStatus, OldEReceiptType } from "src/modules/payments/common/enums";
 import { ESortOrder } from "src/common/enums";
 import { CommaSeparatedToArray } from "src/common/decorators";
+import { EPaymentMethod, EPaymentReceiptType, EPaymentStatus } from "src/modules/payments/common/enums/core";
 
 export class GetUserPaymentsDto extends PaginationQueryDto {
   @IsOptional()
@@ -14,8 +14,8 @@ export class GetUserPaymentsDto extends PaginationQueryDto {
   companyId?: string;
 
   @IsOptional()
-  @IsEnum(OldEReceiptType)
-  receiptType?: OldEReceiptType;
+  @IsEnum(EPaymentReceiptType)
+  receiptType?: EPaymentReceiptType;
 
   @IsOptional()
   @IsNotEmpty()
@@ -24,13 +24,13 @@ export class GetUserPaymentsDto extends PaginationQueryDto {
 
   @IsOptional()
   @CommaSeparatedToArray()
-  @IsEnum(OldEPaymentStatus, { each: true })
-  statuses?: OldEPaymentStatus[];
+  @IsEnum(EPaymentStatus, { each: true })
+  statuses?: EPaymentStatus[];
 
   @IsOptional()
   @CommaSeparatedToArray()
-  @IsEnum(OldEPaymentMethod, { each: true })
-  paymentMethod?: OldEPaymentMethod;
+  @IsEnum(EPaymentMethod, { each: true })
+  paymentMethod?: EPaymentMethod;
 
   @IsOptional()
   @IsDateString()

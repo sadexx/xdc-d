@@ -7,8 +7,8 @@ import {
 } from "src/modules/appointments/appointment/common/enums";
 import { EUserRoleName } from "src/modules/users/common/enums";
 import { ELanguages } from "src/modules/interpreters/profile/common/enum";
-import { OldECurrencies } from "src/modules/payments/common/enums";
 import { EMembershipType } from "src/modules/memberships/common/enums";
+import { EPaymentCurrency } from "src/modules/payments/common/enums/core";
 
 export interface IAppointmentsCsv {
   platformId: string;
@@ -26,10 +26,10 @@ export interface IAppointmentsCsv {
   languageTo: ELanguages;
   topic: EAppointmentTopic;
   creationDate: Date;
-  paidByClient: number | null;
-  clientCurrency: OldECurrencies | null;
-  receivedByInterpreter: number | null;
-  interpreterCurrency: OldECurrencies | null;
+  paidByClient: string | null;
+  clientCurrency: EPaymentCurrency | null;
+  receivedByInterpreter: string | null;
+  interpreterCurrency: EPaymentCurrency | null;
   appointmentCallRating: number | null;
   interpreterRating: number | null;
   promoCampaignDiscount: number | null;

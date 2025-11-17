@@ -11,7 +11,7 @@ import { Role, UserRole } from "src/modules/users/entities";
 export type TRemoveCompany = Pick<Company, "id" | "removeAllAdminRoles" | "superAdminId"> & {
   superAdmin:
     | (Pick<User, "id"> & {
-        userRoles: Array<Pick<UserRole, "id"> & { role: Pick<Role, "name"> }>;
+        userRoles: (Pick<UserRole, "id"> & { role: Pick<Role, "name"> })[];
       })
     | null;
 };

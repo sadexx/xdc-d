@@ -13,7 +13,7 @@ import { IGetPaymentInfoOutput } from "src/modules/payment-information/common/ou
 import { Appointment } from "src/modules/appointments/appointment/entities";
 import { PaymentInformationQueryOptionsService } from "src/modules/payment-information/services/payment-information-query-options.service";
 import { AccessControlService } from "src/modules/access-control/services";
-import { EPaymentSystem } from "src/modules/payments-new/common/enums";
+import { EPaymentSystem } from "src/modules/payments/common/enums/core";
 
 @Injectable()
 export class GeneralPaymentInformationService {

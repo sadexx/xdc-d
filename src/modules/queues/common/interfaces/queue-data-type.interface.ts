@@ -9,12 +9,6 @@ import { EMembershipNotificationType, EMembershipPricingRegion } from "src/modul
 import { CheckInOutAppointmentDto } from "src/modules/appointments/appointment/common/dto";
 import { ITokenUserData } from "src/modules/tokens/common/interfaces";
 import {
-  IMakeAuthorizationCancel,
-  IMakeCaptureAndTransfer,
-  IMakePreAuthorization,
-  IMakeTransfer,
-} from "src/modules/payments-new/common/interfaces";
-import {
   IGenerateCorporatePayOutReceipt,
   IGenerateCorporateTaxInvoiceReceipt,
   IGenerateInterpreterBadge,
@@ -22,8 +16,17 @@ import {
   IGeneratePayInReceipt,
   IGeneratePayOutReceipt,
   IGenerateTaxInvoiceReceipt,
-} from "src/modules/pdf-new/common/interfaces";
+} from "src/modules/pdf/common/interfaces";
 import { TWebhookPaymentIntentSucceededPayment } from "src/modules/webhook-processor/common/types";
+import { EPaymentOperation } from "src/modules/payments-analysis/common/enums/core";
+import { IPaymentAnalysisAdditionalData } from "src/modules/payments-analysis/common/interfaces/core";
+import {
+  IMakePreAuthorization,
+  IMakePreAuthorizationRecreate,
+  IMakeAuthorizationCancel,
+  IMakeCaptureAndTransfer,
+  IMakeTransfer,
+} from "src/modules/payments/common/interfaces/core";
 
 export interface IQueueData {
   queueEnum: EQueueType;
@@ -85,9 +88,19 @@ interface IProcessCheckInOutAppointmentData {
   payload: { appointmentId: string; dto: CheckInOutAppointmentDto; user: ITokenUserData };
 }
 
+interface IProcessPaymentOperationData {
+  jobName: EJobType.PROCESS_PAYMENT_OPERATION;
+  payload: { appointmentId: string; operation: EPaymentOperation; additionalData: IPaymentAnalysisAdditionalData };
+}
+
 interface IProcessPaymentPreAuthorizationData {
   jobName: EJobType.PROCESS_PAYMENT_PRE_AUTHORIZATION;
   payload: IMakePreAuthorization;
+}
+
+interface IProcessPaymentPreAuthorizationRecreateData {
+  jobName: EJobType.PROCESS_PAYMENT_PRE_AUTHORIZATION_RECREATE;
+  payload: IMakePreAuthorizationRecreate;
 }
 
 interface IProcessPaymentAuthorizationCancelData {
@@ -103,11 +116,6 @@ interface IProcessPaymentCaptureData {
 interface IProcessPaymentTransferData {
   jobName: EJobType.PROCESS_PAYMENT_TRANSFER;
   payload: IMakeTransfer;
-}
-
-interface IProcessPaymentPreAuthorizationData {
-  jobName: EJobType.PROCESS_PAYMENT_PRE_AUTHORIZATION;
-  payload: IMakePreAuthorization;
 }
 
 interface IProcessPayInReceiptPdfGenerationData {
@@ -160,7 +168,9 @@ export type IQueueJobType =
   | IProcessCloseMeetingData
   | IProcessCloseMeetingWithoutClientVisitData
   | IProcessCheckInOutAppointmentData
+  | IProcessPaymentOperationData
   | IProcessPaymentPreAuthorizationData
+  | IProcessPaymentPreAuthorizationRecreateData
   | IProcessPaymentAuthorizationCancelData
   | IProcessPaymentCaptureData
   | IProcessPaymentTransferData

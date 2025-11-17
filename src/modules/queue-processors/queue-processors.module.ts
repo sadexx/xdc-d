@@ -8,9 +8,9 @@ import { QueueProcessorBridgeService } from "src/modules/queue-processor-bridge/
 import { WebhookProcessorModule } from "src/modules/webhook-processor/webhook-processor.module";
 import { ChimeMeetingConfigurationModule } from "src/modules/chime-meeting-configuration/chime-meeting-configuration.module";
 import { AppointmentsModule } from "src/modules/appointments/appointment/appointments.module";
-import { PaymentsModule } from "src/modules/payments-new/payments.module";
-import { PaymentAnalysisModule } from "src/modules/payment-analysis/payment-analysis.module";
-import { PdfModuleNew } from "src/modules/pdf-new/pdf.module";
+import { PaymentsModule } from "src/modules/payments/payments.module";
+import { PaymentAnalysisModule } from "src/modules/payments-analysis/payments-analysis.module";
+import { PdfModule } from "src/modules/pdf/pdf.module";
 
 @Module({
   imports: [
@@ -22,7 +22,7 @@ import { PdfModuleNew } from "src/modules/pdf-new/pdf.module";
     AppointmentsModule,
     PaymentsModule,
     PaymentAnalysisModule,
-    PdfModuleNew,
+    PdfModule,
   ],
   providers: [QueueProcessorService],
   exports: [],

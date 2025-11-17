@@ -1,6 +1,6 @@
 import { FindOptionsSelect, FindOptionsRelations } from "typeorm";
 import { NonNullableProperties, QueryResultType } from "src/common/types";
-import { PaymentItem } from "src/modules/payments-new/entities";
+import { PaymentItem } from "src/modules/payments/entities";
 
 /**
  ** Type

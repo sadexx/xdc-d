@@ -1,17 +1,17 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
 import { Injectable } from "@nestjs/common";
 import {
+  ICorporatePayOutReceipt,
+  ICorporateTaxInvoiceReceipt,
   IDepositChargeReceipt,
   IInterpreterBadge,
   IMembershipInvoice,
   IPayInReceipt,
   IPayOutReceipt,
-  ITaxInvoiceCorporateReceipt,
   ITaxInvoiceReceipt,
 } from "src/modules/pdf/common/interfaces";
 import { Alignment, Content, TableCell, TDocumentDefinitions } from "pdfmake/interfaces";
 import { LFH_LOGO_LABELLED, LFH_LOGO_LIGHT, RATING_STAR } from "src/modules/pdf/common/constants";
-import { IPayOutCorporateReceipt } from "src/modules/pdf/common/interfaces/payout-corporate-receipt.interface";
 import { PdfBase64ImageConverterService } from "src/modules/pdf/services";
 
 @Injectable()
@@ -19,6 +19,18 @@ export class PdfTemplatesService {
   constructor(private readonly pdfBase64ImageConverterService: PdfBase64ImageConverterService) {}
 
   public payInReceiptTemplate(data: IPayInReceipt): TDocumentDefinitions {
+    const {
+      lfhCompanyData,
+      recipientData,
+      appointment,
+      payment,
+      discountSummary,
+      issueDate,
+      interpreter,
+      appointmentDate,
+      appointmentServiceType,
+      totalDuration,
+    } = data;
     const docDefinition: TDocumentDefinitions = {
       content: [
         {
@@ -49,19 +61,19 @@ export class PdfTemplatesService {
               stack: [
                 { text: `TAX INVOICE`, fontSize: 20 },
                 { text: " " },
-                { text: `From ${data.fromCompanyName}`, bold: true },
-                { text: `ABN ${data.fromCompanyABNNumber})` },
-                { text: data.fromCompanyAddress },
+                { text: `From ${lfhCompanyData.companyName}`, bold: true },
+                { text: `ABN ${lfhCompanyData.abnNumber})` },
+                { text: lfhCompanyData.companyAddress },
                 { text: " " },
-                { text: `To ${data.toUserName}`, bold: true },
-                { text: `(Client ID ${data.toClientId})`, bold: true },
-                { text: data.toAddress },
+                { text: `To ${recipientData.recipientName}`, bold: true },
+                { text: `(Client ID ${recipientData.recipientId})`, bold: true },
+                { text: recipientData.recipientAddress },
               ],
             },
           ],
           margin: [0, 10, 0, 20],
         },
-        { text: `Invoice Number ${data.receiptNumber} - PAID`, style: "subheader", margin: [0, 10, 0, 10] },
+        { text: `Invoice Number ${appointment.platformId} - PAID`, style: "subheader", margin: [0, 10, 0, 10] },
         {
           table: {
             headerRows: 1,
@@ -77,13 +89,13 @@ export class PdfTemplatesService {
                 { text: "Amount Due", style: "tableHeader" },
               ],
               [
-                data.currency,
-                data.issueDate,
-                `${data.currency} ${data.total}`,
-                `${data.currency} ${data.gstAmount}`,
-                `${data.currency} ${data.invoiceTotal}`,
-                `${data.currency} ${data.amountPaid}`,
-                `${data.currency} ${data.amountDue}`,
+                payment.currency,
+                issueDate,
+                `${payment.currency} ${payment.totalAmount}`,
+                `${payment.currency} ${payment.totalGstAmount}`,
+                `${payment.currency} ${payment.totalFullAmount}`,
+                `${payment.currency} ${payment.totalFullAmount ? -payment.totalFullAmount : 0}`,
+                `${payment.currency} ${"0.00"}`,
               ],
             ],
           },
@@ -102,10 +114,10 @@ export class PdfTemplatesService {
                 { text: "This Invoice", style: "tableHeader" },
               ],
               [
-                data.paymentDate,
-                data.paymentDescription,
-                `${data.currency} ${data.paymentTotal}`,
-                `${data.currency} ${data.thisInvoiceAmount}`,
+                issueDate,
+                recipientData.description,
+                `${payment.currency} ${payment.totalFullAmount ? -payment.totalFullAmount : 0}`,
+                `${payment.currency} ${payment.totalFullAmount}`,
               ],
             ],
           },
@@ -127,13 +139,13 @@ export class PdfTemplatesService {
                 { text: "Total", style: "tableHeader" },
               ],
               [
-                data.bookingId,
-                data.service,
-                data.topic,
-                data.appointmentDate,
-                data.interpreterId,
-                data.duration,
-                `${data.currency} ${data.invoiceTotal}`,
+                appointment.platformId,
+                appointmentServiceType,
+                appointment.topic,
+                appointmentDate,
+                interpreter,
+                totalDuration,
+                `${payment.currency} ${payment.totalFullAmount}`,
               ],
             ],
           },
@@ -152,29 +164,29 @@ export class PdfTemplatesService {
                 { text: "Discount applied", style: "tableHeader" },
                 { text: "Discount amount", style: "tableHeader" },
               ],
-              ["Estimated Cost", "", "", `${data.currency} ${data.estimatedCostAmount}`],
-              ["Actual time", "", "", `${data.currency} ${data.actualTimeAmount}`],
+              ["Estimated Cost", "", "", `${payment.currency} ${payment.estimatedCostAmount}`],
+              ["Actual time", "", "", `${payment.currency} ${payment.totalAmount}`],
               [
                 "Promo Code",
-                data.promoCodeName || "",
-                data.promoCodeDiscount || "",
-                `${data.currency} ${data.promoCodeDiscountAmount}`,
+                discountSummary?.discountRate.promoCode ?? "",
+                discountSummary?.promoCodeDiscountDescription ?? "",
+                `${payment.currency} ${discountSummary?.appliedDiscounts.promoCampaignDiscount ?? 0}`,
               ],
               [
                 "Mixed Promo code",
-                data.mixedPromoCodeName || "",
-                data.mixedPromoCodeDescription || "",
-                `${data.currency} ${data.mixedPromoCodeDiscountAmount}`,
+                discountSummary?.discountRate.promoCode ?? "",
+                discountSummary?.mixedPromoCodeDescription ?? "",
+                `${payment.currency} ${discountSummary?.appliedDiscounts.promoCampaignDiscount ?? 0}`,
               ],
               [
                 "Membership",
-                data.membershipDescription || "",
-                data.membershipDiscount || "",
-                `${data.currency} ${data.membershipDiscountAmount}`,
+                discountSummary?.membershipDescription ?? "",
+                discountSummary?.membershipDiscountDescription ?? "",
+                `${payment.currency} ${discountSummary?.appliedDiscounts.membershipDiscount ?? 0}`,
               ],
-              ["Sub-total", "", "", `${data.currency} ${data.subTotalAmount}`],
-              ["GST", "", "", `${data.currency} ${data.gstAmount}`],
-              ["Total cost", "", "", `${data.currency} ${data.totalAmount}`],
+              ["Sub-total", "", "", `${payment.currency} ${payment.totalAmount}`],
+              ["GST", "", "", `${payment.currency} ${payment.totalGstAmount}`],
+              ["Total cost", "", "", `${payment.currency} ${payment.totalFullAmount}`],
             ],
           },
           margin: [0, 10, 0, 20],
@@ -203,7 +215,17 @@ export class PdfTemplatesService {
     return docDefinition;
   }
 
-  public payOutReceiptTemplate(data: IPayOutReceipt): TDocumentDefinitions {
+  public payoutReceiptTemplate(data: IPayOutReceipt): TDocumentDefinitions {
+    const {
+      appointment,
+      recipientData,
+      interpreter,
+      payment,
+      issueDate,
+      totalDuration,
+      appointmentServiceType,
+      appointmentDate,
+    } = data;
     const docDefinition: TDocumentDefinitions = {
       content: [
         {
@@ -232,7 +254,7 @@ export class PdfTemplatesService {
             {
               stack: [
                 { text: "REMITTANCE ADVICE", fontSize: 25, bold: true, alignment: "right" },
-                { text: `Invoice # ${data.receiptNumber}`, fontSize: 14, alignment: "right" },
+                { text: `Invoice # ${appointment.platformId}`, fontSize: 14, alignment: "right" },
                 { text: "From: Lingua Franca Hub PTY LTD", fontSize: 14, bold: true, alignment: "right" },
                 { text: "ABN 42 661 208 635", fontSize: 14, alignment: "right" },
                 {
@@ -240,8 +262,8 @@ export class PdfTemplatesService {
                   fontSize: 14,
                   alignment: "right",
                 },
-                { text: `To: ${data.userName}`, fontSize: 14, bold: true, alignment: "right" },
-                { text: `(Interpreter ID ${data.interpreterId})`, fontSize: 14, alignment: "right" },
+                { text: `To: ${recipientData.recipientName}`, fontSize: 14, bold: true, alignment: "right" },
+                { text: `(Interpreter ID ${interpreter.user.platformId})`, fontSize: 14, alignment: "right" },
               ],
             },
           ],
@@ -251,7 +273,7 @@ export class PdfTemplatesService {
 
         {
           stack: [
-            { text: `Hi, ${data.firstName},`, margin: [0, 10] },
+            { text: `Hi, ${interpreter.profile.firstName},`, margin: [0, 10] },
             {
               text: `I am attaching your remittance advice for payment.`,
             },
@@ -278,11 +300,11 @@ export class PdfTemplatesService {
                 { text: "Total Amount Paid", style: "tableHeader" },
               ],
               [
-                `${data.paymentDate}`,
-                `${data.bookingId}`,
-                `${data.service}`,
-                `${data.duration}`,
-                `${data.currency} ${data.fullAmount}`,
+                `${issueDate}`,
+                `#${appointment.platformId}`,
+                `${appointmentServiceType}`,
+                `${totalDuration}`,
+                `${payment.currency} ${payment.totalFullAmount}`,
               ],
             ],
           },
@@ -301,11 +323,11 @@ export class PdfTemplatesService {
                 { text: "GST Charged", style: "tableHeader" },
               ],
               [
-                `${data.paymentDate}`,
-                `${data.serviceDate}`,
-                `${data.topic}`,
-                `${data.currency} ${data.amount}`,
-                `${data.currency} ${data.gstAmount}`,
+                `${issueDate}`,
+                `${appointmentDate}`,
+                `${appointment.topic}`,
+                `${payment.currency} ${payment.totalAmount}`,
+                `${payment.currency} ${payment.totalFullAmount}`,
               ],
             ],
           },
@@ -347,6 +369,16 @@ export class PdfTemplatesService {
   }
 
   public taxInvoiceTemplate(data: ITaxInvoiceReceipt): TDocumentDefinitions {
+    const {
+      recipientData,
+      lfhCompanyData,
+      appointment,
+      payment,
+      issueDate,
+      appointmentDate,
+      appointmentDescription,
+      totalDuration,
+    } = data;
     const docDefinition: TDocumentDefinitions = {
       content: [
         {
@@ -376,17 +408,19 @@ export class PdfTemplatesService {
               alignment: "right",
               stack: [
                 { text: "RECIPIENT CREATED TAX INVOICE", fontSize: 19 },
-                { text: `Dated: ${data.invoiceDate}`, fontSize: 19 },
-                { text: `FROM: ${data.fromInterpreterName}`, fontSize: 19 },
-                { text: `(Interpreter ID ${data.fromInterpreterId})`, fontSize: 19 },
-                data.fromInterpreterABNNumber ? { text: `ABN ${data.fromInterpreterABNNumber}`, fontSize: 19 } : [],
+                { text: `Dated: ${issueDate}`, fontSize: 19 },
+                { text: `FROM: ${recipientData.recipientName}`, fontSize: 19 },
+                { text: `(Interpreter ID ${recipientData.recipientId})`, fontSize: 19 },
+                recipientData.recipientAbnNumber
+                  ? { text: `ABN ${recipientData.recipientAbnNumber}`, fontSize: 19 }
+                  : [],
                 {
-                  text: data.fromInterpreterAddress,
+                  text: recipientData.recipientAddress,
                   fontSize: 19,
                 },
-                { text: `TO: ${data.toCompanyName}`, fontSize: 19 },
-                { text: `ABN ${data.toCompanyABNNumber}`, fontSize: 19 },
-                { text: data.toCompanyAddress, fontSize: 19 },
+                { text: `TO: ${lfhCompanyData.companyName}`, fontSize: 19 },
+                { text: `ABN ${lfhCompanyData.abnNumber}`, fontSize: 19 },
+                { text: lfhCompanyData.companyAddress, fontSize: 19 },
               ],
             },
           ],
@@ -409,13 +443,13 @@ export class PdfTemplatesService {
                 { text: "Value Including GST", fontSize: 10 },
               ],
               [
-                { text: data.bookingId, fontSize: 10 },
-                { text: data.serviceDate, fontSize: 10 },
-                { text: data.description, fontSize: 10 },
-                { text: data.duration, fontSize: 10 },
-                { text: `${data.currency} ${data.valueExclGST}`, fontSize: 10 },
-                { text: `${data.currency} ${data.valueGST}`, fontSize: 10 },
-                { text: `${data.currency} ${data.total}`, fontSize: 10 },
+                { text: appointment.platformId, fontSize: 10 },
+                { text: appointmentDate, fontSize: 10 },
+                { text: appointmentDescription, fontSize: 10 },
+                { text: totalDuration, fontSize: 10 },
+                { text: `${payment.currency} ${payment.totalAmount}`, fontSize: 10 },
+                { text: `${payment.currency} ${payment.totalGstAmount}`, fontSize: 10 },
+                { text: `${payment.currency} ${payment.totalFullAmount}`, fontSize: 10 },
               ],
             ],
           },
@@ -428,14 +462,14 @@ export class PdfTemplatesService {
         },
         {
           text: `The recipient and the supplier declare that this agreement relates to the above supplies.
-              The recipient can issue tax invoices for these supplies. The supplier will not issue tax
-              invoices for these supplies. The supplier acknowledges that it is registered for GST and
-              that it will notify the recipient if it ceases to be registered. The recipient acknowledges
-              that it is registered for GST and that it will notify the supplier if it ceases to be registered.
-              Acceptance of this recipient-created tax invoice (RCTI) constitutes acceptance of the
-              terms of this written agreement. Both parties to this supply agree that they are parties
-              to an RCTI agreement. The supplier must notify the recipient within 21 days of receiving
-              this document if the supplier does not wish to accept the proposed agreement.`,
+								The recipient can issue tax invoices for these supplies. The supplier will not issue tax
+								invoices for these supplies. The supplier acknowledges that it is registered for GST and
+								that it will notify the recipient if it ceases to be registered. The recipient acknowledges
+								that it is registered for GST and that it will notify the supplier if it ceases to be registered.
+								Acceptance of this recipient-created tax invoice (RCTI) constitutes acceptance of the
+								terms of this written agreement. Both parties to this supply agree that they are parties
+								to an RCTI agreement. The supplier must notify the recipient within 21 days of receiving
+								this document if the supplier does not wish to accept the proposed agreement.`,
           fontSize: 10,
         },
         "\n\n",
@@ -470,7 +504,8 @@ export class PdfTemplatesService {
     return docDefinition;
   }
 
-  public membershipInvoiceTemplate(data: IMembershipInvoice, isUserFromAu: boolean): TDocumentDefinitions {
+  public membershipInvoiceTemplate(data: IMembershipInvoice): TDocumentDefinitions {
+    const { isUserFromAu, membershipType, payment, userRole, issueDate } = data;
     const tablePricingDetailsRow = isUserFromAu
       ? [
           { text: "Membership Plan", fontSize: 10 },
@@ -484,28 +519,28 @@ export class PdfTemplatesService {
         ];
     const tablePricingDetailsDataRow = isUserFromAu
       ? [
-          { text: data.membershipType.charAt(0).toUpperCase() + data.membershipType.slice(1), fontSize: 10 },
-          { text: data.valueExclGST, fontSize: 10 },
-          { text: data.valueGST, fontSize: 10 },
-          { text: data.total, fontSize: 10 },
+          { text: membershipType.charAt(0).toUpperCase() + membershipType.slice(1), fontSize: 10 },
+          { text: `${payment.totalAmount} ${payment.currency}`, fontSize: 10 },
+          { text: `${payment.totalGstAmount} ${payment.currency}`, fontSize: 10 },
+          { text: `${payment.totalFullAmount} ${payment.currency}`, fontSize: 10 },
         ]
       : [
-          { text: data.membershipType.charAt(0).toUpperCase() + data.membershipType.slice(1), fontSize: 10 },
-          { text: data.total, fontSize: 10 },
+          { text: membershipType.charAt(0).toUpperCase() + membershipType.slice(1), fontSize: 10 },
+          { text: `${payment.totalFullAmount} ${payment.currency}`, fontSize: 10 },
         ];
     const billToTableBody = [
-      [{ text: "Bill To" }, { text: data.clientName }],
-      [{ text: "Address" }, { text: data.clientAddress }],
-      [{ text: "Suburb/Town" }, { text: data.clientSuburb }],
-      [{ text: "State/Territory" }, { text: data.clientState }],
-      [{ text: "Postcode" }, { text: data.clientPostcode }],
+      [{ text: "Bill To" }, { text: `${userRole.profile.firstName} ${userRole.profile.lastName}` }],
+      [{ text: "Address" }, { text: `${userRole.address.streetNumber} ${userRole.address.streetName}` }],
+      [{ text: "Suburb/Town" }, { text: userRole.address.suburb }],
+      [{ text: "State/Territory" }, { text: userRole.address.state }],
+      [{ text: "Postcode" }, { text: userRole.address.postcode }],
     ];
     const soldToTableBody = [
-      [{ text: "Sold To" }, { text: data.clientName }],
-      [{ text: "Address" }, { text: data.clientAddress }],
-      [{ text: "Suburb/Town" }, { text: data.clientSuburb }],
-      [{ text: "State/Territory" }, { text: data.clientState }],
-      [{ text: "Postcode" }, { text: data.clientPostcode }],
+      [{ text: "Sold To" }, `${userRole.profile.firstName} ${userRole.profile.lastName}`],
+      [{ text: "Address" }, { text: `${userRole.address.streetNumber} ${userRole.address.streetName}` }],
+      [{ text: "Suburb/Town" }, { text: userRole.address.suburb }],
+      [{ text: "State/Territory" }, { text: userRole.address.state }],
+      [{ text: "Postcode" }, { text: userRole.address.postcode }],
     ];
 
     const docDefinition: TDocumentDefinitions = {
@@ -536,8 +571,8 @@ export class PdfTemplatesService {
             {
               alignment: "right",
               stack: [
-                { text: `Dated: ${data.invoiceDate}`, fontSize: 19, bold: true },
-                { text: `Client ID ${data.clientId}`, fontSize: 19, bold: true },
+                { text: `Dated: ${issueDate}`, fontSize: 19, bold: true },
+                { text: `Client ID ${userRole.user.platformId}`, fontSize: 19, bold: true },
               ],
             },
           ],
@@ -607,7 +642,8 @@ export class PdfTemplatesService {
   }
 
   public async interpreterBadgeTemplate(data: IInterpreterBadge): Promise<TDocumentDefinitions> {
-    const canvasYoffset = data.companyName ? 370 : 340;
+    const { companyName, userRole, interpreterRole, interpreterBadge } = data;
+    const canvasYoffset = companyName ? 370 : 340;
     const docDefinition: TDocumentDefinitions = {
       content: [
         {
@@ -616,10 +652,10 @@ export class PdfTemplatesService {
           alignment: "center",
           margin: [0, 20],
         },
-        ...(data.companyName
+        ...(companyName
           ? [
               {
-                text: data.companyName ?? "",
+                text: companyName ?? "",
                 style: "roleName",
                 alignment: "center" as Alignment,
                 margin: [20, 0, 0, 10] as [number, number, number, number],
@@ -627,21 +663,23 @@ export class PdfTemplatesService {
             ]
           : []),
         {
-          text: data.interpreterRole,
+          text: interpreterRole,
           style: "roleName",
           alignment: "center",
           margin: [20, 0, 0, 0],
         },
         {
           text: `${
-            data.title ? `${data.title.charAt(0).toUpperCase()}${data.title.slice(1)}. ` : ""
-          }${data.firstName} ${data.lastName}`,
+            userRole.profile.title
+              ? `${userRole.profile.title.charAt(0).toUpperCase()}${userRole.profile.title.slice(1)}. `
+              : ""
+          }${userRole.profile.preferredName ?? userRole.profile.firstName} ${userRole.profile.lastName}`,
           style: "interpreterName",
           alignment: "center",
           margin: [0, 20],
         },
         {
-          text: `ID: ${data.platformId}`,
+          text: `ID: ${userRole.user.platformId}`,
           style: "interpreterId",
           alignment: "center",
           margin: [5, 0, 0, 10],
@@ -667,7 +705,7 @@ export class PdfTemplatesService {
                   margin: [2, 0, 2, 0],
                 },
                 {
-                  text: data.averageRating.toFixed(1),
+                  text: userRole.interpreterProfile.averageRating.toFixed(1),
                   style: "averageRating",
                   margin: [5, 0, 0, 0],
                 },
@@ -680,7 +718,10 @@ export class PdfTemplatesService {
         {
           stack: [
             {
-              image: await this.pdfBase64ImageConverterService.convertImageToBase64(data.avatar, data.userRoleId),
+              image: await this.pdfBase64ImageConverterService.convertImageToBase64(
+                userRole.user.avatarUrl,
+                userRole.id,
+              ),
               width: 300,
               height: 300,
               alignment: "center",
@@ -716,7 +757,7 @@ export class PdfTemplatesService {
                   absolutePosition: { x: 367, y: canvasYoffset + 210 },
                 },
                 {
-                  image: `data:image/png;base64,${data.interpreterBadge}`,
+                  image: `data:image/png;base64,${interpreterBadge}`,
                   width: 100,
                   height: 100,
                   absolutePosition: { x: 387, y: canvasYoffset + 225 },
@@ -761,6 +802,7 @@ export class PdfTemplatesService {
   }
 
   public depositChargeReceiptTemplate(data: IDepositChargeReceipt): TDocumentDefinitions {
+    const { lfhCompanyData, recipientData, payment, issueDate, paymentDate, paymentDescription, service } = data;
     const docDefinition: TDocumentDefinitions = {
       content: [
         {
@@ -791,20 +833,20 @@ export class PdfTemplatesService {
               stack: [
                 { text: `TAX INVOICE`, fontSize: 20 },
                 { text: " " },
-                { text: `From ${data.fromCompanyName}`, bold: true },
-                { text: `ABN ${data.fromCompanyABNNumber})` },
-                { text: data.fromCompanyAddress },
+                { text: `From ${lfhCompanyData.companyName}`, bold: true },
+                { text: `ABN ${lfhCompanyData.abnNumber})` },
+                { text: lfhCompanyData.companyAddress },
                 { text: " " },
-                { text: `To ${data.toCompanyName}`, bold: true },
-                data.toCompanyABNNumber ? [{ text: `ABN ${data.toCompanyABNNumber})` }] : [],
-                { text: `(Company ID ${data.toCompanyId})`, bold: true },
-                { text: data.toCompanyAddress },
+                { text: `To ${recipientData.recipientName}`, bold: true },
+                recipientData.recipientAbnNumber ? [{ text: `ABN ${recipientData.recipientAbnNumber})` }] : [],
+                { text: `(Company ID ${recipientData.recipientId})`, bold: true },
+                { text: recipientData.recipientAddress },
               ],
             },
           ],
           margin: [0, 10, 0, 20],
         },
-        { text: `Invoice Number ${data.receiptNumber} - PAID`, style: "subheader", margin: [0, 10, 0, 10] },
+        { text: `Invoice Number ${payment.platformId} - PAID`, style: "subheader", margin: [0, 10, 0, 10] },
         {
           table: {
             headerRows: 1,
@@ -820,13 +862,13 @@ export class PdfTemplatesService {
                 { text: "Amount Due", style: "tableHeader" },
               ],
               [
-                data.currency,
-                data.issueDate,
-                `${data.currency} ${data.total}`,
-                `${data.currency} ${data.gstAmount}`,
-                `${data.currency} ${data.invoiceTotal}`,
-                `${data.currency} ${data.amountPaid}`,
-                `${data.currency} ${data.amountDue}`,
+                payment.currency,
+                issueDate,
+                `${payment.currency} ${payment.totalAmount}`,
+                `${payment.currency} ${payment.totalGstAmount}`,
+                `${payment.currency} ${payment.totalFullAmount}`,
+                `${payment.currency} ${payment.totalFullAmount ? `-${payment.totalFullAmount}` : 0}`,
+                `${payment.currency} ${"0.00"}`,
               ],
             ],
           },
@@ -845,10 +887,10 @@ export class PdfTemplatesService {
                 { text: "This Invoice", style: "tableHeader" },
               ],
               [
-                data.paymentDate,
-                data.paymentDescription,
-                `${data.currency} ${data.paymentTotal}`,
-                `${data.currency} ${data.thisInvoiceAmount}`,
+                paymentDate,
+                paymentDescription,
+                `${payment.currency} ${payment.totalFullAmount ? `-${payment.totalFullAmount}` : 0}`,
+                `${payment.currency} ${payment.totalFullAmount}`,
               ],
             ],
           },
@@ -868,11 +910,11 @@ export class PdfTemplatesService {
                 { text: "Total", style: "tableHeader" },
               ],
               [
-                data.transactionId,
-                data.service,
-                data.paymentDateTime,
-                data.toCompanyId,
-                `${data.currency} ${data.invoiceTotal}`,
+                payment.platformId,
+                service,
+                paymentDate,
+                recipientData.recipientId,
+                `${payment.currency} ${payment.totalFullAmount}`,
               ],
             ],
           },
@@ -881,7 +923,7 @@ export class PdfTemplatesService {
         {
           columns: [
             { text: "www.linguafrancahub.com", link: "http://www.linguafrancahub.com", color: "blue" },
-            { text: "payments@lighuafrancahub.com", link: "mailto:payments@lighuafrancahub.com", color: "blue" },
+            { text: "payments@linguafrancahub.com", link: "mailto:payments@linguafrancahub.com", color: "blue" },
             { text: "© 2025 Lingua Franca Hub. All rights reserved" },
           ],
           style: "footer",
@@ -902,10 +944,11 @@ export class PdfTemplatesService {
     return docDefinition;
   }
 
-  public payOutCorporateReceiptTemplate(data: IPayOutCorporateReceipt): TDocumentDefinitions {
+  public payoutCorporateReceiptTemplate(data: ICorporatePayOutReceipt): TDocumentDefinitions {
+    const { paymentsData, issueDate, recipientData, receiptNumber, adminFirstName } = data;
     const paymentTables: Content = [];
-
-    for (const paymentData of data.paymentsData) {
+    for (const paymentData of paymentsData) {
+      const { payment, appointmentServiceType, totalDuration, appointmentDate } = paymentData;
       paymentTables.push({
         table: {
           headerRows: 1,
@@ -920,12 +963,12 @@ export class PdfTemplatesService {
               { text: "Total Amount Paid", style: "tableHeader" },
             ],
             [
-              `${paymentData.paymentDate}`,
-              `${paymentData.bookingId}`,
-              `${paymentData.interpreterId}`,
-              `${paymentData.service}`,
-              `${paymentData.duration}`,
-              `${paymentData.currency} ${paymentData.fullAmount}`,
+              `${issueDate}`,
+              `#${payment.appointment.platformId}`,
+              `${payment.appointment.interpreter.user.platformId}`,
+              `${appointmentServiceType}`,
+              `${totalDuration}`,
+              `${payment.currency} ${payment.totalFullAmount}`,
             ],
           ],
         },
@@ -944,11 +987,11 @@ export class PdfTemplatesService {
               { text: "GST Charged", style: "tableHeader" },
             ],
             [
-              `${paymentData.paymentDate}`,
-              `${paymentData.serviceDate}`,
-              `${paymentData.topic}`,
-              `${paymentData.currency} ${paymentData.amount}`,
-              `${paymentData.currency} ${paymentData.gstAmount}`,
+              `${issueDate}`,
+              `${appointmentDate}`,
+              `${payment.appointment.topic}`,
+              `${payment.currency} ${payment.totalAmount}`,
+              `${payment.currency} ${payment.totalGstAmount}`,
             ],
           ],
         },
@@ -984,7 +1027,7 @@ export class PdfTemplatesService {
             {
               stack: [
                 { text: "REMITTANCE ADVICE", fontSize: 25, bold: true, alignment: "right" },
-                { text: `Invoice # ${data.receiptNumber}`, fontSize: 14, alignment: "right" },
+                { text: `Invoice # ${receiptNumber}`, fontSize: 14, alignment: "right" },
                 { text: "From: Lingua Franca Hub PTY LTD", fontSize: 14, bold: true, alignment: "right" },
                 { text: "ABN 42 661 208 635", fontSize: 14, alignment: "right" },
                 {
@@ -993,9 +1036,11 @@ export class PdfTemplatesService {
                   alignment: "right",
                 },
                 { text: " ", fontSize: 14, alignment: "right" },
-                { text: `To: ${data.companyName}`, fontSize: 14, bold: true, alignment: "right" },
-                data.companyAbnNumber ? { text: `ABN ${data.companyAbnNumber}`, fontSize: 14, alignment: "right" } : [],
-                { text: `(Company ID ${data.companyId})`, fontSize: 14, alignment: "right" },
+                { text: `To: ${recipientData.recipientName}`, fontSize: 14, bold: true, alignment: "right" },
+                recipientData.recipientAbnNumber
+                  ? { text: `ABN ${recipientData.recipientAbnNumber}`, fontSize: 14, alignment: "right" }
+                  : [],
+                { text: `(Company ID ${recipientData.recipientId})`, fontSize: 14, alignment: "right" },
               ],
             },
           ],
@@ -1005,7 +1050,7 @@ export class PdfTemplatesService {
 
         {
           stack: [
-            { text: `Hi, ${data.adminFirstName},`, margin: [0, 10] },
+            { text: `Hi, ${adminFirstName},`, margin: [0, 10] },
             {
               text: `I am attaching your remittance advice for payment.`,
             },
@@ -1052,19 +1097,20 @@ export class PdfTemplatesService {
     return docDefinition;
   }
 
-  public taxInvoiceCorporateTemplate(data: ITaxInvoiceCorporateReceipt): TDocumentDefinitions {
+  public taxInvoiceCorporateTemplate(data: ICorporateTaxInvoiceReceipt): TDocumentDefinitions {
+    const { paymentsData, issueDate, recipientData, lfhCompanyData } = data;
     const paymentTables: TableCell[][] = [];
-
-    for (const paymentData of data.paymentsData) {
+    for (const paymentData of paymentsData) {
+      const { payment, appointmentDate, appointmentDescription, totalDuration } = paymentData;
       paymentTables.push([
-        { text: paymentData.bookingId, fontSize: 10 },
-        { text: paymentData.interpreterId, fontSize: 10 },
-        { text: paymentData.serviceDate, fontSize: 10 },
-        { text: paymentData.description, fontSize: 10 },
-        { text: paymentData.duration, fontSize: 10 },
-        { text: `${paymentData.currency} ${paymentData.valueExclGST}`, fontSize: 10 },
-        { text: `${paymentData.currency} ${paymentData.valueGST}`, fontSize: 10 },
-        { text: `${paymentData.currency} ${paymentData.total}`, fontSize: 10 },
+        { text: payment.appointment.platformId, fontSize: 10 },
+        { text: payment.appointment.interpreter.user.platformId, fontSize: 10 },
+        { text: appointmentDate, fontSize: 10 },
+        { text: appointmentDescription, fontSize: 10 },
+        { text: totalDuration, fontSize: 10 },
+        { text: `${payment.currency} ${payment.totalAmount}`, fontSize: 10 },
+        { text: `${payment.currency} ${payment.totalGstAmount}`, fontSize: 10 },
+        { text: `${payment.currency} ${payment.totalFullAmount}`, fontSize: 10 },
       ]);
     }
 
@@ -1098,16 +1144,18 @@ export class PdfTemplatesService {
               stack: [
                 { text: "RECIPIENT CREATED TAX INVOICE", fontSize: 19 },
                 { text: ` `, fontSize: 12 },
-                { text: `Dated: ${data.invoiceDate}`, fontSize: 12 },
+                { text: `Dated: ${issueDate}`, fontSize: 12 },
                 { text: ` `, fontSize: 12 },
-                { text: `FROM: ${data.fromCompanyName}`, fontSize: 12, bold: true },
-                { text: `(Company ID ${data.fromCompanyId})`, fontSize: 12 },
-                data.fromCompanyABNNumber ? { text: `ABN ${data.fromCompanyABNNumber}`, fontSize: 12 } : [],
-                { text: data.fromCompanyAddress, fontSize: 12 },
+                { text: `FROM: ${recipientData.recipientName}`, fontSize: 12, bold: true },
+                { text: `(Company ID ${recipientData.recipientId})`, fontSize: 12 },
+                recipientData.recipientAbnNumber
+                  ? { text: `ABN ${recipientData.recipientAbnNumber}`, fontSize: 12 }
+                  : [],
+                { text: recipientData.recipientAddress, fontSize: 12 },
                 { text: ` `, fontSize: 12 },
-                { text: `TO: ${data.toCompanyName}`, fontSize: 12, bold: true },
-                { text: `ABN ${data.toCompanyABNNumber}`, fontSize: 12 },
-                { text: data.toCompanyAddress, fontSize: 12 },
+                { text: `TO: ${lfhCompanyData.companyName}`, fontSize: 12, bold: true },
+                { text: `ABN ${lfhCompanyData.abnNumber}`, fontSize: 12 },
+                { text: lfhCompanyData.companyAddress, fontSize: 12 },
               ],
             },
           ],

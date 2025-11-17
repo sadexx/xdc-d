@@ -1,1 +1,2 @@
 export const BULLMQ_CONNECTION: string = "BULLMQ_CONNECTION";
+export const PAYMENTS_EXECUTION_QUEUE_RETRIES: number = 3;

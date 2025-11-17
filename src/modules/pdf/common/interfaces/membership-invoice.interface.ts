@@ -1,20 +1,11 @@
 import { EMembershipType } from "src/modules/memberships/common/enums";
+import { Payment } from "src/modules/payments/entities";
+import { TProcessMembershipPaymentUserRole } from "src/modules/memberships/common/types";
 
 export interface IMembershipInvoice {
-  clientName: string;
-  clientAddress: string;
-  clientSuburb: string;
-  clientState: string;
-  clientPostcode: string;
-  invoiceDate: string;
-  clientId: string;
+  payment: Payment;
+  userRole: TProcessMembershipPaymentUserRole;
   membershipType: EMembershipType;
-  valueExclGST: string;
-  valueGST: string;
-  total: string;
-}
-
-export interface IMembershipInvoiceWithKey {
-  receiptKey: string;
-  receiptData: IMembershipInvoice;
+  isUserFromAu: boolean;
+  issueDate: string;
 }

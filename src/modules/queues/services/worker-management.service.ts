@@ -119,6 +119,15 @@ export class WorkerManagementService implements OnModuleInit, OnModuleDestroy {
           },
         };
 
+      case EQueueType.PAYMENTS_ANALYSIS_QUEUE:
+        return {
+          queueName: EQueueType.PAYMENTS_ANALYSIS_QUEUE,
+          workerOptions: {
+            name: EWorkerType.PAYMENTS,
+            ...DEFAULT_WORKER_OPTIONS,
+          },
+        };
+
       case EQueueType.PAYMENTS_EXECUTION_QUEUE:
         return {
           queueName: EQueueType.PAYMENTS_EXECUTION_QUEUE,

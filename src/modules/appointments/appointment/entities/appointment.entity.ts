@@ -39,10 +39,9 @@ import {
 } from "typeorm";
 import { DiscountAssociation } from "src/modules/discounts/entities";
 import { Blacklist } from "src/modules/blacklists/entities";
-import { OldIncomingPaymentsWaitList, OldPayment } from "src/modules/payments/entities";
-import { OldECurrencies } from "src/modules/payments/common/enums";
 import { ShortUrl } from "src/modules/url-shortener/entities";
-import { IncomingPaymentWaitList, Payment } from "src/modules/payments-new/entities";
+import { IncomingPaymentWaitList, Payment } from "src/modules/payments/entities";
+import { EPaymentCurrency } from "src/modules/payments/common/enums/core";
 
 @Entity({ name: "appointments" })
 export class Appointment {
@@ -77,15 +76,15 @@ export class Appointment {
   archivedByClient: boolean;
 
   @Column({ type: "decimal", precision: 12, scale: 2, name: "paid_by_client", default: 0 })
-  paidByClient: number;
+  paidByClient: string;
 
   @Column({
     type: "enum",
-    enum: OldECurrencies,
+    enum: EPaymentCurrency,
     name: "client_currency",
     nullable: true,
   })
-  clientCurrency: OldECurrencies | null;
+  clientCurrency: EPaymentCurrency | null;
 
   /**
    *? Interpreter: Individual, Language Buddy
@@ -111,18 +110,18 @@ export class Appointment {
   archivedByInterpreter: boolean;
 
   @Column({ type: "decimal", precision: 12, scale: 2, name: "received_by_interpreter", default: 0 })
-  receivedByInterpreter: number;
+  receivedByInterpreter: string;
 
   @Column({ type: "decimal", precision: 12, scale: 2, name: "received_by_interpreter_gst", default: 0 })
-  receivedByInterpreterGst: number;
+  receivedByInterpreterGst: string;
 
   @Column({
     type: "enum",
-    enum: OldECurrencies,
+    enum: EPaymentCurrency,
     name: "interpreter_currency",
     nullable: true,
   })
-  interpreterCurrency: OldECurrencies | null;
+  interpreterCurrency: EPaymentCurrency | null;
 
   /**
    *? Relations Fields
@@ -169,21 +168,13 @@ export class Appointment {
   @OneToMany(() => Blacklist, (blacklist) => blacklist.appointment)
   blacklists: Blacklist[];
 
-  @OneToOne(() => OldIncomingPaymentsWaitList, (incomingPaymentsWaitList) => incomingPaymentsWaitList.appointment, {
-    nullable: true,
-  })
-  incomingPaymentsWaitList: OldIncomingPaymentsWaitList | null;
-
   @OneToOne(() => IncomingPaymentWaitList, (incomingPaymentsWaitList) => incomingPaymentsWaitList.appointment, {
     nullable: true,
   })
-  incomingPaymentsWaitListNEW: IncomingPaymentWaitList | null;
-
-  @OneToMany(() => OldPayment, (payment) => payment.appointment)
-  payments: OldPayment[];
+  incomingPaymentsWaitList: IncomingPaymentWaitList | null;
 
   @OneToMany(() => Payment, (payment) => payment.appointment)
-  paymentsNEW: Payment[];
+  payments: Payment[];
 
   @OneToMany(() => ShortUrl, (shortUrl) => shortUrl.appointment)
   shortUrls: ShortUrl[];

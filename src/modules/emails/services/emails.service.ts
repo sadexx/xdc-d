@@ -8,10 +8,9 @@ import {
   IDepositChargeReceipt,
   ICorporatePayOutReceipt,
   ICorporateTaxInvoiceReceipt,
-} from "src/modules/pdf-new/common/interfaces";
+} from "src/modules/pdf/common/interfaces";
 import { EMembershipType } from "src/modules/memberships/common/enums";
 import { format } from "date-fns";
-import { OldECurrencies } from "src/modules/payments/common/enums";
 import { CustomMailerService } from "src/modules/emails/custom-mailer/services";
 import { INaatiWebScraperReport } from "src/modules/naati/common/interface";
 import { EExtIssueState } from "src/modules/backy-check/common/enums";
@@ -21,6 +20,7 @@ import { IDepositChargeFailed } from "src/modules/emails/common/interfaces/depos
 import { EEmailLayoutName, EEmailTemplateName } from "src/modules/emails/common/enums";
 import { IAppointmentParticipantInvitationOutput } from "src/modules/appointments/appointment/common/outputs";
 import { CURRENCY_DECIMAL_PLACES } from "src/common/constants";
+import { EPaymentCurrency } from "src/modules/payments/common/enums/core";
 
 @Injectable()
 export class EmailsService {
@@ -553,7 +553,7 @@ export class EmailsService {
     email: string,
     userName: string,
     amount: number,
-    currency: OldECurrencies,
+    currency: EPaymentCurrency,
     invoiceNumber: string,
   ): Promise<string> {
     await this.mailService.sendMail({

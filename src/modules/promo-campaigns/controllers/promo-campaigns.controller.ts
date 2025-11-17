@@ -31,13 +31,14 @@ import {
   GetAllPromoCampaignsOutput,
   IUploadPromoCampaignBannerOutput,
 } from "src/modules/promo-campaigns/common/outputs";
-import { TGetPromoCampaignById, TGetSpecialPromoCampaigns } from "src/modules/promo-campaigns/common/types";
+import { TGetSpecialPromoCampaigns } from "src/modules/promo-campaigns/common/types";
 import { UUIDParamDto } from "src/common/dto";
 import { ITokenUserData } from "src/modules/tokens/common/interfaces";
 import { CurrentUser } from "src/common/decorators";
 import { CustomFileInterceptor } from "src/modules/file-management/common/interceptors";
 import { IFile } from "src/modules/file-management/common/interfaces";
 import { IMessageOutput } from "src/common/outputs";
+import { PromoCampaign } from "src/modules/promo-campaigns/entities";
 
 @Controller("promo-campaigns")
 export class PromoCampaignsController {
@@ -62,7 +63,7 @@ export class PromoCampaignsController {
 
   @Get(":id")
   @UseGuards(JwtFullAccessGuard, RolesGuard)
-  async getPromoCampaignById(@Param() paramDto: UUIDParamDto): Promise<TGetPromoCampaignById> {
+  async getPromoCampaignById(@Param() paramDto: UUIDParamDto): Promise<PromoCampaign> {
     return this.promoCampaignsService.getPromoCampaignById(paramDto);
   }
 

@@ -1,7 +1,6 @@
 import { forwardRef, Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { Company } from "src/modules/companies/entities";
-import { OldPayment, OldPaymentItem } from "src/modules/payments/entities";
 import { StripeModule } from "src/modules/stripe/stripe.module";
 import { NotificationModule } from "src/modules/notifications/notification.module";
 import {
@@ -14,11 +13,11 @@ import { EmailsModule } from "src/modules/emails/emails.module";
 import { HelperModule } from "src/modules/helper/helper.module";
 import { CompaniesDepositChargeController } from "src/modules/companies-deposit-charge/controllers";
 import { AccessControlModule } from "src/modules/access-control/access-control.module";
-import { PaymentsModule } from "src/modules/payments-new/payments.module";
+import { PaymentsModule } from "src/modules/payments/payments.module";
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([OldPayment, OldPaymentItem, Company, CompanyDepositCharge]),
+    TypeOrmModule.forFeature([Company, CompanyDepositCharge]),
     forwardRef(() => PaymentsModule),
     StripeModule,
     NotificationModule,

@@ -57,14 +57,19 @@ export class DiscountHoldersService {
   private constructDiscountHolderDto(
     holder: DiscountEntityHolder,
     discountEntity: DiscountEntity,
-    discountHolder: TCreateOrUpdateDiscountHolder | null,
+    existingDiscountHolder: TCreateOrUpdateDiscountHolder | null,
   ): IDiscountHolder {
     return {
-      ...discountHolder,
       userRole: holder instanceof UserRole ? holder : null,
       company: holder instanceof Company ? holder : null,
-      promoCampaignAssignment: discountEntity instanceof PromoCampaignAssignment ? discountEntity : null,
-      membershipAssignment: discountEntity instanceof MembershipAssignment ? discountEntity : null,
+      promoCampaignAssignment:
+        discountEntity instanceof PromoCampaignAssignment
+          ? discountEntity
+          : (existingDiscountHolder?.promoCampaignAssignment as PromoCampaignAssignment | null),
+      membershipAssignment:
+        discountEntity instanceof MembershipAssignment
+          ? discountEntity
+          : (existingDiscountHolder?.membershipAssignment as MembershipAssignment | null),
     };
   }
 }

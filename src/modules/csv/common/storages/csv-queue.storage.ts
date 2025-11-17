@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { ITokenUserData } from "src/modules/tokens/common/interfaces";
 import { RedisService } from "src/modules/redis/services";
+import { ECsvErrorCodes } from "src/modules/csv/common/enums";
 
 @Injectable()
 export class CsvQueueStorageService {
@@ -13,7 +14,7 @@ export class CsvQueueStorageService {
 
     if (newCount > this.MAX_CONCURRENCY) {
       await this.redisService.decr(key);
-      throw new BadRequestException("You exceeded csv download limit.");
+      throw new BadRequestException(ECsvErrorCodes.CSV_DOWNLOAD_LIMIT_EXCEEDED);
     }
   }
 

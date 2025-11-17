@@ -1,13 +1,22 @@
-import { NonNullableProperties } from "src/common/types";
+import { StrictOmit } from "src/common/types";
 import { Company } from "src/modules/companies/entities";
 
 /**
  ** Type
  */
 
-export type TCreateChargeRequestValidated = NonNullableProperties<NonNullable<Company>, "depositDefaultChargeAmount">;
-
-export type TCreateOrUpdateDepositCharge = Pick<
+export type TCreateChargeRequest = StrictOmit<
   Company,
-  "id" | "depositAmount" | "isActive" | "depositDefaultChargeAmount"
->;
+  "depositAmount" | "depositDefaultChargeAmount" | "beforeInsert"
+> & {
+  depositAmount: number | null;
+  depositDefaultChargeAmount: number;
+};
+
+export type TCreateOrUpdateDepositCharge = StrictOmit<
+  Pick<Company, "id" | "depositAmount" | "isActive" | "depositDefaultChargeAmount">,
+  "depositAmount" | "depositDefaultChargeAmount"
+> & {
+  depositAmount: number | null;
+  depositDefaultChargeAmount: number | null;
+};

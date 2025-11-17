@@ -14,6 +14,7 @@ import { Appointment, AppointmentAdminInfo, AppointmentReminder } from "src/modu
 import { ChimeMeetingConfiguration } from "src/modules/chime-meeting-configuration/entities";
 import { ShortUrl } from "src/modules/url-shortener/entities";
 import { RedisModule } from "src/modules/redis/redis.module";
+import { DiscountsModule } from "src/modules/discounts/discounts.module";
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { RedisModule } from "src/modules/redis/redis.module";
     NotificationModule,
     AwsPinpointModule,
     RedisModule,
+    DiscountsModule,
   ],
   providers: [AppointmentQueryOptionsService, AppointmentNotificationService, AppointmentSharedService],
   exports: [AppointmentQueryOptionsService, AppointmentNotificationService, AppointmentSharedService],

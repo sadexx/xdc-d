@@ -38,10 +38,11 @@ import { CompaniesQueryService } from "src/modules/companies/services";
 import { LokiLogger } from "src/common/logger";
 import { INewCompanyRequestDetails } from "src/modules/companies/common/interfaces";
 import { Role } from "src/modules/users/entities";
-import { findOneOrFail, isInRoles } from "src/common/utils";
+import { findOneOrFail, formatDecimalString, isInRoles } from "src/common/utils";
 import { AccessControlService } from "src/modules/access-control/services";
 import { TokensService } from "src/modules/tokens/services";
 import { CompaniesDepositChargeManagementService } from "src/modules/companies-deposit-charge/services";
+import { TCreateOrUpdateDepositCharge } from "src/modules/companies-deposit-charge/common/types";
 
 @Injectable()
 export class CompaniesService {
@@ -286,10 +287,13 @@ export class CompaniesService {
     });
 
     const companyData: CreateCompanyDto = { ...dto };
-    delete companyData.depositDefaultChargeAmount;
 
     const company = this.companyRepository.create({
       ...companyData,
+      depositDefaultChargeAmount:
+        companyData.depositDefaultChargeAmount !== undefined
+          ? formatDecimalString(companyData.depositDefaultChargeAmount)
+          : null,
       superAdmin,
       operatedByMainCompanyId: companyOperatedBy,
       operatedByMainCompanyName: companyNameOperatedBy,
@@ -313,10 +317,15 @@ export class CompaniesService {
 
     if (dto.depositDefaultChargeAmount) {
       const depositDefaultChargeAmount = dto.depositDefaultChargeAmount;
+      const company: TCreateOrUpdateDepositCharge = {
+        ...newCompany,
+        depositAmount: null,
+        depositDefaultChargeAmount,
+      };
       await this.dataSource.transaction(async (manager) => {
         await this.companiesDepositChargeManagementService.createOrUpdateDepositCharge(
           manager,
-          newCompany,
+          company,
           depositDefaultChargeAmount,
         );
       });
@@ -562,10 +571,15 @@ export class CompaniesService {
 
     if (user.role === EUserRoleName.SUPER_ADMIN && dto.profileInformation.depositDefaultChargeAmount) {
       const depositDefaultChargeAmount = dto.profileInformation.depositDefaultChargeAmount;
+      const chargeCompany: TCreateOrUpdateDepositCharge = {
+        ...company,
+        depositAmount: null,
+        depositDefaultChargeAmount,
+      };
       await this.dataSource.transaction(async (manager) => {
         await this.companiesDepositChargeManagementService.createOrUpdateDepositCharge(
           manager,
-          company,
+          chargeCompany,
           depositDefaultChargeAmount,
         );
       });

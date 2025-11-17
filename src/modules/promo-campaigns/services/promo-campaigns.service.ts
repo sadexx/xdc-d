@@ -26,12 +26,16 @@ import {
   TConstructPromoCampaignDto,
   TCreateCorporatePromoCampaign,
   TGetAllPromoCampaigns,
-  TGetPromoCampaignById,
   TGetSpecialPromoCampaigns,
   TRemoveOldPromoCampaigns,
   TUpdatePromoCampaign,
 } from "src/modules/promo-campaigns/common/types";
-import { findManyAndCountQueryBuilderTyped, findManyTyped, findOneOrFailTyped } from "src/common/utils";
+import {
+  findManyAndCountQueryBuilderTyped,
+  findManyTyped,
+  findOneOrFailQueryBuilderTyped,
+  findOneOrFailTyped,
+} from "src/common/utils";
 import { GetAllPromoCampaignsOutput } from "src/modules/promo-campaigns/common/outputs";
 import { UUIDParamDto } from "src/common/dto";
 import { UNDEFINED_VALUE } from "src/common/constants";
@@ -70,15 +74,11 @@ export class PromoCampaignsService {
     return promoCampaigns;
   }
 
-  public async getPromoCampaignById(paramDto: UUIDParamDto): Promise<TGetPromoCampaignById> {
-    const queryOptions = this.promoCampaignQueryOptionsService.getPromoCampaignById(paramDto.id);
-    const promoCampaign = await findOneOrFailTyped<TGetPromoCampaignById>(
-      paramDto.id,
-      this.promoCampaignRepository,
-      queryOptions,
-    );
+  public async getPromoCampaignById(paramDto: UUIDParamDto): Promise<PromoCampaign> {
+    const queryBuilder = this.promoCampaignRepository.createQueryBuilder("promoCampaign");
+    this.promoCampaignQueryOptionsService.getPromoCampaignById(queryBuilder, paramDto.id);
 
-    return promoCampaign;
+    return await findOneOrFailQueryBuilderTyped<PromoCampaign>(paramDto.id, queryBuilder, PromoCampaign.name);
   }
 
   public async createPersonalPromoCampaign(dto: CreatePersonalPromoCampaignDto): Promise<void> {

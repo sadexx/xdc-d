@@ -1,7 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { LokiLogger } from "src/common/logger";
 import { NotificationService } from "src/modules/notifications/services";
-import { OldEPaymentFailedReason } from "src/modules/payments/common/enums";
 import { CLIENT_ROLES } from "src/common/constants";
 import { EmailsService } from "src/modules/emails/services";
 import { UserRole } from "src/modules/users/entities";
@@ -56,22 +55,6 @@ export class AppointmentNotificationService {
       });
 
     return;
-  }
-
-  public async sendAppointmentAuthorizationPaymentFailedNotification(
-    clientId: string,
-    platformId: string,
-    reason: OldEPaymentFailedReason,
-    appointmentDetails: IAppointmentDetailsOutput,
-  ): Promise<void> {
-    this.notificationService
-      .sendAppointmentAuthorizationPaymentFailedNotification(clientId, platformId, reason, appointmentDetails)
-      .catch((error: Error) => {
-        this.lokiLogger.error(
-          `Failed to send appointment payment failed notification for userRoleId: ${clientId}`,
-          error.stack,
-        );
-      });
   }
 
   public async sendUpdatedAppointmentNotificationToInterpreter(

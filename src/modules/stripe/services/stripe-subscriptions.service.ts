@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import Stripe from "stripe";
 import { denormalizedAmountToNormalized } from "src/common/utils";
-import { EPaymentCurrency } from "src/modules/payments-new/common/enums";
+import { EPaymentCurrency } from "src/modules/payments/common/enums/core";
 import { QueueInitializeService } from "src/modules/queues/services";
 import { ICreateSubscriptionData, ICreateNewProductPrice } from "src/modules/stripe/common/interfaces";
 import { StripeSdkService } from "src/modules/stripe/services";

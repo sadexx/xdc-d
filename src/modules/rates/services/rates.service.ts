@@ -226,7 +226,7 @@ export class RatesService {
     isExternalInterpreter?: boolean,
   ): Promise<BillingSummary> {
     const businessStartTime = appointment.businessStartTime ?? appointment.scheduledStartTime;
-    const businessDuration = differenceInMinutes(businessStartTime, appointment.schedulingDurationMin);
+    const businessDuration = differenceInMinutes(appointment.businessEndTime, businessStartTime);
 
     const config: CalculationConfig = {
       calculationType: ECalculationType.APPOINTMENT_END_PRICE,
@@ -236,7 +236,7 @@ export class RatesService {
       communicationType: appointment.communicationType,
       interpretingType: appointment.interpretingType,
       topic: appointment.topic,
-      scheduleDateTime: businessStartTime as string,
+      scheduleDateTime: businessStartTime,
       duration: businessDuration,
       acceptedOvertime: appointment.acceptOvertimeRates,
       interpreterTimezone: appointment.interpreterTimezone,
@@ -269,7 +269,7 @@ export class RatesService {
       interpretingType: appointment.interpretingType,
       topic: appointment.topic,
       // TODO: Add Date now ILiveAppointmentCacheData - extensionPeriodStart
-      scheduleDateTime: businessStartTime as string,
+      scheduleDateTime: businessStartTime,
       duration: businessExtensionTime,
       acceptedOvertime: appointment.acceptOvertimeRates,
       interpreterTimezone: appointment.interpreterTimezone,

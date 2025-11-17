@@ -13,3 +13,5 @@ export type NonNullableProperties<T, K extends keyof T> = Prettify<
     [P in K]-?: NonNullable<T[P]>;
   }
 >;
+
+export type StrictOmit<T, K extends keyof T> = Pick<T, Exclude<keyof T, K>>;

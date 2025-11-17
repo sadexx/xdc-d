@@ -4,12 +4,12 @@ import {
   TCancelMembershipSubscriptionUserRole,
   TDeactivateMembership,
   TGetTrialEndTimestampDiscountHolder,
+  TMembershipPriceForUpdate,
   TProcessAndSavePaymentMembership,
   TProcessMembershipPayment,
   TProcessMembershipPaymentUserRole,
   TProcessMembershipSubscription,
   TProcessMembershipSubscriptionUserRole,
-  TUpdateMembershipPrice,
 } from "src/modules/memberships/common/types";
 import { IGetMembershipPrice } from "src/modules/memberships/common/interfaces";
 import {
@@ -23,14 +23,14 @@ import { UpdateMembershipPriceDto } from "src/modules/memberships/common/dto";
 import { InjectRepository } from "@nestjs/typeorm";
 import Stripe from "stripe";
 import { Repository } from "typeorm";
-import { findOneOrFailTyped, normalizedAmountToDenormalized } from "src/common/utils";
-import { EPaymentSystem } from "src/modules/payments-new/common/enums";
+import { findOneOrFailTyped, formatDecimalString, normalizedAmountToDenormalized } from "src/common/utils";
 import {
-  OldECurrencies,
-  OldECustomerType,
-  OldEPaymentDirection,
-  OldEPaymentStatus,
-} from "src/modules/payments/common/enums";
+  EPaymentCurrency,
+  EPaymentCustomerType,
+  EPaymentDirection,
+  EPaymentStatus,
+  EPaymentSystem,
+} from "src/modules/payments/common/enums/core";
 import { UserRole } from "src/modules/users/entities";
 import { Membership, MembershipAssignment } from "src/modules/memberships/entities";
 import {
@@ -40,7 +40,7 @@ import {
 } from "src/modules/memberships/services";
 import { EmailsService } from "src/modules/emails/services";
 import { QueueInitializeService } from "src/modules/queues/services";
-import { Payment, PaymentItem } from "src/modules/payments-new/entities";
+import { Payment, PaymentItem } from "src/modules/payments/entities";
 
 @Injectable()
 export class MembershipPaymentsService {
@@ -102,7 +102,7 @@ export class MembershipPaymentsService {
 
   public async updateStripePrice(
     dto: UpdateMembershipPriceDto,
-    membershipPrice: TUpdateMembershipPrice,
+    membershipPrice: TMembershipPriceForUpdate,
   ): Promise<string> {
     const basePrice = dto.price ?? membershipPrice.price;
     const gstAmount = dto.gstAmount ?? membershipPrice.gstAmount ?? 0;
@@ -201,7 +201,7 @@ export class MembershipPaymentsService {
     }
 
     const amount = normalizedAmountToDenormalized(invoice.amount_due);
-    const currency = invoice.currency.toUpperCase() as OldECurrencies;
+    const currency = invoice.currency.toUpperCase() as EPaymentCurrency;
     const invoiceNumber = `${userRole.user.platformId}-${payment.platformId}`;
     await this.emailsService.sendMembershipPaymentFailedEmail(
       userRole.profile.contactEmail,
@@ -250,18 +250,18 @@ export class MembershipPaymentsService {
     const amount = normalizedAmountToDenormalized(paymentSucceeded ? invoice.amount_paid : invoice.amount_due);
     const gstAmount = paymentSucceeded ? membershipPrice.gstAmount || 0 : 0;
 
-    const currency = invoice.currency.toUpperCase() as OldECurrencies;
+    const currency = invoice.currency.toUpperCase() as EPaymentCurrency;
     const paymentMethodInfo = `Credit Card ${userRole.paymentInformation?.stripeClientLastFour}`;
 
     const payment = this.paymentRepository.create({
-      customerType: OldECustomerType.INDIVIDUAL,
+      customerType: EPaymentCustomerType.INDIVIDUAL,
       fromClient: userRole,
       membershipId: membership.id,
-      totalGstAmount: gstAmount,
-      totalFullAmount: amount,
-      totalAmount: paymentSucceeded ? amount - gstAmount : amount,
+      totalGstAmount: formatDecimalString(gstAmount),
+      totalFullAmount: formatDecimalString(amount),
+      totalAmount: paymentSucceeded ? formatDecimalString(amount - gstAmount) : formatDecimalString(amount),
       system: EPaymentSystem.STRIPE,
-      direction: OldEPaymentDirection.INCOMING,
+      direction: EPaymentDirection.INCOMING,
       paymentMethodInfo,
       currency,
     });
@@ -286,12 +286,12 @@ export class MembershipPaymentsService {
     const savedPayment = await this.paymentRepository.save(payment);
     const paymentItem = this.paymentItemRepository.create({
       externalId: paymentIntent.id,
-      fullAmount: amount,
-      amount: paymentSucceeded ? amount - gstAmount : 0,
-      status: paymentSucceeded ? OldEPaymentStatus.SUCCESS : OldEPaymentStatus.FAILED,
+      fullAmount: formatDecimalString(amount),
+      amount: paymentSucceeded ? formatDecimalString(amount - gstAmount) : "0",
+      status: paymentSucceeded ? EPaymentStatus.SUCCESS : EPaymentStatus.FAILED,
       payment: savedPayment,
       receipt: stripeReceiptKey,
-      gstAmount,
+      gstAmount: formatDecimalString(gstAmount),
       currency,
     });
     await this.paymentItemRepository.save(paymentItem);

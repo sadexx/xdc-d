@@ -59,35 +59,6 @@ export const GetSpecialPromoCampaignsQuery = {
 };
 export type TGetSpecialPromoCampaigns = QueryResultType<PromoCampaign, typeof GetSpecialPromoCampaignsQuery.select>;
 
-export const GetPromoCampaignByIdQuery = {
-  select: {
-    id: true,
-    name: true,
-    promoCode: true,
-    discount: true,
-    discountMinutes: true,
-    startDate: true,
-    endDate: true,
-    usageLimit: true,
-    totalTimesUsed: true,
-    partnerName: true,
-    status: true,
-    target: true,
-    duration: true,
-    application: true,
-    communicationTypes: true,
-    schedulingTypes: true,
-    topics: true,
-    interpreterTypes: true,
-    interpretingTypes: true,
-    bannerDisplay: true,
-    conditionsUrl: true,
-    banner: { id: true, mobileBannerUrl: true, tabletBannerUrl: true, webBannerUrl: true },
-  } as const satisfies FindOptionsSelect<PromoCampaign>,
-  relations: { banner: true } as const satisfies FindOptionsRelations<PromoCampaign>,
-};
-export type TGetPromoCampaignById = QueryResultType<PromoCampaign, typeof GetPromoCampaignByIdQuery.select>;
-
 export const CreateCorporatePromoCampaignQuery = {
   select: { id: true, companyType: true } as const satisfies FindOptionsSelect<Company>,
 };

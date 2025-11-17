@@ -1,4 +1,4 @@
-import { Injectable, ServiceUnavailableException } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import Stripe from "stripe";
 import { ConfigService } from "@nestjs/config";
 import { IStripeSdkData } from "src/modules/stripe/common/interfaces/stripe-sdk-data.interface";
@@ -21,7 +21,7 @@ export class StripeSdkService {
       return customer;
     } catch (error) {
       this.lokiLogger.error(`Failed to create customer: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Failed to create customer.");
+      throw error;
     }
   }
 
@@ -32,7 +32,7 @@ export class StripeSdkService {
       return setupIntent;
     } catch (error) {
       this.lokiLogger.error(`Failed to create setup intent: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Failed to create setup intent.");
+      throw error;
     }
   }
 
@@ -46,7 +46,7 @@ export class StripeSdkService {
       return paymentMethod;
     } catch (error) {
       this.lokiLogger.error(`Failed to attach payment method: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Failed to attach payment method.");
+      throw error;
     }
   }
 
@@ -63,7 +63,7 @@ export class StripeSdkService {
         `Failed to set default payment method: ${(error as Error).message}`,
         (error as Error).stack,
       );
-      throw new ServiceUnavailableException("Failed to set default payment method.");
+      throw error;
     }
   }
 
@@ -74,7 +74,7 @@ export class StripeSdkService {
       return account;
     } catch (error) {
       this.lokiLogger.error(`Failed to create account: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Failed to create account.");
+      throw error;
     }
   }
 
@@ -85,7 +85,7 @@ export class StripeSdkService {
       return accountLink;
     } catch (error) {
       this.lokiLogger.error(`Failed to create account link: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Failed to create account link.");
+      throw error;
     }
   }
 
@@ -96,7 +96,7 @@ export class StripeSdkService {
       return loginLink;
     } catch (error) {
       this.lokiLogger.error(`Failed to create login link: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Failed to create login link.");
+      throw error;
     }
   }
 
@@ -107,7 +107,7 @@ export class StripeSdkService {
       return paymentIntent;
     } catch (error) {
       this.lokiLogger.error(`Failed to retrieve payment intent: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Failed to retrieve payment intent.");
+      throw error;
     }
   }
 
@@ -121,7 +121,7 @@ export class StripeSdkService {
       return paymentIntent;
     } catch (error) {
       this.lokiLogger.error(`Failed to create payment intent: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Failed to create payment intent.");
+      throw error;
     }
   }
 
@@ -136,7 +136,7 @@ export class StripeSdkService {
       return paymentIntent;
     } catch (error) {
       this.lokiLogger.error(`Failed to capture payment intent: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Failed to capture payment intent.");
+      throw error;
     }
   }
 
@@ -150,7 +150,7 @@ export class StripeSdkService {
       return paymentIntent;
     } catch (error) {
       this.lokiLogger.error(`Failed to cancel payment intent: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Failed to cancel payment intent.");
+      throw error;
     }
   }
 
@@ -164,7 +164,7 @@ export class StripeSdkService {
       return transfer;
     } catch (error) {
       this.lokiLogger.error(`Failed to create transfer: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Failed to create transfer.");
+      throw error;
     }
   }
 
@@ -178,7 +178,7 @@ export class StripeSdkService {
       return balance;
     } catch (error) {
       this.lokiLogger.error(`Failed to retrieve balance: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Failed to retrieve balance.");
+      throw error;
     }
   }
 
@@ -192,7 +192,7 @@ export class StripeSdkService {
       return payout;
     } catch (error) {
       this.lokiLogger.error(`Failed to create payout: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Failed to create payout.");
+      throw error;
     }
   }
 
@@ -203,7 +203,7 @@ export class StripeSdkService {
       return charge;
     } catch (error) {
       this.lokiLogger.error(`Failed to retrieve charge: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Failed to retrieve charge.");
+      throw error;
     }
   }
 
@@ -216,7 +216,7 @@ export class StripeSdkService {
       return subscriptions;
     } catch (error) {
       this.lokiLogger.error(`Failed to list subscriptions: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Failed to list subscriptions.");
+      throw error;
     }
   }
 
@@ -227,7 +227,7 @@ export class StripeSdkService {
       return subscription;
     } catch (error) {
       this.lokiLogger.error(`Failed to retrieve subscription: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Failed to retrieve subscription.");
+      throw error;
     }
   }
 
@@ -240,7 +240,7 @@ export class StripeSdkService {
       return subscription;
     } catch (error) {
       this.lokiLogger.error(`Failed to create subscription: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Failed to create subscription.");
+      throw error;
     }
   }
 
@@ -251,7 +251,7 @@ export class StripeSdkService {
       return subscription;
     } catch (error) {
       this.lokiLogger.error(`Failed to cancel subscription: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Failed to cancel subscription.");
+      throw error;
     }
   }
 
@@ -262,7 +262,7 @@ export class StripeSdkService {
       return productPrice;
     } catch (error) {
       this.lokiLogger.error(`Failed to retrieve product price: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Failed to retrieve product price.");
+      throw error;
     }
   }
 
@@ -273,7 +273,7 @@ export class StripeSdkService {
       return productPrice;
     } catch (error) {
       this.lokiLogger.error(`Failed to create product price: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Failed to create product price.");
+      throw error;
     }
   }
 
@@ -287,7 +287,7 @@ export class StripeSdkService {
       return product;
     } catch (error) {
       this.lokiLogger.error(`Failed to update product: ${(error as Error).message}`, (error as Error).stack);
-      throw new ServiceUnavailableException("Failed to update product.");
+      throw error;
     }
   }
 }

@@ -8,6 +8,7 @@ import {
   ICreateTransfer,
   ICreatePayout,
 } from "src/modules/stripe/common/interfaces";
+import { EStripeErrorCodes } from "src/modules/stripe/common/enums";
 
 @Injectable()
 export class StripeConnectService {
@@ -128,19 +129,14 @@ export class StripeConnectService {
       { stripeAccount: stripeAccountId },
     );
 
-    const instantAvailable = balance.instant_available;
+    const [instantAvailable] = balance.instant_available || [];
+    const [netAvailable] = instantAvailable ? instantAvailable.net_available || [] : [];
 
-    if (
-      !instantAvailable ||
-      instantAvailable.length === 0 ||
-      !instantAvailable[0].net_available ||
-      instantAvailable[0].net_available.length === 0 ||
-      !instantAvailable[0].net_available[0].destination
-    ) {
-      throw new BadRequestException("Required instant available balance or destination is missing for the account.");
+    if (!netAvailable || !netAvailable.destination) {
+      throw new BadRequestException(EStripeErrorCodes.INSTANT_BALANCE_MISSING);
     }
 
-    const destinationId = instantAvailable[0].net_available[0].destination;
+    const destinationId = netAvailable.destination;
     const payout = await this.stripeSdkService.createPayout(
       {
         amount: amount,

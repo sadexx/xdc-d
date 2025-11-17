@@ -21,7 +21,6 @@ import {
   AssignPromoCampaignUserRoleQuery,
   CreateCorporatePromoCampaignQuery,
   CreateOrUpdatePromoCampaignAssignmentQuery,
-  GetPromoCampaignByIdQuery,
   GetSpecialPromoCampaignsQuery,
   RemoveOldPromoCampaignsQuery,
   RemoveUnusedPromoCampaignBannersQuery,
@@ -45,8 +44,6 @@ import { subYears } from "date-fns";
 
 @Injectable()
 export class PromoCampaignQueryOptionsService {
-  constructor() {}
-
   /**
    ** PromoCampaignsService
    */
@@ -55,22 +52,34 @@ export class PromoCampaignQueryOptionsService {
     queryBuilder: SelectQueryBuilder<PromoCampaign>,
     dto: GetAllPromoCampaignsDto,
   ): void {
-    queryBuilder.addSelect([
-      "promoCampaign.id",
-      "promoCampaign.name",
-      "promoCampaign.promoCode",
-      "promoCampaign.discount",
-      "promoCampaign.discountMinutes",
-      "promoCampaign.startDate",
-      "promoCampaign.endDate",
-      "promoCampaign.usageLimit",
-      "promoCampaign.totalTimesUsed",
-      "promoCampaign.partnerName",
-      "promoCampaign.status",
-      "promoCampaign.target",
-      "promoCampaign.duration",
-      "promoCampaign.application",
-    ]);
+    queryBuilder
+      .select([
+        "promoCampaign.id",
+        "promoCampaign.name",
+        "promoCampaign.promoCode",
+        "promoCampaign.discount",
+        "promoCampaign.discountMinutes",
+        "promoCampaign.startDate",
+        "promoCampaign.endDate",
+        "promoCampaign.usageLimit",
+        "promoCampaign.totalTimesUsed",
+        "promoCampaign.partnerName",
+        "promoCampaign.status",
+        "promoCampaign.target",
+        "promoCampaign.duration",
+        "promoCampaign.application",
+      ])
+      .leftJoin(
+        "promoCampaign.promoCampaignAssignments",
+        "promoCampaignAssignments",
+        "promoCampaign.target = :target",
+        { target: EPromoCampaignTarget.CORPORATE_COMPANY },
+      )
+      .addSelect(["promoCampaignAssignments.id"])
+      .leftJoin("promoCampaignAssignments.discountHolder", "discountHolder")
+      .addSelect(["discountHolder.id"])
+      .leftJoin("discountHolder.company", "company")
+      .addSelect(["company.name"]);
 
     this.applyFilters(queryBuilder, dto);
     this.applyOrdering(queryBuilder, dto);
@@ -222,12 +231,45 @@ export class PromoCampaignQueryOptionsService {
     };
   }
 
-  public getPromoCampaignById(id: string): FindOneOptions<PromoCampaign> {
-    return {
-      select: GetPromoCampaignByIdQuery.select,
-      where: { id },
-      relations: GetPromoCampaignByIdQuery.relations,
-    };
+  public getPromoCampaignById(queryBuilder: SelectQueryBuilder<PromoCampaign>, id: string): void {
+    queryBuilder
+      .select([
+        "promoCampaign.id",
+        "promoCampaign.name",
+        "promoCampaign.promoCode",
+        "promoCampaign.discount",
+        "promoCampaign.discountMinutes",
+        "promoCampaign.startDate",
+        "promoCampaign.endDate",
+        "promoCampaign.usageLimit",
+        "promoCampaign.totalTimesUsed",
+        "promoCampaign.partnerName",
+        "promoCampaign.status",
+        "promoCampaign.target",
+        "promoCampaign.duration",
+        "promoCampaign.application",
+        "promoCampaign.communicationTypes",
+        "promoCampaign.schedulingTypes",
+        "promoCampaign.topics",
+        "promoCampaign.interpreterTypes",
+        "promoCampaign.interpretingTypes",
+        "promoCampaign.bannerDisplay",
+        "promoCampaign.conditionsUrl",
+      ])
+      .leftJoin("promoCampaign.banner", "banner")
+      .addSelect(["banner.id", "banner.mobileBannerUrl", "banner.tabletBannerUrl", "banner.webBannerUrl"])
+      .leftJoin(
+        "promoCampaign.promoCampaignAssignments",
+        "promoCampaignAssignments",
+        "promoCampaign.target = :target",
+        { target: EPromoCampaignTarget.CORPORATE_COMPANY },
+      )
+      .addSelect(["promoCampaignAssignments.id"])
+      .leftJoin("promoCampaignAssignments.discountHolder", "discountHolder")
+      .addSelect(["discountHolder.id"])
+      .leftJoin("discountHolder.company", "company")
+      .addSelect(["company.name"])
+      .where("promoCampaign.id = :id", { id });
   }
 
   public createCorporatePromoCampaignOptions(companyId: string): FindOneOptions<Company> {
@@ -413,6 +455,7 @@ export class PromoCampaignQueryOptionsService {
     return {
       select: ApplyPromoCampaignUsageForExtensionQuery.select,
       where: { discountHolder: { userRole: { id: userRoleId } } },
+      relations: ApplyPromoCampaignUsageForExtensionQuery.relations,
     };
   }
 }

@@ -22,7 +22,6 @@ import {
 } from "src/modules/appointments/shared/services";
 import { ITokenUserData } from "src/modules/tokens/common/interfaces";
 import { IMessageOutput } from "src/common/outputs";
-import { OldGeneralPaymentsService } from "src/modules/payments/services";
 import { ADMIN_ROLES, CLIENT_ROLES, INTERPRETER_ROLES } from "src/common/constants";
 import { LokiLogger } from "src/common/logger";
 import { AppointmentOrderSharedLogicService } from "src/modules/appointment-orders/shared/services";
@@ -30,6 +29,8 @@ import { UserRole } from "src/modules/users/entities";
 import { InterpreterCancellationRecordService } from "src/modules/interpreters/profile/services";
 import { TCancelAppointment } from "src/modules/appointments/appointment/common/types";
 import { IAppointmentDetailsOutput } from "src/modules/appointments/appointment/common/outputs";
+import { QueueInitializeService } from "src/modules/queues/services";
+import { EPaymentOperation } from "src/modules/payments-analysis/common/enums/core";
 
 @Injectable()
 export class AppointmentCancelService {
@@ -50,8 +51,8 @@ export class AppointmentCancelService {
     private readonly messagingResolveService: MessagingResolveService,
     private readonly attendeeManagementService: AttendeeManagementService,
     private readonly helperService: HelperService,
-    private readonly generalPaymentsService: OldGeneralPaymentsService,
     private readonly interpreterCancellationRecordService: InterpreterCancellationRecordService,
+    private readonly queueInitializeService: QueueInitializeService,
   ) {}
 
   public async cancelAppointment(id: string, user: ITokenUserData, dto: CancelAppointmentDto): Promise<IMessageOutput> {
@@ -108,11 +109,11 @@ export class AppointmentCancelService {
       await this.cleanupAppointmentAfterCancellation(appointment, isFullGroupCancellation);
       await this.notifyAllAppointmentParticipants(appointment, isFullGroupCancellation);
 
-      this.generalPaymentsService
-        .cancelPayInAuth(appointment as Appointment, isCancelledByClient)
-        .catch((error: Error) => {
-          this.lokiLogger.error(`Cancel appointment. Cancel payin error: ${error.message} `, error.stack);
-        });
+      await this.queueInitializeService.addProcessPaymentOperationQueue(
+        appointment.id,
+        EPaymentOperation.AUTHORIZATION_CANCEL_PAYMENT,
+        { isCancelledByClient },
+      );
     }
   }
 
@@ -245,11 +246,11 @@ export class AppointmentCancelService {
       appointment.clientId === user.userRoleId || (isInRoles(ADMIN_ROLES, user.role) && dto.isAdminCancelByClient);
 
     await this.createAppointmentCancellationInfo(appointment, user, dto);
-    this.generalPaymentsService
-      .cancelPayInAuth(appointment as Appointment, isCancelledByClient)
-      .catch((error: Error) => {
-        this.lokiLogger.error(`Cancel appointment. Cancel payin error: ${error.message} `, error.stack);
-      });
+    await this.queueInitializeService.addProcessPaymentOperationQueue(
+      appointment.id,
+      EPaymentOperation.AUTHORIZATION_CANCEL_PAYMENT,
+      { isCancelledByClient },
+    );
   }
 
   private async createAppointmentCancellationInfo(

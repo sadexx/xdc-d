@@ -373,7 +373,7 @@ export class RightToWorkCheckService {
       rightToWorkCheck.status !== ERightToWorkCheckStatus.VERIFIED &&
       rightToWorkCheck.userRole.role.name !== EUserRoleName.CORPORATE_INTERPRETING_PROVIDERS_IND_INTERPRETER
     ) {
-      throw new BadRequestException("This request can't be edited!");
+      throw new BadRequestException(ERightToWorkCheckErrorCodes.REQUEST_NOT_EDITABLE);
     }
 
     await this.interpreterProfileService.deleteLanguageFromInterpreterProfile(

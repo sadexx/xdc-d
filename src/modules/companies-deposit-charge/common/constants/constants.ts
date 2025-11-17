@@ -1,4 +1,4 @@
-import { EPaymentStatus } from "src/modules/payments-new/common/enums";
+import { EPaymentStatus } from "src/modules/payments/common/enums/core";
 
 export const MINIMUM_DEPOSIT_CHARGE_AMOUNT: number = 300;
 

@@ -7,21 +7,19 @@ import { Role, User, UserRole } from "src/modules/users/entities";
  */
 
 export type THandleRoleBasedLogin = Pick<User, "id" | "email"> & {
-  userRoles: Array<
-    Pick<
-      UserRole,
-      | "id"
-      | "userId"
-      | "operatedByCompanyId"
-      | "operatedByCompanyName"
-      | "isInDeleteWaiting"
-      | "accountStatus"
-      | "isActive"
-      | "isRequiredInfoFulfilled"
-    > & {
-      role: Pick<Role, "name">;
-    }
-  >;
+  userRoles: (Pick<
+    UserRole,
+    | "id"
+    | "userId"
+    | "operatedByCompanyId"
+    | "operatedByCompanyName"
+    | "isInDeleteWaiting"
+    | "accountStatus"
+    | "isActive"
+    | "isRequiredInfoFulfilled"
+  > & {
+    role: Pick<Role, "name">;
+  })[];
 };
 
 /**

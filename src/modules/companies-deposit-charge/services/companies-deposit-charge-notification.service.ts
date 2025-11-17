@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { LokiLogger } from "src/common/logger";
 import { MINIMUM_DEPOSIT_CHARGE_AMOUNT } from "src/modules/companies-deposit-charge/common/constants";
-import { EPaymentFailedReason } from "src/modules/payments-new/common/enums";
+import { EPaymentFailedReason } from "src/modules/payments/common/enums/core";
 import {
   TChargeCompaniesDeposit,
   TChargeCompaniesDepositSuperAdmin,
@@ -10,7 +10,7 @@ import {
 import { EUserRoleName } from "src/modules/users/common/enums";
 import { EmailsService } from "src/modules/emails/services";
 import { NotificationService } from "src/modules/notifications/services";
-import { ISendDepositChargeFailedNotificationData } from "src/modules/companies-deposit-charge/common/interfaces";
+import { IHandleDepositChargeFailureData } from "src/modules/companies-deposit-charge/common/interfaces";
 
 @Injectable()
 export class CompaniesDepositChargeNotificationService {
@@ -67,7 +67,7 @@ export class CompaniesDepositChargeNotificationService {
       });
   }
 
-  public async sendDepositChargeFailedNotification(data: ISendDepositChargeFailedNotificationData): Promise<void> {
+  public async sendDepositChargeFailedNotification(data: IHandleDepositChargeFailureData): Promise<void> {
     const { company, calculatedAmounts, currency, payment, superAdminRole } = data;
 
     this.emailsService

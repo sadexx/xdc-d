@@ -2,7 +2,7 @@ import { Injectable, Inject, OnModuleInit, OnModuleDestroy } from "@nestjs/commo
 import { BulkJobOptions, ConnectionOptions, DefaultJobOptions, JobsOptions, Queue } from "bullmq";
 import { IQueueData, IQueueDataBulk, IQueueSettings } from "src/modules/queues/common/interfaces";
 import { EQueueType } from "src/modules/queues/common/enums";
-import { BULLMQ_CONNECTION } from "src/modules/queues/common/constants";
+import { BULLMQ_CONNECTION, PAYMENTS_EXECUTION_QUEUE_RETRIES } from "src/modules/queues/common/constants";
 import {
   NUMBER_OF_MILLISECONDS_IN_MINUTE,
   NUMBER_OF_MILLISECONDS_IN_SECOND,
@@ -81,11 +81,22 @@ export class QueueManagementService implements OnModuleInit, OnModuleDestroy {
           },
         };
 
+      case EQueueType.PAYMENTS_ANALYSIS_QUEUE:
+        return {
+          queueName: EQueueType.PAYMENTS_ANALYSIS_QUEUE,
+          queueOptions: {
+            defaultJobOptions: DEFAULT_JOB_OPTIONS,
+          },
+        };
+
       case EQueueType.PAYMENTS_EXECUTION_QUEUE:
         return {
           queueName: EQueueType.PAYMENTS_EXECUTION_QUEUE,
           queueOptions: {
-            defaultJobOptions: DEFAULT_JOB_OPTIONS,
+            defaultJobOptions: {
+              ...DEFAULT_JOB_OPTIONS,
+              attempts: PAYMENTS_EXECUTION_QUEUE_RETRIES,
+            },
           },
         };
 

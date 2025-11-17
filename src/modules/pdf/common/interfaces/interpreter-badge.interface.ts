@@ -1,19 +1,8 @@
-import { EUserTitle } from "src/modules/users/common/enums";
+import { TCreateOrUpdateInterpreterBadgePdf } from "src/modules/interpreters/badge/common/types";
 
 export interface IInterpreterBadge {
-  userRoleId: string;
-  platformId: string;
-  firstName: string;
-  lastName: string;
-  title: EUserTitle;
-  interpreterRole: string;
-  avatar: string;
-  averageRating: number;
+  userRole: TCreateOrUpdateInterpreterBadgePdf;
   interpreterBadge: string;
+  interpreterRole: string;
   companyName?: string;
-}
-
-export interface IInterpreterBadgeWithKey {
-  interpreterBadgeKey: string;
-  interpreterBadgeData: IInterpreterBadge;
 }

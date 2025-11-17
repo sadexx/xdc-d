@@ -17,6 +17,7 @@ import { DiscountHolder } from "src/modules/discounts/entities";
 import { DiscountQueryOptionsService } from "src/modules/discounts/services";
 import { findOneTyped } from "src/common/utils";
 import { IPromoCampaignDiscountData } from "src/modules/promo-campaigns/common/interfaces";
+import { UNDEFINED_VALUE } from "src/common/constants";
 
 @Injectable()
 export class DiscountsFetchService {
@@ -33,17 +34,17 @@ export class DiscountsFetchService {
   public async fetchDiscountsForAppointment(
     manager: EntityManager,
     appointment: TApplyDiscountsForAppointmentValidated,
-  ): Promise<IDiscountRate | null> {
+  ): Promise<IDiscountRate | undefined> {
     const assignedEntities = await this.getAssignedDiscountEntities(appointment);
 
     if (assignedEntities.length === 0) {
-      return null;
+      return UNDEFINED_VALUE;
     }
 
     const validatedDiscountEntities = this.validateDiscountEntities(assignedEntities, appointment);
 
     if (validatedDiscountEntities.length === 0) {
-      return null;
+      return UNDEFINED_VALUE;
     }
 
     const discountsResult = await this.fetchDiscountsFromEntities(manager, validatedDiscountEntities, appointment);
@@ -57,17 +58,17 @@ export class DiscountsFetchService {
   public async fetchDiscountsForExtension(
     businessExtensionTime: number,
     appointment: TApplyDiscountsForAppointmentValidated,
-  ): Promise<IDiscountRate | null> {
+  ): Promise<IDiscountRate | undefined> {
     const assignedEntities = await this.getAssignedDiscountEntities(appointment);
 
     if (assignedEntities.length === 0) {
-      return null;
+      return UNDEFINED_VALUE;
     }
 
     const validatedDiscountEntities = this.validateDiscountEntities(assignedEntities, appointment);
 
     if (validatedDiscountEntities.length === 0) {
-      return null;
+      return UNDEFINED_VALUE;
     }
 
     const discountsResult = await this.fetchDiscountsFromEntitiesForExtension(
@@ -239,7 +240,7 @@ export class DiscountsFetchService {
   private buildDiscountRate(
     membershipResult: IMembershipDiscountData | null,
     promoCampaignResult: IPromoCampaignDiscountData | null,
-  ): IDiscountRate | null {
+  ): IDiscountRate | undefined {
     const discountRate: IDiscountRate = {
       promoCampaignDiscount: promoCampaignResult?.discount ?? null,
       membershipDiscount: membershipResult?.discount ?? null,
@@ -250,6 +251,6 @@ export class DiscountsFetchService {
     };
     const isEmptyResult = Object.values(discountRate).every((value) => value === null);
 
-    return isEmptyResult ? null : discountRate;
+    return isEmptyResult ? UNDEFINED_VALUE : discountRate;
   }
 }

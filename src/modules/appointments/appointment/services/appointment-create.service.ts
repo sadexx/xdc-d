@@ -28,17 +28,13 @@ import { findOneOrFail } from "src/common/utils";
 import { AppointmentQueryOptionsService, AppointmentSharedService } from "src/modules/appointments/shared/services";
 import { addMinutes } from "date-fns";
 import { ITokenUserData } from "src/modules/tokens/common/interfaces";
-import { OldGeneralPaymentsService, OldPaymentsHelperService } from "src/modules/payments/services";
 import { Address } from "src/modules/addresses/entities";
-import { OldEPayInStatus } from "src/modules/payments/common/enums";
 import { LokiLogger } from "src/common/logger";
-import { AppointmentFailedPaymentCancelService } from "src/modules/appointments/failed-payment-cancel/services";
-import { AppointmentOrderSharedLogicService } from "src/modules/appointment-orders/shared/services";
 import { ICreateFaceToFaceAppointmentAddress } from "src/modules/addresses/common/interfaces";
 import { ICreateMultiWayParticipant } from "src/modules/multi-way-participant/common/interfaces";
 import { Attendee } from "src/modules/chime-meeting-configuration/entities";
-import { PaymentAnalysisService } from "src/modules/payment-analysis/services";
-import { EPaymentOperation } from "src/modules/payment-analysis/common/enums";
+import { EPaymentOperation } from "src/modules/payments-analysis/common/enums/core";
+import { QueueInitializeService } from "src/modules/queues/services";
 
 export class AppointmentCreateService {
   private readonly lokiLogger = new LokiLogger(AppointmentCreateService.name);
@@ -52,16 +48,12 @@ export class AppointmentCreateService {
     @InjectRepository(Address)
     private readonly addressRepository: Repository<Address>,
     private readonly appointmentQueryOptionsService: AppointmentQueryOptionsService,
-    private readonly appointmentOrderSharedLogicService: AppointmentOrderSharedLogicService,
-    private readonly appointmentFailedPaymentCancelService: AppointmentFailedPaymentCancelService,
     private readonly appointmentOrderCreateService: AppointmentOrderCreateService,
     private readonly multiWayParticipantService: MultiWayParticipantService,
     private readonly meetingCreationService: MeetingCreationService,
     private readonly attendeeCreationService: AttendeeCreationService,
-    private readonly generalPaymentsService: OldGeneralPaymentsService,
-    private readonly paymentsHelperService: OldPaymentsHelperService,
     private readonly appointmentSharedService: AppointmentSharedService,
-    private readonly paymentAnalysisService: PaymentAnalysisService,
+    private readonly queueInitializeService: QueueInitializeService,
   ) {}
 
   public async checkConflictsAndCreateVirtualAppointment(
@@ -145,14 +137,11 @@ export class AppointmentCreateService {
 
     await this.appointmentSharedService.sendParticipantsInvitations(savedAppointment, client, participants, attendees);
 
-    await this.paymentAnalysisService
-      .analyzePaymentAction(savedAppointment.id, EPaymentOperation.AUTHORIZE_PAYMENT)
-      .catch((error: Error) => {
-        this.lokiLogger.error(
-          `Failed to analyze payment action: ${error.message}, appointmentId: ${savedAppointment.id}`,
-          error.stack,
-        );
-      });
+    await this.queueInitializeService.addProcessPaymentOperationQueue(
+      savedAppointment.id,
+      EPaymentOperation.AUTHORIZE_PAYMENT,
+      { isShortTimeSlot: false },
+    );
 
     return savedAppointment;
   }
@@ -254,14 +243,11 @@ export class AppointmentCreateService {
     );
 
     for (const appointment of appointments) {
-      this.paymentAnalysisService
-        .analyzePaymentAction(appointment.id, EPaymentOperation.AUTHORIZE_PAYMENT)
-        .catch((error: Error) => {
-          this.lokiLogger.error(
-            `Failed to analyze payment action: ${error.message}, appointmentGroupId: ${appointments[0].appointmentsGroupId}`,
-            error.stack,
-          );
-        });
+      await this.queueInitializeService.addProcessPaymentOperationQueue(
+        appointment.id,
+        EPaymentOperation.AUTHORIZE_PAYMENT,
+        { isShortTimeSlot: false },
+      );
     }
   }
 
@@ -330,14 +316,11 @@ export class AppointmentCreateService {
     await this.appointmentOrderCreateService.constructAndCreateAppointmentOrder(savedAppointment, client, address);
     await this.createAppointmentAdminInfo(savedAppointment);
 
-    await this.paymentAnalysisService
-      .analyzePaymentAction(savedAppointment.id, EPaymentOperation.AUTHORIZE_PAYMENT)
-      .catch((error: Error) => {
-        this.lokiLogger.error(
-          `Failed to analyze payment action: ${error.message}, appointmentId: ${savedAppointment.id}`,
-          error.stack,
-        );
-      });
+    await this.queueInitializeService.addProcessPaymentOperationQueue(
+      savedAppointment.id,
+      EPaymentOperation.AUTHORIZE_PAYMENT,
+      { isShortTimeSlot: false },
+    );
 
     return savedAppointment;
   }
@@ -428,14 +411,11 @@ export class AppointmentCreateService {
     );
 
     for (const appointment of appointments) {
-      this.paymentAnalysisService
-        .analyzePaymentAction(appointment.id, EPaymentOperation.AUTHORIZE_PAYMENT)
-        .catch((error: Error) => {
-          this.lokiLogger.error(
-            `Failed to analyze payment action: ${error.message}, appointmentGroupId: ${appointments[0].appointmentsGroupId}`,
-            error.stack,
-          );
-        });
+      await this.queueInitializeService.addProcessPaymentOperationQueue(
+        appointment.id,
+        EPaymentOperation.AUTHORIZE_PAYMENT,
+        { isShortTimeSlot: false },
+      );
     }
   }
 
@@ -571,131 +551,5 @@ export class AppointmentCreateService {
     const newAddress = this.addressRepository.create(dto);
 
     return await this.addressRepository.save(newAddress);
-  }
-
-  // TODO: remove after new payments
-  protected async paymentAuthAndSearchTriggerIndividual(
-    appointment: Appointment,
-    appointmentOrderId: string,
-  ): Promise<void> {
-    let isPaymentAlreadyCancelled = false;
-
-    const paymentSuccess = await this.generalPaymentsService.makePayInAuth(appointment).catch(async (error: Error) => {
-      this.lokiLogger.error(`Failed to make payin: ${error.message}, appointmentId: ${appointment.id}`, error.stack);
-
-      const waitListRedirectingResult = await this.paymentsHelperService.redirectPaymentToWaitList(appointment, true);
-
-      if (waitListRedirectingResult.isNeedToCancelAppointment) {
-        this.appointmentFailedPaymentCancelService
-          .cancelAppointmentPaymentFailed(appointment.id)
-          .then(() => {
-            isPaymentAlreadyCancelled = true;
-          })
-          .catch((error: Error) => {
-            this.lokiLogger.error(
-              `Failed to cancel payin auth: ${error.message}, appointmentId: ${appointment.id}`,
-              error.stack,
-            );
-
-            return OldEPayInStatus.AUTHORIZATION_FAILED;
-          });
-      }
-
-      return OldEPayInStatus.AUTHORIZATION_FAILED;
-    });
-
-    if (
-      paymentSuccess === OldEPayInStatus.AUTHORIZATION_SUCCESS ||
-      paymentSuccess === OldEPayInStatus.REDIRECTED_TO_WAIT_LIST
-    ) {
-      return await this.appointmentOrderSharedLogicService.triggerLaunchSearchForIndividualOrder(appointmentOrderId);
-    }
-
-    if (!isPaymentAlreadyCancelled) {
-      this.appointmentFailedPaymentCancelService
-        .cancelAppointmentPaymentFailed(appointment.id)
-        .catch((error: Error) => {
-          this.lokiLogger.error(
-            `Failed to cancel payin auth: ${error.message}, appointmentId: ${appointment.id}`,
-            error.stack,
-          );
-        });
-    }
-  }
-
-  // TODO: remove after new payments
-  protected async paymentAuthAndSearchTriggerGroup(
-    appointments: Appointment[],
-    appointmentOrderGroupId: string,
-  ): Promise<void> {
-    let paymentStatus: OldEPayInStatus | null = null;
-    let isAppointmentGroupMustBeenCancelled = false;
-
-    for (const appointment of appointments) {
-      const paymentSuccess = await this.generalPaymentsService
-        .makePayInAuth(appointment)
-        .catch(async (error: Error) => {
-          this.lokiLogger.error(`Failed to make payin: ${error.message}`, error.stack);
-
-          const waitListRedirectingResult = await this.paymentsHelperService.redirectPaymentToWaitList(
-            appointment,
-            true,
-          );
-
-          if (waitListRedirectingResult.isNeedToCancelAppointment) {
-            isAppointmentGroupMustBeenCancelled = true;
-          }
-
-          return OldEPayInStatus.AUTHORIZATION_FAILED;
-        });
-
-      if (paymentSuccess === OldEPayInStatus.AUTHORIZATION_FAILED) {
-        paymentStatus = paymentSuccess;
-      }
-
-      if (
-        paymentSuccess === OldEPayInStatus.AUTHORIZATION_SUCCESS &&
-        paymentStatus !== OldEPayInStatus.AUTHORIZATION_FAILED
-      ) {
-        paymentStatus = paymentSuccess;
-      }
-
-      if (
-        (paymentSuccess === OldEPayInStatus.REDIRECTED_TO_WAIT_LIST ||
-          paymentSuccess === OldEPayInStatus.PAY_IN_NOT_CHANGED ||
-          paymentSuccess === OldEPayInStatus.PAY_IN_REATTACHED) &&
-        paymentStatus !== OldEPayInStatus.AUTHORIZATION_FAILED &&
-        paymentStatus !== OldEPayInStatus.AUTHORIZATION_SUCCESS
-      ) {
-        paymentStatus = paymentSuccess;
-      }
-    }
-
-    if (
-      paymentStatus === OldEPayInStatus.AUTHORIZATION_SUCCESS ||
-      paymentStatus === OldEPayInStatus.REDIRECTED_TO_WAIT_LIST ||
-      paymentStatus === OldEPayInStatus.PAY_IN_REATTACHED ||
-      paymentStatus === OldEPayInStatus.PAY_IN_NOT_CHANGED
-    ) {
-      await this.appointmentOrderSharedLogicService.triggerLaunchSearchForIndividualOrderGroup(appointmentOrderGroupId);
-    } else {
-      if (isAppointmentGroupMustBeenCancelled && appointments[0].appointmentsGroupId) {
-        this.generalPaymentsService.cancelPayInAuthForGroup(appointments).catch((error: Error) => {
-          this.lokiLogger.error(
-            `Failed to cancel payin auth: ${error.message}, appointmentGroupId: ${appointments[0].appointmentsGroupId}`,
-            error.stack,
-          );
-        });
-
-        this.appointmentFailedPaymentCancelService
-          .cancelGroupAppointmentsPaymentFailed(appointments[0].appointmentsGroupId)
-          .catch((error: Error) => {
-            this.lokiLogger.error(
-              `Failed to cancel payin auth: ${error.message}, appointmentGroupId: ${appointments[0].appointmentsGroupId}`,
-              error.stack,
-            );
-          });
-      }
-    }
   }
 }

@@ -12,6 +12,7 @@ import {
   GetSubscriptionStatusQuery,
   GetUserMembershipsQuery,
   GetUserMembershipsUserRoleQuery,
+  LoadMembershipPriceForUpdateQuery,
   ProcessMembershipAssignmentMembershipQuery,
   ProcessMembershipAssignmentQuery,
   ProcessMembershipPaymentQuery,
@@ -19,7 +20,6 @@ import {
   ProcessMembershipSubscriptionQuery,
   ProcessMembershipSubscriptionUserRoleQuery,
   UpdateExistingMembershipSubscriptionsQuery,
-  UpdateMembershipPriceQuery,
 } from "src/modules/memberships/common/types";
 import { UserRole } from "src/modules/users/entities";
 import { EMembershipStatus } from "src/modules/memberships/common/enums";
@@ -102,11 +102,11 @@ export class MembershipsQueryOptionsService {
    ** MembershipsPriceService
    */
 
-  public updateMembershipPriceOptions(membershipPriceId: string): FindOneOptions<MembershipPrice> {
+  public loadMembershipForPriceUpdateOptions(membershipPriceId: string): FindOneOptions<MembershipPrice> {
     return {
-      select: UpdateMembershipPriceQuery.select,
+      select: LoadMembershipPriceForUpdateQuery.select,
       where: { id: membershipPriceId },
-      relations: UpdateMembershipPriceQuery.relations,
+      relations: LoadMembershipPriceForUpdateQuery.relations,
     };
   }
 

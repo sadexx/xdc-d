@@ -23,7 +23,7 @@ export class CompanyDepositCharge {
   company: Company;
 
   @Column({ type: "decimal", precision: 12, scale: 2, name: "deposit_charge_amount" })
-  depositChargeAmount: number;
+  depositChargeAmount: string;
 
   @CreateDateColumn({ type: "timestamptz", name: "creation_date" })
   creationDate: Date;

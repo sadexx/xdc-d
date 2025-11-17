@@ -44,7 +44,7 @@ export type TMapLanguageDocCheckStatus = Pick<LanguageDocCheck, "status">;
 
 export type TMapRightToWorkAsLanguageBuddyCheckStatus = Pick<UserRole, "id"> & {
   ieltsCheck: TMapIeltsCheckStatus | null;
-  languageDocChecks: Array<TMapLanguageDocCheckStatus>;
+  languageDocChecks: TMapLanguageDocCheckStatus[];
 };
 
 export type TMapDocusignContractStatus = Pick<DocusignContract, "docusignStatus">;

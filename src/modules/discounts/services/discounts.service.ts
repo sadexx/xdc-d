@@ -57,7 +57,7 @@ export class DiscountsService {
   public async fetchDiscountRateForExtension(
     businessExtensionTime: number,
     appointment: TApplyDiscountsForAppointment,
-  ): Promise<IDiscountRate | null> {
+  ): Promise<IDiscountRate | undefined> {
     return this.discountsFetchService.fetchDiscountsForExtension(
       businessExtensionTime,
       appointment as TApplyDiscountsForAppointmentValidated,

@@ -10,15 +10,16 @@ import {
 } from "src/modules/interpreters/profile/common/enum";
 import { accountStatusOrder, EAccountStatus, EUserRoleName, userGenderOrder } from "src/modules/users/common/enums";
 import { UserRole } from "src/modules/users/entities";
-import { OldPayment } from "src/modules/payments/entities";
-import {
-  OldEPaymentDirection,
-  OldEReceiptType,
-  paymentMethodFilterMap,
-  paymentStatusOrder,
-} from "src/modules/payments/common/enums";
 import { DUE_PAYMENT_STATUSES } from "src/common/constants";
 import { membershipTypeOrder } from "src/modules/memberships/common/enums";
+import { Payment } from "src/modules/payments/entities";
+import {
+  EPaymentDirection,
+  EPaymentReceiptType,
+  paymentMethodFilterMap,
+  paymentStatusOrder,
+} from "src/modules/payments/common/enums/core";
+import { LoadPaymentForStatusChangeQuery } from "src/modules/admin/common/types";
 
 @Injectable()
 export class AdminQueryOptionsService {
@@ -412,7 +413,7 @@ export class AdminQueryOptionsService {
     };
   }
 
-  public getUserPaymentsOptions(queryBuilder: SelectQueryBuilder<OldPayment>, dto: GetUserPaymentsDto): void {
+  public getUserPaymentsOptions(queryBuilder: SelectQueryBuilder<Payment>, dto: GetUserPaymentsDto): void {
     queryBuilder
       .select([
         "payment.id",
@@ -426,7 +427,6 @@ export class AdminQueryOptionsService {
         "payment.note",
         "payment.isDepositCharge",
         "payment.membershipId",
-        "payment.companyId",
         "payment.updatingDate",
       ])
       .leftJoin("payment.appointment", "appointment")
@@ -457,7 +457,7 @@ export class AdminQueryOptionsService {
     queryBuilder.skip(dto.offset);
   }
 
-  public applyFiltersForUserPayments(queryBuilder: SelectQueryBuilder<OldPayment>, dto: GetUserPaymentsDto): void {
+  public applyFiltersForUserPayments(queryBuilder: SelectQueryBuilder<Payment>, dto: GetUserPaymentsDto): void {
     if (dto.searchField) {
       this.applySearchForUserPayments(queryBuilder, dto.searchField);
     }
@@ -467,20 +467,20 @@ export class AdminQueryOptionsService {
         userRoleId: dto.userRoleId,
       });
     } else if (dto.companyId) {
-      queryBuilder.andWhere("payment.companyId = :companyId", { companyId: dto.companyId });
+      queryBuilder.andWhere("company.id = :companyId", { companyId: dto.companyId });
     }
 
     if (dto.receiptType) {
       switch (dto.receiptType) {
-        case OldEReceiptType.INVOICE:
-          queryBuilder.andWhere("payment.direction = :incoming", { incoming: OldEPaymentDirection.INCOMING });
+        case EPaymentReceiptType.INVOICE:
+          queryBuilder.andWhere("payment.direction = :incoming", { incoming: EPaymentDirection.INCOMING });
           break;
-        case OldEReceiptType.REMITTANCE_ADVICE:
-          queryBuilder.andWhere("payment.direction = :outcoming", { outcoming: OldEPaymentDirection.OUTCOMING });
+        case EPaymentReceiptType.REMITTANCE_ADVICE:
+          queryBuilder.andWhere("payment.direction = :outcoming", { outcoming: EPaymentDirection.OUTCOMING });
           break;
-        case OldEReceiptType.TAX_INVOICE:
+        case EPaymentReceiptType.TAX_INVOICE:
           queryBuilder
-            .andWhere("payment.direction = :outcoming", { outcoming: OldEPaymentDirection.OUTCOMING })
+            .andWhere("payment.direction = :outcoming", { outcoming: EPaymentDirection.OUTCOMING })
             .andWhere("payment.totalGstAmount > 0");
           break;
       }
@@ -512,7 +512,7 @@ export class AdminQueryOptionsService {
     }
   }
 
-  private applySearchForUserPayments(queryBuilder: SelectQueryBuilder<OldPayment>, searchField: string): void {
+  private applySearchForUserPayments(queryBuilder: SelectQueryBuilder<Payment>, searchField: string): void {
     const searchTerm = `%${searchField}%`;
     queryBuilder.andWhere(
       new Brackets((qb) => {
@@ -526,7 +526,7 @@ export class AdminQueryOptionsService {
     );
   }
 
-  public applyOrderingForUserPayments(queryBuilder: SelectQueryBuilder<OldPayment>, dto: GetUserPaymentsDto): void {
+  public applyOrderingForUserPayments(queryBuilder: SelectQueryBuilder<Payment>, dto: GetUserPaymentsDto): void {
     if (dto.sortOrder) {
       queryBuilder.addOrderBy("payment.updatingDate", dto.sortOrder);
     }
@@ -537,7 +537,7 @@ export class AdminQueryOptionsService {
 
     if (dto.amountOrder) {
       const orderField =
-        dto.receiptType === OldEReceiptType.TAX_INVOICE ? "payment.totalGstAmount" : "payment.totalFullAmount";
+        dto.receiptType === EPaymentReceiptType.TAX_INVOICE ? "payment.totalGstAmount" : "payment.totalFullAmount";
       queryBuilder.addOrderBy(orderField, dto.amountOrder);
     }
 
@@ -581,5 +581,13 @@ export class AdminQueryOptionsService {
       queryBuilder.addSelect(invoiceNumberCase, "invoice_number_order");
       queryBuilder.addOrderBy("invoice_number_order", dto.invoiceNumberOrder);
     }
+  }
+
+  public loadPaymentForStatusChangeOptions(paymentId: string): FindOneOptions<Payment> {
+    return {
+      select: LoadPaymentForStatusChangeQuery.select,
+      where: { id: paymentId },
+      relations: LoadPaymentForStatusChangeQuery.relations,
+    };
   }
 }

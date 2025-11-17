@@ -13,14 +13,12 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { PaymentInformation } from "src/modules/payment-information/entities";
 import { DeepPartial, FindOptionsWhere, Repository } from "typeorm";
 import { DEFAULT_COUNTRY, DEFAULT_CURRENCY } from "src/modules/stripe/common/constants/constants";
-import { OldEPaymentStatus } from "src/modules/payments/common/enums";
 import { ActivationTrackingService } from "src/modules/activation-tracking/services";
-import { findOneOrFail, findOneTyped, round2 } from "src/common/utils";
+import { findOneOrFail, findOneTyped, formatDecimalString } from "src/common/utils";
 import { MembershipPaymentsService } from "src/modules/memberships/services";
 import { LokiLogger } from "src/common/logger";
 import { NotificationService } from "src/modules/notifications/services";
-import { EPaymentSystem } from "src/modules/payments-new/common/enums";
-import { OldPaymentItem } from "src/modules/payments/entities";
+import { EPaymentStatus, EPaymentSystem } from "src/modules/payments/common/enums/core";
 import { randomUUID } from "node:crypto";
 import { AwsS3Service } from "src/modules/aws/s3/aws-s3.service";
 import { Company } from "src/modules/companies/entities";
@@ -34,6 +32,7 @@ import {
   WebhookPaymentIntentSucceededQuery,
 } from "src/modules/webhook-processor/common/types";
 import { QueueInitializeService } from "src/modules/queues/services";
+import { PaymentItem } from "src/modules/payments/entities";
 
 @Injectable()
 export class WebhookStripeService {
@@ -42,8 +41,8 @@ export class WebhookStripeService {
   public constructor(
     @InjectRepository(PaymentInformation)
     private readonly paymentInformationRepository: Repository<PaymentInformation>,
-    @InjectRepository(OldPaymentItem)
-    private readonly paymentItemRepository: Repository<OldPaymentItem>,
+    @InjectRepository(PaymentItem)
+    private readonly paymentItemRepository: Repository<PaymentItem>,
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
     private readonly activationTrackingService: ActivationTrackingService,
@@ -359,7 +358,7 @@ export class WebhookStripeService {
     await this.updatePaymentItemStatusByDepositCharge(
       paymentIntentId,
       event.type,
-      OldEPaymentStatus.DEPOSIT_PAYMENT_REQUEST_CREATING,
+      EPaymentStatus.DEPOSIT_PAYMENT_REQUEST_CREATING,
       event.data.object.id,
     );
 
@@ -378,7 +377,7 @@ export class WebhookStripeService {
     await this.updatePaymentItemStatusByDepositCharge(
       paymentIntentId,
       event.type,
-      OldEPaymentStatus.BANK_ACCOUNT_CHARGE_PENDING,
+      EPaymentStatus.BANK_ACCOUNT_CHARGE_PENDING,
       event.data.object.id,
     );
 
@@ -391,7 +390,7 @@ export class WebhookStripeService {
     await this.updatePaymentItemStatusByDepositCharge(
       paymentIntentId,
       event.type,
-      OldEPaymentStatus.PAYMENT_REQUEST_CREATED,
+      EPaymentStatus.PAYMENT_REQUEST_CREATED,
       event.data.object.id,
     );
 
@@ -418,7 +417,7 @@ export class WebhookStripeService {
     await this.updatePaymentItemStatusByDepositCharge(
       paymentIntentId,
       event.type,
-      OldEPaymentStatus.BANK_ACCOUNT_CHARGE_TRANSACTION_CREATED,
+      EPaymentStatus.BANK_ACCOUNT_CHARGE_TRANSACTION_CREATED,
       event.data.object.id,
       { transferId: balanceTransaction },
     );
@@ -427,7 +426,7 @@ export class WebhookStripeService {
   }
 
   private async webhookChargeSucceeded(event: Stripe.ChargeSucceededEvent): Promise<void> {
-    const additionalItemData: Partial<OldPaymentItem> = {};
+    const additionalItemData: Partial<PaymentItem> = {};
 
     let paymentIntentId: string | undefined;
 
@@ -458,7 +457,7 @@ export class WebhookStripeService {
     await this.updatePaymentItemStatusByDepositCharge(
       paymentIntentId,
       event.type,
-      OldEPaymentStatus.BANK_ACCOUNT_CHARGE_SUCCEEDED,
+      EPaymentStatus.BANK_ACCOUNT_CHARGE_SUCCEEDED,
       event.data.object.id,
       additionalItemData,
     );
@@ -494,13 +493,15 @@ export class WebhookStripeService {
     await this.companyRepository.update(
       { id: paymentItem.payment.company.id },
       {
-        depositAmount: round2(Number(paymentItem.payment.company.depositAmount || 0) + Number(paymentItem.fullAmount)),
+        depositAmount: formatDecimalString(
+          Number(paymentItem.payment.company.depositAmount || 0) + Number(paymentItem.fullAmount),
+        ),
       },
     );
 
     await this.paymentItemRepository.update(
       { id: paymentItem.id },
-      { status: OldEPaymentStatus.PAYMENT_REQUEST_SUCCEEDED },
+      { status: EPaymentStatus.PAYMENT_REQUEST_SUCCEEDED },
     );
 
     this.sendDepositChargeSuccessNotification(paymentItem.payment.company);
@@ -558,11 +559,11 @@ export class WebhookStripeService {
   private async updatePaymentItemStatusByDepositCharge(
     paymentIntentId: string | undefined,
     eventType: Stripe.Event.Type,
-    status: OldEPaymentStatus,
+    status: EPaymentStatus,
     eventId: string,
-    additionalItemData?: Partial<OldPaymentItem>,
+    additionalItemData?: Partial<PaymentItem>,
   ): Promise<void> {
-    const dataToUpdate: Partial<OldPaymentItem> = {
+    const dataToUpdate: Partial<PaymentItem> = {
       ...additionalItemData,
     };
 
@@ -594,7 +595,7 @@ export class WebhookStripeService {
       return;
     }
 
-    if (paymentItem.status !== OldEPaymentStatus.PAYMENT_REQUEST_SUCCEEDED) {
+    if (paymentItem.status !== EPaymentStatus.PAYMENT_REQUEST_SUCCEEDED) {
       dataToUpdate.status = status;
     }
 

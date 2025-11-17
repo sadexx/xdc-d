@@ -9,13 +9,7 @@ import { TProcessNotifyMembershipChanges } from "src/modules/memberships/common/
 import { TAppointmentsWithoutClientVisit } from "src/modules/appointments/appointment/common/types";
 import { CheckInOutAppointmentDto } from "src/modules/appointments/appointment/common/dto";
 import { ITokenUserData } from "src/modules/tokens/common/interfaces";
-import { EPaymentOperation } from "src/modules/payment-analysis/common/enums";
-import {
-  IMakeAuthorizationCancel,
-  IMakeCaptureAndTransfer,
-  IMakePreAuthorization,
-  IMakeTransfer,
-} from "src/modules/payments-new/common/interfaces";
+import { EPaymentOperation } from "src/modules/payments-analysis/common/enums/core";
 import {
   IGenerateCorporatePayOutReceipt,
   IGenerateCorporateTaxInvoiceReceipt,
@@ -24,8 +18,16 @@ import {
   IGeneratePayInReceipt,
   IGeneratePayOutReceipt,
   IGenerateTaxInvoiceReceipt,
-} from "src/modules/pdf-new/common/interfaces";
+} from "src/modules/pdf/common/interfaces";
 import { TWebhookPaymentIntentSucceededPayment } from "src/modules/webhook-processor/common/types";
+import { IPaymentAnalysisAdditionalData } from "src/modules/payments-analysis/common/interfaces/core";
+import {
+  IMakePreAuthorization,
+  IMakePreAuthorizationRecreate,
+  IMakeAuthorizationCancel,
+  IMakeCaptureAndTransfer,
+  IMakeTransfer,
+} from "src/modules/payments/common/interfaces/core";
 
 @Injectable()
 export class QueueInitializeService {
@@ -154,6 +156,24 @@ export class QueueInitializeService {
     await this.queueManagementService.addJob(jobData, { jobId: `check-in-out-appointment:${appointmentId}` });
   }
 
+  public async addProcessPaymentOperationQueue(
+    appointmentId: string,
+    operation: EPaymentOperation,
+    additionalData: IPaymentAnalysisAdditionalData,
+  ): Promise<void> {
+    const jobData: IQueueData = {
+      queueEnum: EQueueType.PAYMENTS_ANALYSIS_QUEUE,
+      jobItem: {
+        jobName: EJobType.PROCESS_PAYMENT_OPERATION,
+        payload: { appointmentId, operation, additionalData },
+      },
+    };
+
+    await this.queueManagementService.addJob(jobData, {
+      jobId: `payment-operation:${operation}:${appointmentId}`,
+    });
+  }
+
   public async addProcessPaymentPreAuthorizationQueue(data: IMakePreAuthorization): Promise<void> {
     const jobData: IQueueData = {
       queueEnum: EQueueType.PAYMENTS_EXECUTION_QUEUE,
@@ -164,7 +184,21 @@ export class QueueInitializeService {
     };
 
     await this.queueManagementService.addJob(jobData, {
-      jobId: `payment-operation:${EPaymentOperation.AUTHORIZE_PAYMENT}:${data.context.appointment.id}`,
+      jobId: `payment-execution:${EPaymentOperation.AUTHORIZE_PAYMENT}:${data.context.appointment.id}`,
+    });
+  }
+
+  public async addProcessPaymentPreAuthorizationRecreateQueue(data: IMakePreAuthorizationRecreate): Promise<void> {
+    const jobData: IQueueData = {
+      queueEnum: EQueueType.PAYMENTS_EXECUTION_QUEUE,
+      jobItem: {
+        jobName: EJobType.PROCESS_PAYMENT_PRE_AUTHORIZATION_RECREATE,
+        payload: data,
+      },
+    };
+
+    await this.queueManagementService.addJob(jobData, {
+      jobId: `payment-execution:${EPaymentOperation.AUTHORIZATION_RECREATE_PAYMENT}:${data.context.appointment.id}`,
     });
   }
 
@@ -178,7 +212,7 @@ export class QueueInitializeService {
     };
 
     await this.queueManagementService.addJob(jobData, {
-      jobId: `payment-operation:${EPaymentOperation.AUTHORIZATION_CANCEL_PAYMENT}:${data.context.appointment.id}`,
+      jobId: `payment-execution:${EPaymentOperation.AUTHORIZATION_CANCEL_PAYMENT}:${data.context.appointment.id}`,
     });
   }
 
@@ -192,7 +226,7 @@ export class QueueInitializeService {
     };
 
     await this.queueManagementService.addJob(jobData, {
-      jobId: `payment-operation:${EPaymentOperation.CAPTURE_PAYMENT}:${data.context.appointment.id}`,
+      jobId: `payment-execution:${EPaymentOperation.CAPTURE_PAYMENT}:${data.context.appointment.id}`,
     });
   }
 
@@ -206,7 +240,7 @@ export class QueueInitializeService {
     };
 
     await this.queueManagementService.addJob(jobData, {
-      jobId: `payment-operation:${EPaymentOperation.TRANSFER_PAYMENT}:${data.context.appointment.id}`,
+      jobId: `payment-execution:${EPaymentOperation.TRANSFER_PAYMENT}:${data.context.appointment.id}`,
     });
   }
 

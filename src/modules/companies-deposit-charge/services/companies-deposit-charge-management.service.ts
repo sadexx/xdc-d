@@ -6,16 +6,10 @@ import { CompanyIdOptionalDto } from "src/modules/companies/common/dto";
 import { Company } from "src/modules/companies/entities";
 import { ITokenUserData } from "src/modules/tokens/common/interfaces";
 import { ECompaniesDepositChargeErrorCodes } from "src/modules/companies-deposit-charge/common/enums";
-import {
-  IConstructAndCreateDepositChargeData,
-  IDepositCharge,
-  IUpdateDepositChargeData,
-} from "src/modules/companies-deposit-charge/common/interfaces";
-import {
-  TCreateChargeRequestValidated,
-  TCreateOrUpdateDepositCharge,
-} from "src/modules/companies-deposit-charge/common/types";
+import { IDepositCharge } from "src/modules/companies-deposit-charge/common/interfaces";
+import { TCreateChargeRequest, TCreateOrUpdateDepositCharge } from "src/modules/companies-deposit-charge/common/types";
 import { CompanyDepositCharge } from "src/modules/companies-deposit-charge/entities";
+import { formatDecimalString, parseDecimalNumber } from "src/common/utils";
 
 @Injectable()
 export class CompaniesDepositChargeManagementService {
@@ -24,16 +18,30 @@ export class CompaniesDepositChargeManagementService {
     private readonly dataSource: DataSource,
   ) {}
 
+  /**
+   * Creates a deposit charge request for the user's company.
+   * Validates company activity and deposit thresholds, then creates or updates the charge in a transaction.
+   *
+   * @param user - Token user data for access control and company resolution.
+   * @param dto - Optional company ID (resolves from user if omitted).
+   * @returns Promise<void> - Resolves on successful creation/update.
+   * @throws {NotFoundException} - If company not found.
+   * @throws {BadRequestException} - If company inactive, no default amount, or above minimum threshold.
+   */
   public async createChargeRequest(user: ITokenUserData, dto: CompanyIdOptionalDto): Promise<void> {
     const company = await this.accessControlService.getCompanyByRole(user, { abnCheck: true }, dto.companyId);
-    const validatedCompany = this.validateCompanyForChargeRequest(company);
+    const transformedCompany = this.validateAndTransformCompany(company);
 
     await this.dataSource.transaction(async (manager) => {
-      await this.createOrUpdateDepositCharge(manager, validatedCompany, validatedCompany.depositDefaultChargeAmount);
+      await this.createOrUpdateDepositCharge(
+        manager,
+        transformedCompany,
+        transformedCompany.depositDefaultChargeAmount,
+      );
     });
   }
 
-  private validateCompanyForChargeRequest(company: Company | null): TCreateChargeRequestValidated {
+  private validateAndTransformCompany(company: Company | null): TCreateChargeRequest {
     if (!company) {
       throw new NotFoundException(ECompaniesDepositChargeErrorCodes.COMPANY_NOT_FOUND);
     }
@@ -46,15 +54,25 @@ export class CompaniesDepositChargeManagementService {
       throw new BadRequestException(ECompaniesDepositChargeErrorCodes.CHARGE_DEFAULT_AMOUNT_NOT_FILLED);
     }
 
-    const tenPercentThreshold = company.depositDefaultChargeAmount * TEN_PERCENT_MULTIPLIER;
+    const tenPercentThreshold = parseDecimalNumber(company.depositDefaultChargeAmount) * TEN_PERCENT_MULTIPLIER;
 
-    if (company.depositAmount && company.depositAmount >= tenPercentThreshold) {
+    if (company.depositAmount && parseDecimalNumber(company.depositAmount) >= tenPercentThreshold) {
       throw new BadRequestException(ECompaniesDepositChargeErrorCodes.CHARGE_AMOUNT_ABOVE_MINIMUM);
     }
 
-    return company as TCreateChargeRequestValidated;
+    return this.transformCompanyToNumbers(company, company.depositDefaultChargeAmount);
   }
 
+  /**
+   * Creates or updates a deposit charge for the company based on current deposit amount.
+   * Calculates charge, handles existing records, and updates defaults if needed.
+   *
+   * @param manager - Transaction manager for DB operations.
+   * @param company - Company entity with deposit details.
+   * @param depositDefaultChargeAmount - Default charge amount for calculation.
+   * @returns Promise<void> - Resolves on successful creation/update.
+   * @throws BadRequestException - If charge cannot be changed before execution or invalid amount (<=0).
+   */
   public async createOrUpdateDepositCharge(
     manager: EntityManager,
     company: TCreateOrUpdateDepositCharge,
@@ -73,9 +91,9 @@ export class CompaniesDepositChargeManagementService {
     }
 
     if (existedDepositCharge) {
-      await this.updateDepositCharge({ manager, company, chargeAmount, depositDefaultChargeAmount });
+      await this.updateDepositCharge(manager, company, chargeAmount, depositDefaultChargeAmount);
     } else {
-      await this.constructAndCreateDepositCharge({ manager, company, chargeAmount, depositDefaultChargeAmount });
+      await this.constructAndCreateDepositCharge(manager, company, chargeAmount, depositDefaultChargeAmount);
     }
   }
 
@@ -89,16 +107,19 @@ export class CompaniesDepositChargeManagementService {
     return chargeAmount;
   }
 
-  private async updateDepositCharge(data: IUpdateDepositChargeData): Promise<void> {
-    const { manager, company, chargeAmount, depositDefaultChargeAmount } = data;
-
+  private async updateDepositCharge(
+    manager: EntityManager,
+    company: TCreateOrUpdateDepositCharge,
+    chargeAmount: number,
+    depositDefaultChargeAmount: number,
+  ): Promise<void> {
     if (company.isActive) {
       throw new BadRequestException(ECompaniesDepositChargeErrorCodes.CHARGE_CANNOT_CHANGE_BEFORE_EXECUTION);
     }
 
     await manager
       .getRepository(CompanyDepositCharge)
-      .update({ company: { id: company.id } }, { depositChargeAmount: chargeAmount });
+      .update({ company: { id: company.id } }, { depositChargeAmount: formatDecimalString(chargeAmount) });
     await this.updateCompanyDepositDefaultChargeAmount(manager, company, depositDefaultChargeAmount);
   }
 
@@ -111,12 +132,18 @@ export class CompaniesDepositChargeManagementService {
       !company.depositDefaultChargeAmount || company.depositDefaultChargeAmount !== depositDefaultChargeAmount;
 
     if (needsUpdate) {
-      await manager.getRepository(Company).update({ id: company.id }, { depositDefaultChargeAmount });
+      await manager
+        .getRepository(Company)
+        .update({ id: company.id }, { depositDefaultChargeAmount: formatDecimalString(depositDefaultChargeAmount) });
     }
   }
 
-  private async constructAndCreateDepositCharge(data: IConstructAndCreateDepositChargeData): Promise<void> {
-    const { manager, company, chargeAmount, depositDefaultChargeAmount } = data;
+  private async constructAndCreateDepositCharge(
+    manager: EntityManager,
+    company: TCreateOrUpdateDepositCharge,
+    chargeAmount: number,
+    depositDefaultChargeAmount: number,
+  ): Promise<void> {
     const newDepositChargeDto = this.createDepositChargeDto(company, chargeAmount);
     await this.createDepositCharge(manager, newDepositChargeDto);
 
@@ -132,8 +159,16 @@ export class CompaniesDepositChargeManagementService {
 
   private createDepositChargeDto(company: TCreateOrUpdateDepositCharge, chargeAmount: number): IDepositCharge {
     return {
-      depositChargeAmount: chargeAmount,
-      company: company as Company,
+      depositChargeAmount: formatDecimalString(chargeAmount),
+      company: { id: company.id } as Company,
+    };
+  }
+
+  private transformCompanyToNumbers(company: Company, depositDefaultChargeAmount: string): TCreateChargeRequest {
+    return {
+      ...company,
+      depositAmount: company.depositAmount !== null ? parseDecimalNumber(company.depositAmount) : null,
+      depositDefaultChargeAmount: parseDecimalNumber(depositDefaultChargeAmount),
     };
   }
 }

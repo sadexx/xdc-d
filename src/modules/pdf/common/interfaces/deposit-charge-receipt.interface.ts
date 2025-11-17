@@ -1,33 +1,12 @@
+import { ILfhCompanyPdfData, IRecipientPdfData } from "src/modules/pdf/common/interfaces";
+import { TWebhookPaymentIntentSucceededPayment } from "src/modules/webhook-processor/common/types";
+
 export interface IDepositChargeReceipt {
-  fromCompanyName: string;
-  fromCompanyABNNumber: string;
-  fromCompanyAddress: string;
-  toCompanyName: string;
-  toCompanyABNNumber?: string | null;
-  toCompanyId: string;
-  toCompanyAddress: string;
-
-  receiptNumber: string;
-
-  currency: string;
+  payment: TWebhookPaymentIntentSucceededPayment;
+  lfhCompanyData: ILfhCompanyPdfData;
+  recipientData: IRecipientPdfData;
   issueDate: string;
-  total: number;
-  gstAmount: number;
-  invoiceTotal: number;
-  amountPaid: number;
-  amountDue: string;
-
-  paymentDate: string;
   paymentDescription: string;
-  paymentTotal: number;
-  thisInvoiceAmount: number;
-
-  transactionId: string;
+  paymentDate: string;
   service: string;
-  paymentDateTime: string;
-}
-
-export interface IDepositChargeReceiptWithKey {
-  receiptKey: string;
-  receiptData: IDepositChargeReceipt;
 }

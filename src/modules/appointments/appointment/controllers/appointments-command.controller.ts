@@ -92,11 +92,8 @@ export class AppointmentsCommandController {
 
   @Patch("/business-time/:id")
   @UseGuards(JwtFullAccessGuard, RolesGuard)
-  async updateAppointmentBusinessTime(
-    @Param() { id }: UUIDParamDto,
-    @CurrentUser() user: ITokenUserData,
-  ): Promise<IMessageOutput> {
-    return await this.appointmentExtensionService.handleUpdateAppointmentBusinessTime(id, user);
+  async updateAppointmentBusinessTime(@Param() { id }: UUIDParamDto): Promise<IMessageOutput> {
+    return await this.appointmentExtensionService.handleUpdateAppointmentBusinessTime(id);
   }
 
   @Delete(":id")

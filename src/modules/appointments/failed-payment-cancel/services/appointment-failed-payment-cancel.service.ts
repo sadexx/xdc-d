@@ -1,113 +1,121 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Appointment } from "src/modules/appointments/appointment/entities";
-import { Repository } from "typeorm";
-import { findOneOrFail } from "src/common/utils";
+import { Injectable } from "@nestjs/common";
+import { Appointment, AppointmentAdminInfo, AppointmentReminder } from "src/modules/appointments/appointment/entities";
+import { EntityManager } from "typeorm";
+import { findManyTyped, findOneOrFailTyped } from "src/common/utils";
 import { EAppointmentStatus } from "src/modules/appointments/appointment/common/enums";
 import { ChimeMeetingConfiguration } from "src/modules/chime-meeting-configuration/entities";
 import { AppointmentOrder, AppointmentOrderGroup } from "src/modules/appointment-orders/appointment-order/entities";
 import { MessagingResolveService } from "src/modules/chime-messaging-configuration/services";
-import { NotificationService } from "src/modules/notifications/services";
-import { IAppointmentDetailsOutput } from "src/modules/appointments/appointment/common/outputs";
-import { AppointmentSharedService } from "src/modules/appointments/shared/services";
+import { ShortUrl } from "src/modules/url-shortener/entities";
+import { AppointmentNotificationService } from "src/modules/appointments/shared/services";
+import {
+  CancelAppointmentPaymentFailedQuery,
+  TCancelAppointmentPaymentFailed,
+  THandleOrderRemoval,
+} from "src/modules/appointments/failed-payment-cancel/common/types";
 
-// TODO: Add failed payment cancel notification
 @Injectable()
 export class AppointmentFailedPaymentCancelService {
-  private readonly logger = new Logger(AppointmentFailedPaymentCancelService.name);
   constructor(
-    @InjectRepository(Appointment)
-    private readonly appointmentRepository: Repository<Appointment>,
-    @InjectRepository(ChimeMeetingConfiguration)
-    private readonly chimeMeetingConfigurationRepository: Repository<ChimeMeetingConfiguration>,
-    @InjectRepository(AppointmentOrder)
-    private readonly appointmentOrderRepository: Repository<AppointmentOrder>,
-    @InjectRepository(AppointmentOrderGroup)
-    private readonly appointmentOrderGroupRepository: Repository<AppointmentOrderGroup>,
-    private readonly appointmentSharedService: AppointmentSharedService,
+    private readonly appointmentNotificationService: AppointmentNotificationService,
     private readonly messagingResolveService: MessagingResolveService,
-    private readonly notificationService: NotificationService,
   ) {}
 
-  public async cancelAppointmentPaymentFailed(id: string): Promise<void> {
-    const appointment = await findOneOrFail(id, this.appointmentRepository, {
-      select: {
-        id: true,
-        status: true,
-        platformId: true,
-        interpreterId: true,
-        appointmentReminder: { id: true },
-        chimeMeetingConfiguration: { id: true },
-        appointmentOrder: { id: true, appointmentOrderGroup: { id: true, appointmentOrders: { id: true } } },
-        appointmentAdminInfo: { isRedFlagEnabled: true },
+  public async cancelAppointmentPaymentFailed(manager: EntityManager, id: string): Promise<void> {
+    const appointment = await findOneOrFailTyped<TCancelAppointmentPaymentFailed>(
+      id,
+      manager.getRepository(Appointment),
+      {
+        select: CancelAppointmentPaymentFailedQuery.select,
+        where: { id },
+        relations: CancelAppointmentPaymentFailedQuery.relations,
       },
-      where: { id: id },
-      relations: {
-        appointmentReminder: true,
-        chimeMeetingConfiguration: true,
-        appointmentOrder: { appointmentOrderGroup: { appointmentOrders: true } },
-        appointmentAdminInfo: true,
-      },
-    });
-    await this.cleanupDataAndCancelAppointment(appointment);
+    );
+    await this.cleanupDataAndCancelAppointment(manager, appointment);
   }
 
-  public async cancelGroupAppointmentsPaymentFailed(appointmentsGroupId: string): Promise<void> {
-    const appointments = await this.appointmentRepository.find({
-      select: {
-        id: true,
-        status: true,
-        platformId: true,
-        interpreterId: true,
-        appointmentReminder: { id: true },
-        chimeMeetingConfiguration: { id: true },
-        appointmentOrder: { id: true, appointmentOrderGroup: { id: true, appointmentOrders: { id: true } } },
-        appointmentAdminInfo: { isRedFlagEnabled: true },
-      },
-      where: { appointmentsGroupId: appointmentsGroupId },
-      relations: {
-        appointmentReminder: true,
-        chimeMeetingConfiguration: true,
-        appointmentOrder: { appointmentOrderGroup: { appointmentOrders: true } },
-        appointmentAdminInfo: true,
-      },
+  public async cancelGroupAppointmentsPaymentFailed(
+    manager: EntityManager,
+    appointmentsGroupId: string,
+  ): Promise<void> {
+    const appointments = await findManyTyped<TCancelAppointmentPaymentFailed[]>(manager.getRepository(Appointment), {
+      select: CancelAppointmentPaymentFailedQuery.select,
+      where: { appointmentOrderGroup: { id: appointmentsGroupId } },
+      relations: CancelAppointmentPaymentFailedQuery.relations,
     });
 
     for (const appointment of appointments) {
-      await this.cleanupDataAndCancelAppointment(appointment);
+      await this.cleanupDataAndCancelAppointment(manager, appointment);
     }
   }
 
-  private async cleanupDataAndCancelAppointment(appointment: Appointment): Promise<void> {
-    await this.appointmentRepository.update(appointment.id, { status: EAppointmentStatus.CANCELLED_ORDER });
-    await this.appointmentSharedService.deleteAppointmentShortUrls(appointment.id);
-    await this.appointmentSharedService.deleteAppointmentReminder(appointment.id);
+  private async cleanupDataAndCancelAppointment(
+    manager: EntityManager,
+    appointment: TCancelAppointmentPaymentFailed,
+  ): Promise<void> {
+    await this.setAppointmentStatusToCancelledBySystem(manager, appointment.id);
+    await this.deleteAppointmentShortUrls(manager, appointment.id);
+    await this.deleteAppointmentReminder(manager, appointment.id);
 
     if (appointment.appointmentAdminInfo && appointment.appointmentAdminInfo.isRedFlagEnabled) {
-      await this.appointmentSharedService.disableRedFlag(appointment);
+      await this.disableRedFlag(manager, appointment.appointmentAdminInfo.id);
     }
 
     if (appointment.appointmentOrder) {
-      await this.handleOrderRemoval(appointment.appointmentOrder);
+      await this.handleOrderRemoval(manager, appointment.appointmentOrder);
     }
 
     if (appointment.chimeMeetingConfiguration) {
-      await this.chimeMeetingConfigurationRepository.remove(appointment.chimeMeetingConfiguration);
+      await this.removeChimeMeetingConfiguration(manager, appointment.chimeMeetingConfiguration);
     }
 
     if (appointment.status === EAppointmentStatus.ACCEPTED) {
       await this.messagingResolveService.handleChannelResolveProcess(appointment.id);
 
-      if (appointment.interpreterId) {
-        await this.sendClientCanceledAppointmentNotification(appointment.interpreterId, appointment.platformId, {
-          appointmentId: appointment.id,
-        });
+      if (appointment.interpreter) {
+        await this.appointmentNotificationService.sendClientCanceledAppointmentNotification(
+          appointment.interpreter,
+          appointment.platformId,
+          false,
+          { appointmentId: appointment.id },
+          appointment.isGroupAppointment,
+        );
       }
     }
   }
 
-  private async handleOrderRemoval(appointmentOrder: AppointmentOrder): Promise<void> {
-    await this.appointmentOrderRepository.remove(appointmentOrder);
+  private async setAppointmentStatusToCancelledBySystem(manager: EntityManager, id: string): Promise<void> {
+    await manager.getRepository(Appointment).update(id, { status: EAppointmentStatus.CANCELLED_BY_SYSTEM });
+  }
+
+  private async deleteAppointmentShortUrls(manager: EntityManager, appointmentId: string): Promise<void> {
+    await manager.getRepository(ShortUrl).delete({ appointment: { id: appointmentId } });
+  }
+
+  private async deleteAppointmentReminder(manager: EntityManager, appointmentId: string): Promise<void> {
+    await manager.getRepository(AppointmentReminder).delete({ appointment: { id: appointmentId } });
+  }
+
+  public async disableRedFlag(manager: EntityManager, appointmentAdminInfoId: string): Promise<void> {
+    await manager
+      .getRepository(AppointmentAdminInfo)
+      .update({ id: appointmentAdminInfoId }, { isRedFlagEnabled: false });
+  }
+
+  private async removeChimeMeetingConfiguration(
+    manager: EntityManager,
+    chimeMeetingConfiguration: TCancelAppointmentPaymentFailed["chimeMeetingConfiguration"],
+  ): Promise<void> {
+    await manager
+      .getRepository(ChimeMeetingConfiguration)
+      .remove(chimeMeetingConfiguration as ChimeMeetingConfiguration);
+  }
+
+  private async handleOrderRemoval(manager: EntityManager, appointmentOrder: THandleOrderRemoval): Promise<void> {
+    const appointmentOrderRepository = manager.getRepository(AppointmentOrder);
+    const appointmentOrderGroupRepository = manager.getRepository(AppointmentOrderGroup);
+
+    await appointmentOrderRepository.remove(appointmentOrder as AppointmentOrder);
 
     const { appointmentOrderGroup } = appointmentOrder;
 
@@ -115,27 +123,12 @@ export class AppointmentFailedPaymentCancelService {
       return;
     }
 
-    const appointmentOrdersLeft = await this.appointmentOrderRepository.count({
+    const appointmentOrdersLeft = await appointmentOrderRepository.count({
       where: { appointmentOrderGroupId: appointmentOrderGroup.id },
     });
 
     if (appointmentOrdersLeft === 0) {
-      await this.appointmentOrderGroupRepository.remove(appointmentOrderGroup);
+      await appointmentOrderGroupRepository.remove(appointmentOrderGroup as AppointmentOrderGroup);
     }
-  }
-
-  private async sendClientCanceledAppointmentNotification(
-    interpreterId: string,
-    platformId: string,
-    appointmentDetails: IAppointmentDetailsOutput,
-  ): Promise<void> {
-    this.notificationService
-      .sendClientCanceledAppointmentNotification(interpreterId, platformId, appointmentDetails)
-      .catch((error) => {
-        this.logger.error(
-          `Failed to send single client canceled appointment notification for userRoleId: ${interpreterId}`,
-          error,
-        );
-      });
   }
 }

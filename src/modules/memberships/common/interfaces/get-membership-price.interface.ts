@@ -1,8 +1,8 @@
-import { OldECurrencies } from "src/modules/payments/common/enums";
+import { EPaymentCurrency } from "src/modules/payments/common/enums/core";
 
 export interface IGetMembershipPrice {
   price: number;
   gstAmount: number | null;
-  currency: OldECurrencies;
+  currency: EPaymentCurrency;
   stripePriceId: string;
 }

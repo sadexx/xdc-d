@@ -14,7 +14,6 @@ import { GetAllNotificationsOutput, ICompanyDetailsOutput } from "src/modules/no
 import { INotificationData } from "src/modules/notifications/common/interface";
 import { NotificationDeliveryService } from "src/modules/notifications/services";
 import { LokiLogger } from "src/common/logger";
-import { OldEPaymentFailedReason } from "src/modules/payments/common/enums";
 import { ICancelOnDemandInvitationOutput } from "src/modules/appointment-orders/appointment-order/common/outputs";
 import { IAppointmentDetailsOutput } from "src/modules/appointments/appointment/common/outputs";
 import { IDraftAppointmentDetailsOutput } from "src/modules/draft-appointments/common/outputs";
@@ -31,7 +30,7 @@ import {
   TGetAllNotifications,
 } from "src/modules/notifications/common/types";
 import { findManyTyped, findOneOrFailTyped } from "src/common/utils";
-import { EPaymentFailedReason } from "src/modules/payments-new/common/enums";
+import { EPaymentFailedReason } from "src/modules/payments/common/enums/core";
 
 @Injectable()
 export class NotificationService {
@@ -674,7 +673,7 @@ export class NotificationService {
   public async sendAppointmentAuthorizationPaymentFailedNotification(
     userRoleId: string,
     platformId: string,
-    reason: OldEPaymentFailedReason | EPaymentFailedReason,
+    reason: EPaymentFailedReason,
     appointmentDetails: IAppointmentDetailsOutput,
   ): Promise<void> {
     const title = ENotificationType.PRE_AUTHORIZATION_FAILED;

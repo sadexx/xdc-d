@@ -10,10 +10,7 @@ import { EAppointmentRecreationType } from "src/modules/appointments/appointment
 import { AppointmentOrderCreateService } from "src/modules/appointment-orders/workflow/services";
 import { AppointmentOrder, AppointmentOrderGroup } from "src/modules/appointment-orders/appointment-order/entities";
 import { Channel } from "src/modules/chime-messaging-configuration/entities";
-import { OldEPayInStatus } from "src/modules/payments/common/enums";
-import { OldGeneralPaymentsService } from "src/modules/payments/services";
 import { LokiLogger } from "src/common/logger";
-import { AppointmentFailedPaymentCancelService } from "src/modules/appointments/failed-payment-cancel/services";
 import {
   AppointmentOrderQueryOptionsService,
   AppointmentOrderSharedLogicService,
@@ -25,6 +22,8 @@ import { IRecreateAppointmentOrderGroup } from "src/modules/appointment-orders/w
 import { Address } from "src/modules/addresses/entities";
 import { TCancelAppointment } from "src/modules/appointments/appointment/common/types";
 import { EAppointmentOrderWorkflowErrorCodes } from "src/modules/appointment-orders/workflow/common/enums";
+import { QueueInitializeService } from "src/modules/queues/services";
+import { EPaymentOperation } from "src/modules/payments-analysis/common/enums/core";
 
 @Injectable()
 export class AppointmentOrderRecreationService {
@@ -38,8 +37,7 @@ export class AppointmentOrderRecreationService {
     private readonly appointmentOrderQueryOptionsService: AppointmentOrderQueryOptionsService,
     private readonly appointmentOrderSharedLogicService: AppointmentOrderSharedLogicService,
     private readonly appointmentOrderCreateService: AppointmentOrderCreateService,
-    private readonly generalPaymentsService: OldGeneralPaymentsService,
-    private readonly appointmentFailedPaymentCancelService: AppointmentFailedPaymentCancelService,
+    private readonly queueInitializeService: QueueInitializeService,
   ) {}
 
   public async handleOrderRecreationForUpdatedAppointment(
@@ -103,10 +101,14 @@ export class AppointmentOrderRecreationService {
     const newAppointmentOrderGroup = await this.recreateOrderGroup(appointmentGroup);
 
     if (triggerPayment) {
-      await this.paymentAuthAndSearchTriggerGroup(
-        recreatedAppointmentsWithOldAppointments,
-        newAppointmentOrderGroup.id,
-      );
+      for (const appointmentGroup of recreatedAppointmentsWithOldAppointments) {
+        const { recreatedAppointment, oldAppointment } = appointmentGroup;
+        await this.queueInitializeService.addProcessPaymentOperationQueue(
+          recreatedAppointment.id,
+          EPaymentOperation.AUTHORIZATION_RECREATE_PAYMENT,
+          { oldAppointmentId: oldAppointment.id },
+        );
+      }
     } else {
       await this.appointmentOrderSharedLogicService.triggerLaunchSearchForIndividualOrderGroup(
         newAppointmentOrderGroup.id,
@@ -135,10 +137,10 @@ export class AppointmentOrderRecreationService {
     const newAppointmentOrderGroup = await this.recreateOrderGroup(pendingAppointmentsWithoutInterpreter);
 
     if (triggerPayment) {
-      await this.paymentAuthAndSearchTriggerIndividual(
-        recreatedAppointment,
-        oldAppointment,
-        newAppointmentOrderGroup.id,
+      await this.queueInitializeService.addProcessPaymentOperationQueue(
+        recreatedAppointment.id,
+        EPaymentOperation.AUTHORIZATION_RECREATE_PAYMENT,
+        { oldAppointmentId: oldAppointment.id },
       );
     } else {
       await this.appointmentOrderSharedLogicService.triggerLaunchSearchForIndividualOrderGroup(
@@ -165,7 +167,11 @@ export class AppointmentOrderRecreationService {
     )) as AppointmentOrder;
 
     if (triggerPayment) {
-      await this.paymentAuthAndSearchTriggerIndividual(recreatedAppointment, oldAppointment, appointmentOrder.id);
+      await this.queueInitializeService.addProcessPaymentOperationQueue(
+        recreatedAppointment.id,
+        EPaymentOperation.AUTHORIZATION_RECREATE_PAYMENT,
+        { oldAppointmentId: oldAppointment.id },
+      );
     } else {
       await this.appointmentOrderSharedLogicService.triggerLaunchSearchForIndividualOrder(appointmentOrder.id);
     }
@@ -229,118 +235,5 @@ export class AppointmentOrderRecreationService {
       { appointmentsGroupId: oldAppointmentsGroupId },
       { appointmentsGroupId: newAppointmentGroupId },
     );
-  }
-
-  private async paymentAuthAndSearchTriggerIndividual(
-    appointment: Appointment,
-    oldAppointment: Appointment,
-    appointmentOrderId: string,
-  ): Promise<void> {
-    const paymentSuccess = await this.generalPaymentsService
-      .makePayInAuthIfAppointmentRecreated(appointment, oldAppointment)
-      .catch((error: Error) => {
-        this.lokiLogger.error(`Failed to make payin, appointmentId: ${appointment.id}`, error.stack);
-        this.appointmentFailedPaymentCancelService
-          .cancelAppointmentPaymentFailed(appointment.id)
-          .catch((error: Error) => {
-            this.lokiLogger.error(
-              `Failed to cancel payin auth: ${error.message}, appointmentId: ${appointment.id}`,
-              error.stack,
-            );
-
-            return OldEPayInStatus.AUTHORIZATION_FAILED;
-          });
-
-        return OldEPayInStatus.AUTHORIZATION_FAILED;
-      });
-
-    if (
-      paymentSuccess === OldEPayInStatus.AUTHORIZATION_SUCCESS ||
-      paymentSuccess === OldEPayInStatus.REDIRECTED_TO_WAIT_LIST ||
-      paymentSuccess === OldEPayInStatus.PAY_IN_REATTACHED ||
-      paymentSuccess === OldEPayInStatus.PAY_IN_NOT_CHANGED
-    ) {
-      if (appointment.isGroupAppointment) {
-        return await this.appointmentOrderSharedLogicService.triggerLaunchSearchForIndividualOrderGroup(
-          appointmentOrderId,
-        );
-      } else {
-        return await this.appointmentOrderSharedLogicService.triggerLaunchSearchForIndividualOrder(appointmentOrderId);
-      }
-    }
-
-    this.appointmentFailedPaymentCancelService.cancelAppointmentPaymentFailed(appointment.id).catch((error: Error) => {
-      this.lokiLogger.error(
-        `Failed to cancel payin auth: ${error.message}, appointmentId: ${appointment.id}`,
-        error.stack,
-      );
-    });
-  }
-
-  private async paymentAuthAndSearchTriggerGroup(
-    appointments: IRecreatedAppointmentWithOldAppointment[],
-    appointmentOrderGroupId: string,
-  ): Promise<void> {
-    let paymentStatus: OldEPayInStatus | null = null;
-
-    for (const appointment of appointments) {
-      const paymentSuccess = await this.generalPaymentsService
-        .makePayInAuthIfAppointmentRecreated(appointment.recreatedAppointment, appointment.oldAppointment)
-        .catch((error: Error) => {
-          this.lokiLogger.error("Failed to make payin:", error.stack);
-
-          return OldEPayInStatus.AUTHORIZATION_FAILED;
-        });
-
-      if (paymentSuccess === OldEPayInStatus.AUTHORIZATION_FAILED) {
-        paymentStatus = paymentSuccess;
-      }
-
-      if (
-        paymentSuccess === OldEPayInStatus.AUTHORIZATION_SUCCESS &&
-        paymentStatus !== OldEPayInStatus.AUTHORIZATION_FAILED
-      ) {
-        paymentStatus = paymentSuccess;
-      }
-
-      if (
-        (paymentSuccess === OldEPayInStatus.REDIRECTED_TO_WAIT_LIST ||
-          paymentSuccess === OldEPayInStatus.PAY_IN_NOT_CHANGED ||
-          paymentSuccess === OldEPayInStatus.PAY_IN_REATTACHED) &&
-        paymentStatus !== OldEPayInStatus.AUTHORIZATION_FAILED &&
-        paymentStatus !== OldEPayInStatus.AUTHORIZATION_SUCCESS
-      ) {
-        paymentStatus = paymentSuccess;
-      }
-    }
-
-    if (
-      paymentStatus === OldEPayInStatus.AUTHORIZATION_SUCCESS ||
-      paymentStatus === OldEPayInStatus.REDIRECTED_TO_WAIT_LIST ||
-      paymentStatus === OldEPayInStatus.PAY_IN_REATTACHED ||
-      paymentStatus === OldEPayInStatus.PAY_IN_NOT_CHANGED
-    ) {
-      await this.appointmentOrderSharedLogicService.triggerLaunchSearchForIndividualOrderGroup(appointmentOrderGroupId);
-    } else {
-      if (appointments[0].oldAppointment.appointmentsGroupId) {
-        const oldAppointments = appointments.map((appointment) => appointment.oldAppointment);
-
-        this.generalPaymentsService.cancelPayInAuthForGroup(oldAppointments).catch((error: Error) => {
-          this.lokiLogger.error(
-            `Failed to cancel payin auth: ${error.message}, appointmentGroupId: ${appointments[0].oldAppointment.appointmentsGroupId}`,
-            error.stack,
-          );
-        });
-
-        this.appointmentFailedPaymentCancelService
-          .cancelGroupAppointmentsPaymentFailed(appointments[0].oldAppointment.appointmentsGroupId)
-          .catch((error: Error) => {
-            this.lokiLogger.error(
-              `Failed to cancel payin auth: ${error.message}, appointmentGroupId: ${appointments[0].oldAppointment.appointmentsGroupId}`,
-              error.stack,
-            );
-          });
-      }
-    }
   }
 }

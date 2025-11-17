@@ -22,7 +22,7 @@ import {
 import { GeneralPaymentInformationService } from "src/modules/payment-information/services";
 import { UNDEFINED_VALUE } from "src/common/constants";
 import { AccessControlService } from "src/modules/access-control/services";
-import { EPaymentSystem } from "src/modules/payments-new/common/enums";
+import { EPaymentSystem } from "src/modules/payments/common/enums/core";
 
 @Injectable()
 export class CorporatePaymentInformationService {

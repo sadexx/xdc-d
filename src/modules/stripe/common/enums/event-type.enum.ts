@@ -6,7 +6,6 @@ export const enum EExtEventType {
   PERSON_CREATED = "person.created",
   INVOICE_PAYMENT_SUCCEEDED = "invoice.payment_succeeded",
   INVOICE_PAYMENT_FAILED = "invoice.payment_failed",
-
   PAYMENT_INTENT_PROCESSING = "payment_intent.processing",
   CHARGE_PENDING = "charge.pending",
   PAYMENT_INTENT_CREATED = "payment_intent.created",

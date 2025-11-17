@@ -1,5 +1,0 @@
-export enum EPaymentTransferStrategy {
-  INDIVIDUAL_TRANSFER = "INDIVIDUAL_TRANSFER",
-  CORPORATE_TRANSFER = "CORPORATE_TRANSFER",
-  VALIDATION_FAILED = "validation-failed",
-}

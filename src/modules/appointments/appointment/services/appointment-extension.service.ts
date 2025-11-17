@@ -7,12 +7,9 @@ import {
   NUMBER_OF_MINUTES_IN_FIVE_MINUTES,
   NUMBER_OF_MINUTES_IN_THREE_MINUTES,
   NUMBER_OF_MINUTES_IN_SIX_HOURS,
-  UNDEFINED_VALUE,
 } from "src/common/constants";
 import { IMessageOutput } from "src/common/outputs";
 import { findManyTyped, findOneOrFailTyped } from "src/common/utils";
-import { OldEPayInStatus, OldEPaymentFailedReason } from "src/modules/payments/common/enums";
-import { ITokenUserData } from "src/modules/tokens/common/interfaces";
 import { IWebSocketUserData } from "src/modules/web-socket-gateway/common/interfaces";
 import {
   EAppointmentErrorCodes,
@@ -21,13 +18,9 @@ import {
 } from "src/modules/appointments/appointment/common/enums";
 import { ILiveAppointmentCacheData } from "src/modules/appointments/appointment/common/interfaces";
 import { Appointment } from "src/modules/appointments/appointment/entities";
-import { LokiLogger } from "src/common/logger";
-import { OldGeneralPaymentsService } from "src/modules/payments/services";
 import { InjectRepository } from "@nestjs/typeorm";
-import { DataSource, EntityManager, FindOptionsWhere, Repository } from "typeorm";
-import { DiscountsService } from "src/modules/discounts/services";
+import { FindOptionsWhere, Repository } from "typeorm";
 import { RedisService } from "src/modules/redis/services";
-import { AppointmentNotificationService } from "src/modules/appointments/shared/services";
 import { ENotificationDataType } from "src/modules/notifications/common/enum";
 import {
   LiveAppointmentCacheQuery,
@@ -40,24 +33,21 @@ import { Rate } from "src/modules/rates/entities";
 import { ERateDetailsSequence, ERateQualifier } from "src/modules/rates/common/enums";
 import { applyRateTimeToDate } from "src/modules/rates/common/utils";
 import { toZonedTime } from "date-fns-tz";
-import { IDiscountRate } from "src/modules/discounts/common/interfaces";
+import { QueueInitializeService } from "src/modules/queues/services";
+import { EPaymentOperation } from "src/modules/payments-analysis/common/enums/core";
 
 @Injectable()
 export class AppointmentExtensionService {
-  private readonly lokiLogger = new LokiLogger(AppointmentExtensionService.name);
   constructor(
     @InjectRepository(Appointment)
     private readonly appointmentRepository: Repository<Appointment>,
     @InjectRepository(Rate)
     private readonly ratesRepository: Repository<Rate>,
-    private readonly appointmentNotificationService: AppointmentNotificationService,
-    private readonly generalPaymentsService: OldGeneralPaymentsService,
-    private readonly discountsService: DiscountsService,
     private readonly redisService: RedisService,
-    private readonly dataSource: DataSource,
+    private readonly queueInitializeService: QueueInitializeService,
   ) {}
 
-  public async handleUpdateAppointmentBusinessTime(id: string, user: ITokenUserData): Promise<IMessageOutput> {
+  public async handleUpdateAppointmentBusinessTime(id: string): Promise<IMessageOutput> {
     const cacheKey = this.buildCacheKey(id);
     const liveAppointmentCacheData = await this.redisService.getJson<ILiveAppointmentCacheData>(cacheKey);
 
@@ -68,17 +58,12 @@ export class AppointmentExtensionService {
     const { appointment } = liveAppointmentCacheData;
 
     const businessExtensionTime = await this.getRateForBusinessExtension(liveAppointmentCacheData);
-    const discounts = await this.discountsService.fetchDiscountRateForExtension(businessExtensionTime, appointment);
 
-    this.makePayInAndUpdateBusinessTime(
-      liveAppointmentCacheData,
-      businessExtensionTime,
-      user.userRoleId,
-      cacheKey,
-      discounts ?? UNDEFINED_VALUE,
-    ).catch((error: Error) => {
-      this.lokiLogger.error("Make payin by additional block error", error.stack);
-    });
+    await this.queueInitializeService.addProcessPaymentOperationQueue(
+      appointment.id,
+      EPaymentOperation.AUTHORIZE_ADDITIONAL_BLOCK_PAYMENT,
+      { isShortTimeSlot: false, additionalBlockDuration: businessExtensionTime },
+    );
 
     return { message: "Success" };
   }
@@ -139,65 +124,6 @@ export class AppointmentExtensionService {
     }
 
     return isInNormalHours ? standardRate.detailsTime : afterHoursRate.detailsTime;
-  }
-
-  private async makePayInAndUpdateBusinessTime(
-    liveAppointmentCacheData: ILiveAppointmentCacheData,
-    businessExtensionTime: number,
-    userRoleId: string,
-    cacheKey: string,
-    discounts?: IDiscountRate,
-  ): Promise<void> {
-    const { appointment, extensionPeriodStart } = liveAppointmentCacheData;
-
-    const paymentStatus = await this.generalPaymentsService
-      .makePayInAuthByAdditionalBlock(appointment, businessExtensionTime, extensionPeriodStart, discounts)
-      .catch(async (error: Error) => {
-        this.lokiLogger.error(`Failed to make payin: ${error.message}, appointmentId: ${appointment.id}`, error.stack);
-
-        return OldEPayInStatus.AUTHORIZATION_FAILED;
-      });
-
-    if (paymentStatus === OldEPayInStatus.AUTHORIZATION_SUCCESS) {
-      // TODO: pass payments manager after refactor
-      await this.dataSource.transaction(async (manager) => {
-        await this.updateBusinessEndTime(manager, appointment, businessExtensionTime, userRoleId, cacheKey);
-      });
-    } else {
-      if (appointment.clientId) {
-        await this.appointmentNotificationService.sendAppointmentAuthorizationPaymentFailedNotification(
-          appointment.clientId,
-          appointment.platformId,
-          OldEPaymentFailedReason.AUTH_FAILED,
-          { appointmentId: appointment.id },
-        );
-      }
-    }
-  }
-
-  private async updateBusinessEndTime(
-    manager: EntityManager,
-    appointment: TLiveAppointmentCache,
-    businessExtensionTime: number,
-    clientId: string,
-    cacheKey: string,
-    discounts?: IDiscountRate,
-  ): Promise<void> {
-    const baseTime = appointment.businessEndTime ?? appointment.internalEstimatedEndTime;
-    const newBusinessEndTime = addMinutes(baseTime, businessExtensionTime);
-
-    await manager
-      .getRepository(Appointment)
-      .update(
-        { id: appointment.id, clientId: clientId, status: EAppointmentStatus.LIVE },
-        { businessEndTime: newBusinessEndTime },
-      );
-
-    await this.redisService.del(cacheKey);
-
-    if (discounts) {
-      await this.discountsService.applyDiscountsForExtension(manager, appointment, discounts);
-    }
   }
 
   public async updateAppointmentActivityTime(

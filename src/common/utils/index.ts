@@ -13,3 +13,4 @@ export * from "src/common/utils/delay";
 export * from "src/common/utils/find-many-typed";
 export * from "src/common/utils/find-one-typed";
 export * from "src/common/utils/role-helper";
+export * from "src/common/utils/decimal.utils";

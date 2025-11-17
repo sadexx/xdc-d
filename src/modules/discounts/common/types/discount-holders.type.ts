@@ -1,4 +1,4 @@
-import { FindOptionsSelect } from "typeorm";
+import { FindOptionsRelations, FindOptionsSelect } from "typeorm";
 import { QueryResultType } from "src/common/types";
 import { Company } from "src/modules/companies/entities";
 import { UserRole } from "src/modules/users/entities";
@@ -21,7 +21,13 @@ export type DiscountEntity = PromoCampaignAssignment | MembershipAssignment;
 export const CreateOrUpdateDiscountHolderQuery = {
   select: {
     id: true,
+    promoCampaignAssignment: { id: true },
+    membershipAssignment: { id: true },
   } as const satisfies FindOptionsSelect<DiscountHolder>,
+  relations: {
+    promoCampaignAssignment: true,
+    membershipAssignment: true,
+  } as const satisfies FindOptionsRelations<DiscountHolder>,
 };
 export type TCreateOrUpdateDiscountHolder = QueryResultType<
   DiscountHolder,

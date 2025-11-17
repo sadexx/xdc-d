@@ -2,7 +2,7 @@ import { BadRequestException, Injectable } from "@nestjs/common";
 import { AwsSQSService } from "src/modules/aws/sqs/services/aws-sqs.service";
 import { Message } from "@aws-sdk/client-sqs";
 import { ConfigService } from "@nestjs/config";
-import { EExtWebhookGroupNames } from "src/modules/aws/sqs/common/enums";
+import { EAwsSQSErrorCodes, EExtWebhookGroupNames } from "src/modules/aws/sqs/common/enums";
 import { IAwsConfigSqs } from "src/modules/aws/sqs/common/interfaces";
 import { ENVIRONMENT, NUMBER_OF_MILLISECONDS_IN_MINUTE } from "src/common/constants";
 import { LokiLogger } from "src/common/logger";
@@ -29,7 +29,7 @@ export class WebhookService {
 
   public async getManualStatusCheckWebhook(): Promise<void> {
     if ([EEnvironment.STAGING, EEnvironment.PRODUCTION].includes(ENVIRONMENT)) {
-      throw new BadRequestException("Manual status checks can only be run in development or local environments");
+      throw new BadRequestException(EAwsSQSErrorCodes.SQS_MANUAL_STATUS_CHECKS_NOT_ALLOWED);
     }
 
     this.lokiLogger.log("Starting: Manual status checks");

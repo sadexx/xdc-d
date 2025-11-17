@@ -24,10 +24,10 @@ import { DraftAppointmentService } from "src/modules/draft-appointments/services
 import { RemovalSchedulerService } from "src/modules/removal/services";
 import { MembershipAssignmentsService } from "src/modules/memberships/services";
 import { LokiLogger } from "src/common/logger";
-import { OldCorporatePaymentsService, OldGeneralPaymentsService } from "src/modules/payments/services";
 import { CompaniesDepositChargeExecutionService } from "src/modules/companies-deposit-charge/services";
 import { InterpreterCancellationRecordService } from "src/modules/interpreters/profile/services";
 import { PromoCampaignBannersService, PromoCampaignsService } from "src/modules/promo-campaigns/services";
+import { PaymentsCorporatePayoutService, PaymentsWaitListService } from "src/modules/payments/services";
 
 @Injectable()
 export class TaskExecutionService {
@@ -43,9 +43,9 @@ export class TaskExecutionService {
     private readonly draftAppointmentService: DraftAppointmentService,
     private readonly removalSchedulerService: RemovalSchedulerService,
     private readonly membershipAssignmentsService: MembershipAssignmentsService,
-    private readonly generalPaymentsService: OldGeneralPaymentsService,
+    private readonly paymentsWaitListService: PaymentsWaitListService,
     private readonly companiesDepositChargeExecutionService: CompaniesDepositChargeExecutionService,
-    private readonly corporatePaymentsService: OldCorporatePaymentsService,
+    private readonly paymentsCorporatePayoutService: PaymentsCorporatePayoutService,
     private readonly interpreterCancellationRecordService: InterpreterCancellationRecordService,
     private readonly promoCampaignsService: PromoCampaignsService,
     private readonly promoCampaignBannersService: PromoCampaignBannersService,
@@ -297,7 +297,7 @@ export class TaskExecutionService {
 
   public async autoCheckPaymentWaitList(): Promise<void> {
     try {
-      await this.generalPaymentsService.checkPaymentWaitList();
+      await this.paymentsWaitListService.checkPaymentWaitList();
     } catch (error) {
       this.lokiLogger.error(
         `Error in autoCheckPaymentWaitList: ${(error as Error).message}, ${(error as Error).stack}`,
@@ -319,7 +319,7 @@ export class TaskExecutionService {
 
   public async autoMakeCorporatePayouts(): Promise<void> {
     try {
-      await this.corporatePaymentsService.makeCorporatePayouts();
+      await this.paymentsCorporatePayoutService.makeCorporatePayOuts();
     } catch (error) {
       this.lokiLogger.error(
         `Error in autoMakeCorporatePayouts: ${(error as Error).message}, ${(error as Error).stack}`,

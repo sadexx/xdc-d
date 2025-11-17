@@ -50,7 +50,6 @@ import { userAvatars } from "src/modules/user-avatars/common/permissions-seeds";
 import { toolbox } from "src/modules/toolbox/common/permissions-seeds";
 import { promoCampaigns } from "src/modules/promo-campaigns/common/permissions-seeds";
 import { draftAppointments } from "src/modules/draft-appointments/common/permissions-seeds";
-import { oldPayments } from "src/modules/payments/common/permissions-seeds";
 import { rates } from "src/modules/rates/common/permissions-seeds";
 import { interpreterBadge } from "src/modules/interpreters/badge/common/permissions-seeds";
 import { memberships } from "src/modules/memberships/common/permissions-seeds";
@@ -68,6 +67,7 @@ import { removal } from "src/modules/removal/common/permissions-seeds";
 import { settings } from "src/modules/settings/common/permissions-seeds";
 import { findOneOrFailTyped } from "src/common/utils";
 import { EPermissionsErrorCodes } from "src/modules/permissions/common/enums";
+import { payments } from "src/modules/payments/common/permission-seeds";
 
 const seeds = {
   ...abn,
@@ -108,7 +108,7 @@ const seeds = {
   ...toolbox,
   ...promoCampaigns,
   ...draftAppointments,
-  ...oldPayments,
+  ...payments,
   ...rates,
   ...interpreterBadge,
   ...memberships,

@@ -1,5 +1,5 @@
 import { FindOptionsRelations, FindOptionsSelect } from "typeorm";
-import { QueryResultType } from "src/common/types";
+import { QueryResultType, StrictOmit } from "src/common/types";
 import { UserRole } from "src/modules/users/entities";
 import { Membership, MembershipPrice } from "src/modules/memberships/entities";
 
@@ -13,11 +13,16 @@ export type TGetMembershipPriceMembership = Pick<Membership, "id"> & {
 
 export type TGetMembershipPriceUserRole = Pick<UserRole, "id" | "country">;
 
+export type TMembershipPriceForUpdate = StrictOmit<TLoadMembershipPriceForUpdate, "price" | "gstAmount"> & {
+  price: number;
+  gstAmount: number | null;
+};
+
 /**
  ** Query types
  */
 
-export const UpdateMembershipPriceQuery = {
+export const LoadMembershipPriceForUpdateQuery = {
   select: {
     id: true,
     price: true,
@@ -40,7 +45,10 @@ export const UpdateMembershipPriceQuery = {
     membership: { currentMemberships: { discountHolder: { userRole: { paymentInformation: true } } } },
   } as const satisfies FindOptionsRelations<MembershipPrice>,
 };
-export type TUpdateMembershipPrice = QueryResultType<MembershipPrice, typeof UpdateMembershipPriceQuery.select>;
+export type TLoadMembershipPriceForUpdate = QueryResultType<
+  MembershipPrice,
+  typeof LoadMembershipPriceForUpdateQuery.select
+>;
 
 export const UpdateExistingMembershipSubscriptionsQuery = {
   select: {

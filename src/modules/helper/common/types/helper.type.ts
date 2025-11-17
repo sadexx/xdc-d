@@ -5,5 +5,5 @@ import { Role, User, UserRole } from "src/modules/users/entities";
  */
 
 export type TGetUserRoleByName = Pick<User, "id"> & {
-  userRoles: Array<Pick<UserRole, "id"> & { role: Pick<Role, "name"> }>;
+  userRoles: (Pick<UserRole, "id"> & { role: Pick<Role, "name"> })[];
 };

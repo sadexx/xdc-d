@@ -11,6 +11,7 @@ import {
   IChargeByBECSDebit,
 } from "src/modules/stripe/common/interfaces";
 import { AwsS3Service } from "src/modules/aws/s3/aws-s3.service";
+import { EStripeErrorCodes } from "src/modules/stripe/common/enums";
 
 @Injectable()
 export class StripePaymentsService {
@@ -49,7 +50,7 @@ export class StripePaymentsService {
 
     if (!charge.receipt_url) {
       this.lokiLogger.error(`Receipt URL not found for charge: ${latestCharge}`);
-      throw new BadRequestException("Failed to download receipt.");
+      throw new BadRequestException(EStripeErrorCodes.DOWNLOAD_RECEIPT_FAILED);
     }
 
     try {
@@ -59,13 +60,13 @@ export class StripePaymentsService {
 
       if (!receiptResponse.ok || !receiptResponse.body) {
         this.lokiLogger.error(`Failed to download receipt: ${receiptResponse.statusText}`);
-        throw new ServiceUnavailableException("Failed to fetch receipt data from external service.");
+        throw new ServiceUnavailableException(EStripeErrorCodes.FETCH_RECEIPT_DATA_FAILED);
       }
 
       return receiptResponse.body as ReadableStream<Uint8Array>;
     } catch (error) {
       this.lokiLogger.error(`Error during receipt download: ${(error as Error).message}`);
-      throw new ServiceUnavailableException("External service request failed during receipt download.");
+      throw new ServiceUnavailableException(EStripeErrorCodes.RECEIPT_DOWNLOAD_REQUEST_FAILED);
     }
   }
 
@@ -75,7 +76,6 @@ export class StripePaymentsService {
    * @param data - The authorization data including amount, currency, payment method, customer, idempotency key, and appointment ID.
    * @returns {Promise<IAuthorizePayment>}
    */
-  //TODO: idempotencyKey not optional
   public async authorizePayment(data: IAuthorizePaymentData): Promise<IAuthorizePayment> {
     const { amount, currency, paymentMethodId, customerId, idempotencyKey, appointmentPlatformId } = data;
     const constructedReturnUrl = `${this.BACK_END_URL}/v1/stripe/add-payment-method`;

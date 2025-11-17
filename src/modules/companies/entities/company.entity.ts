@@ -28,9 +28,8 @@ import { ESequenceName } from "src/common/enums";
 import { DiscountHolder } from "src/modules/discounts/entities/discount-holder.entity";
 import { PaymentInformation } from "src/modules/payment-information/entities";
 import { CompanyDepositCharge } from "src/modules/companies-deposit-charge/entities";
-import { OldPayment } from "src/modules/payments/entities";
 import { COMPANY_LFH_ID } from "src/modules/companies/common/constants/constants";
-import { Payment } from "src/modules/payments-new/entities";
+import { Payment } from "src/modules/payments/entities";
 
 @Entity("companies")
 export class Company {
@@ -148,11 +147,8 @@ export class Company {
   @OneToOne(() => PaymentInformation, (paymentInformation) => paymentInformation.company, { nullable: true })
   paymentInformation: PaymentInformation | null;
 
-  @OneToMany(() => OldPayment, (payment) => payment.company)
-  payments: OldPayment[];
-
   @OneToMany(() => Payment, (payment) => payment.company)
-  paymentsNEW: Payment[];
+  payments: Payment[];
 
   @OneToOne(() => CompanyDepositCharge, (companyDepositCharge) => companyDepositCharge.company, {
     nullable: true,
@@ -161,10 +157,10 @@ export class Company {
   depositCharge: CompanyDepositCharge | null;
 
   @Column({ type: "decimal", precision: 12, scale: 2, name: "deposit_amount", nullable: true })
-  depositAmount: number | null;
+  depositAmount: string | null;
 
   @Column({ type: "decimal", precision: 12, scale: 2, name: "deposit_default_charge_amount", nullable: true })
-  depositDefaultChargeAmount: number | null;
+  depositDefaultChargeAmount: string | null;
 
   @Column({ type: "integer", name: "platform_commission_rate", nullable: true })
   platformCommissionRate: number | null;

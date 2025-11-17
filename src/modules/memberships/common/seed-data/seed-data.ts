@@ -1,8 +1,9 @@
 import { ConfigService } from "@nestjs/config";
 import { EMembershipPricingRegion, EMembershipStatus, EMembershipType } from "src/modules/memberships/common/enums";
-import { OldECurrencies } from "src/modules/payments/common/enums";
 import { ICreateMembership } from "src/modules/memberships/common/interfaces";
 import { IStripeSdkData } from "src/modules/stripe/common/interfaces";
+import { EPaymentCurrency } from "src/modules/payments/common/enums/core";
+import { formatDecimalString } from "src/common/utils";
 
 export const membershipsSeedData = (configService: ConfigService): ICreateMembership[] => {
   const {
@@ -25,16 +26,16 @@ export const membershipsSeedData = (configService: ConfigService): ICreateMember
       membershipPrices: [
         {
           region: EMembershipPricingRegion.GLOBAL,
-          price: 1,
+          price: formatDecimalString(1),
           gstRate: null,
-          currency: OldECurrencies.USD,
+          currency: EPaymentCurrency.USD,
           stripePriceId: priceIdBronzeGlobal,
         },
         {
           region: EMembershipPricingRegion.AU,
-          price: 1,
+          price: formatDecimalString(1),
           gstRate: null,
-          currency: OldECurrencies.AUD,
+          currency: EPaymentCurrency.AUD,
           stripePriceId: priceIdBronzeAu,
         },
       ],
@@ -49,16 +50,16 @@ export const membershipsSeedData = (configService: ConfigService): ICreateMember
       membershipPrices: [
         {
           region: EMembershipPricingRegion.GLOBAL,
-          price: 1,
+          price: formatDecimalString(1),
           gstRate: null,
-          currency: OldECurrencies.USD,
+          currency: EPaymentCurrency.USD,
           stripePriceId: priceIdSilverGlobal,
         },
         {
           region: EMembershipPricingRegion.AU,
-          price: 1,
+          price: formatDecimalString(1),
           gstRate: null,
-          currency: OldECurrencies.AUD,
+          currency: EPaymentCurrency.AUD,
           stripePriceId: priceIdSilverAu,
         },
       ],
@@ -73,16 +74,16 @@ export const membershipsSeedData = (configService: ConfigService): ICreateMember
       membershipPrices: [
         {
           region: EMembershipPricingRegion.GLOBAL,
-          price: 1,
+          price: formatDecimalString(1),
           gstRate: null,
-          currency: OldECurrencies.USD,
+          currency: EPaymentCurrency.USD,
           stripePriceId: priceIdGoldGlobal,
         },
         {
           region: EMembershipPricingRegion.AU,
-          price: 1,
+          price: formatDecimalString(1),
           gstRate: null,
-          currency: OldECurrencies.AUD,
+          currency: EPaymentCurrency.AUD,
           stripePriceId: priceIdGoldAu,
         },
       ],

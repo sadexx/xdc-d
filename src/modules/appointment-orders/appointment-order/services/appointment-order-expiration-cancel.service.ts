@@ -18,9 +18,10 @@ import {
 } from "src/modules/appointment-orders/shared/services";
 import { AUDIO_VIDEO_COMMUNICATION_TYPES } from "src/modules/appointments/shared/common/constants";
 import { LokiLogger } from "src/common/logger";
-import { OldGeneralPaymentsService } from "src/modules/payments/services";
 import { AppointmentSharedService } from "src/modules/appointments/shared/services";
 import { EAppointmentOrderErrorCodes } from "src/modules/appointment-orders/appointment-order/common/enum";
+import { QueueInitializeService } from "src/modules/queues/services";
+import { EPaymentOperation } from "src/modules/payments-analysis/common/enums/core";
 
 export class AppointmentOrderExpirationCancelService {
   private readonly lokiLogger = new LokiLogger(AppointmentOrderExpirationCancelService.name);
@@ -37,7 +38,7 @@ export class AppointmentOrderExpirationCancelService {
     private readonly appointmentOrderSharedLogicService: AppointmentOrderSharedLogicService,
     private readonly appointmentOrderNotificationService: AppointmentOrderNotificationService,
     private readonly appointmentSharedService: AppointmentSharedService,
-    private readonly generalPaymentsService: OldGeneralPaymentsService,
+    private readonly queueInitializeService: QueueInitializeService,
   ) {}
 
   public async cancelExpiredAppointmentOrder(appointmentOrder: AppointmentOrder): Promise<void> {
@@ -79,9 +80,11 @@ export class AppointmentOrderExpirationCancelService {
       appointmentId: appointmentId,
     });
 
-    this.generalPaymentsService.cancelPayInAuth(appointment).catch((error: Error) => {
-      this.lokiLogger.error(`Cancel appointment by system. Cancel payin error: ${error.message} `, error.stack);
-    });
+    await this.queueInitializeService.addProcessPaymentOperationQueue(
+      appointmentId,
+      EPaymentOperation.AUTHORIZATION_CANCEL_PAYMENT,
+      { isCancelledByClient: false },
+    );
   }
 
   public async cancelExpiredGroupAppointmentOrders(appointmentOrderGroup: AppointmentOrderGroup): Promise<void> {
@@ -132,12 +135,13 @@ export class AppointmentOrderExpirationCancelService {
       }
     }
 
-    this.generalPaymentsService.cancelPayInAuthForGroup(appointments).catch((error: Error) => {
-      this.lokiLogger.error(
-        `Failed to cancel payin auth: ${error.message}, appointmentGroupId: ${appointments[0].appointmentsGroupId}`,
-        error.stack,
+    for (const appointment of appointments) {
+      await this.queueInitializeService.addProcessPaymentOperationQueue(
+        appointment.id,
+        EPaymentOperation.AUTHORIZATION_CANCEL_PAYMENT,
+        { isCancelledByClient: false },
       );
-    });
+    }
   }
 
   private async collectEntitiesForDeletion(appointments: Appointment[]): Promise<{

@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { DataSource, EntityManager, In, Repository } from "typeorm";
-import { findManyTyped, round2 } from "src/common/utils";
+import { findManyTyped, parseDecimalNumber } from "src/common/utils";
 import { FIFTEEN_PERCENT_MULTIPLIER, GST_COEFFICIENT, TEN_PERCENT_MULTIPLIER } from "src/common/constants";
 import {
   EPaymentCurrency,
@@ -10,10 +10,9 @@ import {
   EPaymentFailedReason,
   EPaymentStatus,
   EPaymentSystem,
-} from "src/modules/payments-new/common/enums";
-import { ICreatePaymentRecordResult, IPaymentCalculationResult } from "src/modules/payments-new/common/interfaces";
-import { Payment } from "src/modules/payments-new/entities";
-import { PaymentsExternalOperationsService, PaymentsManagementService } from "src/modules/payments-new/services";
+} from "src/modules/payments/common/enums/core";
+import { Payment } from "src/modules/payments/entities";
+import { PaymentsExternalOperationsService, PaymentsManagementService } from "src/modules/payments/services";
 import { EUserRoleName } from "src/modules/users/common/enums";
 import { UNFINISHED_DEPOSIT_CHARGE_STATUSES } from "src/modules/companies-deposit-charge/common/constants";
 import { ECompaniesDepositChargeErrorCodes } from "src/modules/companies-deposit-charge/common/enums";
@@ -21,16 +20,19 @@ import {
   ICalculateDepositChargeGstAmounts,
   ICreateDepositChargePaymentRecordData,
   IHandleDepositChargeFailureData,
-  IHandleDepositThresholdsData,
 } from "src/modules/companies-deposit-charge/common/interfaces";
 import {
   ChargeCompaniesDepositQuery,
   TChargeCompaniesDeposit,
+  TChargeCompaniesDepositSuperAdmin,
   TChargeCompaniesDepositValidatedCompany,
+  TLoadChargeCompaniesDeposit,
 } from "src/modules/companies-deposit-charge/common/types";
 import { CompanyDepositCharge } from "src/modules/companies-deposit-charge/entities";
 import { CompaniesDepositChargeNotificationService } from "src/modules/companies-deposit-charge/services";
-import { isCorporateGstPayer } from "src/modules/payments-new/common/helpers";
+import { isCorporateGstPayer } from "src/modules/payments/common/helpers";
+import { ICreatePaymentRecordResult } from "src/modules/payments/common/interfaces/management";
+import { IPaymentCalculationResult } from "src/modules/payments/common/interfaces/pricing";
 
 @Injectable()
 export class CompaniesDepositChargeExecutionService {
@@ -43,8 +45,17 @@ export class CompaniesDepositChargeExecutionService {
     private readonly dataSource: DataSource,
   ) {}
 
+  /**
+   * Executes pending deposit charges for all active companies.
+   * Processes each charge in a separate transaction: validates company, checks thresholds,
+   * attempts Stripe charge, creates payment record, and handles failures/notifications.
+   * Continues on individual failures without stopping the batch.
+   *
+   * @returns Promise<void> - Resolves on batch completion.
+   * @throws {BadRequestException} - If validation fails for a specific charge (logged and skipped).
+   */
   public async executePendingDepositCharges(): Promise<void> {
-    const depositCharges = await findManyTyped<TChargeCompaniesDeposit[]>(this.companyDepositChargeRepository, {
+    const depositCharges = await findManyTyped<TLoadChargeCompaniesDeposit[]>(this.companyDepositChargeRepository, {
       select: ChargeCompaniesDepositQuery.select,
       where: { company: { isActive: true } },
       relations: ChargeCompaniesDepositQuery.relations,
@@ -52,8 +63,9 @@ export class CompaniesDepositChargeExecutionService {
     const currency = this.determineCurrency();
 
     for (const depositCharge of depositCharges) {
+      const transformedCharge = this.transformDepositChargeToNumbers(depositCharge);
       await this.dataSource.transaction(async (manager) => {
-        await this.chargeCompanyDeposit(manager, depositCharge, currency);
+        await this.chargeCompanyDeposit(manager, transformedCharge, currency);
       });
     }
   }
@@ -76,7 +88,7 @@ export class CompaniesDepositChargeExecutionService {
       throw new BadRequestException(ECompaniesDepositChargeErrorCodes.PAYMENT_INFO_SUPER_ADMIN_ROLE_NOT_FOUND);
     }
 
-    if (!(await this.handleDepositThresholds({ manager, depositCharge, company: validatedCompany, superAdminRole }))) {
+    if (await this.shouldSkipChargeBasedOnThresholds(manager, depositCharge, validatedCompany, superAdminRole)) {
       return;
     }
 
@@ -92,8 +104,7 @@ export class CompaniesDepositChargeExecutionService {
       calculatedAmounts.totalFullAmount,
     );
 
-    const { payment } = await this.createDepositChargePaymentRecord({
-      manager,
+    const { payment } = await this.createDepositChargePaymentRecord(manager, {
       externalOperationResult,
       calculatedAmounts,
       company: validatedCompany,
@@ -157,8 +168,12 @@ export class CompaniesDepositChargeExecutionService {
     return company as TChargeCompaniesDepositValidatedCompany;
   }
 
-  private async handleDepositThresholds(data: IHandleDepositThresholdsData): Promise<boolean> {
-    const { manager, depositCharge, company, superAdminRole } = data;
+  private async shouldSkipChargeBasedOnThresholds(
+    manager: EntityManager,
+    depositCharge: TChargeCompaniesDeposit,
+    company: TChargeCompaniesDepositValidatedCompany,
+    superAdminRole: TChargeCompaniesDepositSuperAdmin,
+  ): Promise<boolean> {
     const companyDepositChargeRepository = manager.getRepository(CompanyDepositCharge);
 
     const depositDefaultChargeAmount = company.depositDefaultChargeAmount ?? depositCharge.depositChargeAmount;
@@ -191,17 +206,18 @@ export class CompaniesDepositChargeExecutionService {
     const isGstPayer = isCorporateGstPayer(company.country);
 
     if (isGstPayer.client && totalFullAmount > 0) {
-      amount = round2(totalFullAmount / GST_COEFFICIENT);
-      totalGstAmount = round2(totalFullAmount - amount);
+      amount = totalFullAmount / GST_COEFFICIENT;
+      totalGstAmount = totalFullAmount - amount;
     }
 
     return { totalAmount: amount, totalGstAmount, totalFullAmount };
   }
 
   private async createDepositChargePaymentRecord(
+    manager: EntityManager,
     data: ICreateDepositChargePaymentRecordData,
   ): Promise<ICreatePaymentRecordResult> {
-    const { manager, externalOperationResult, calculatedAmounts, company, currency } = data;
+    const { externalOperationResult, calculatedAmounts, company, currency } = data;
     const determinedPaymentMethodInfo = `Bank Account ${company.paymentInformation.stripeClientLastFour}`;
 
     return await this.paymentsManagementService.createPaymentRecord(manager, {
@@ -243,5 +259,20 @@ export class CompaniesDepositChargeExecutionService {
 
   private determineCurrency(): EPaymentCurrency {
     return EPaymentCurrency.AUD;
+  }
+
+  private transformDepositChargeToNumbers(depositCharge: TLoadChargeCompaniesDeposit): TChargeCompaniesDeposit {
+    const { company } = depositCharge;
+
+    return {
+      ...depositCharge,
+      depositChargeAmount: parseDecimalNumber(depositCharge.depositChargeAmount),
+      company: {
+        ...company,
+        depositAmount: company.depositAmount !== null ? parseDecimalNumber(company.depositAmount) : null,
+        depositDefaultChargeAmount:
+          company.depositDefaultChargeAmount !== null ? parseDecimalNumber(company.depositDefaultChargeAmount) : null,
+      },
+    };
   }
 }

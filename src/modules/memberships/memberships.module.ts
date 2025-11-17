@@ -15,7 +15,7 @@ import { EmailsModule } from "src/modules/emails/emails.module";
 import { StripeModule } from "src/modules/stripe/stripe.module";
 import { QueueModule } from "src/modules/queues/queues.module";
 import { UserRole } from "src/modules/users/entities";
-import { Payment, PaymentItem } from "src/modules/payments-new/entities";
+import { Payment, PaymentItem } from "src/modules/payments/entities";
 
 @Module({
   imports: [

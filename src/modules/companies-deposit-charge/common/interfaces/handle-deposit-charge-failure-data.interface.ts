@@ -1,5 +1,5 @@
-import { EPaymentCurrency } from "src/modules/payments-new/common/enums";
-import { Payment } from "src/modules/payments-new/entities";
+import { EPaymentCurrency } from "src/modules/payments/common/enums/core";
+import { Payment } from "src/modules/payments/entities";
 import {
   TChargeCompaniesDepositValidatedCompany,
   TChargeCompaniesDepositSuperAdmin,

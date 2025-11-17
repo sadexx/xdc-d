@@ -22,7 +22,7 @@ import {
 } from "src/modules/payment-information/common/outputs";
 import { GeneralPaymentInformationService } from "src/modules/payment-information/services/general-payment-information.service";
 import { LokiLogger } from "src/common/logger";
-import { EPaymentSystem } from "src/modules/payments-new/common/enums";
+import { EPaymentSystem } from "src/modules/payments/common/enums/core";
 import { StripeConnectService, StripeCustomersService } from "src/modules/stripe/services";
 import { ICreateAccountLink, IInitializeCustomerSetup } from "src/modules/stripe/common/interfaces";
 

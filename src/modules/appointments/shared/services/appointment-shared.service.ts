@@ -1,6 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { In, Repository } from "typeorm";
+import { EntityManager, In, Repository } from "typeorm";
 import {
   CreateVirtualAppointmentDto,
   CreateFaceToFaceAppointmentDto,
@@ -11,7 +11,14 @@ import {
 import { UserRole } from "src/modules/users/entities";
 import { Appointment, AppointmentAdminInfo, AppointmentReminder } from "src/modules/appointments/appointment/entities";
 import { BookingSlotManagementService } from "src/modules/booking-slot-management/services";
-import { differenceInHours, differenceInMilliseconds, isBefore, isWithinInterval, subHours } from "date-fns";
+import {
+  addMinutes,
+  differenceInHours,
+  differenceInMilliseconds,
+  isBefore,
+  isWithinInterval,
+  subHours,
+} from "date-fns";
 import { EAppointmentStatus, EAppointmentCommunicationType } from "src/modules/appointments/appointment/common/enums";
 import {
   ADMIN_ROLES,
@@ -51,6 +58,8 @@ import {
   CHECK_OUT_APPOINTMENT_TYPES,
 } from "src/modules/appointments/appointment/common/constants";
 import { EAppointmentSharedErrorCodes } from "src/modules/appointments/shared/common/enums";
+import { DiscountsService } from "src/modules/discounts/services";
+import { IAuthorizationPaymentContext } from "src/modules/payments-analysis/common/interfaces/authorization";
 
 @Injectable()
 export class AppointmentSharedService {
@@ -69,6 +78,7 @@ export class AppointmentSharedService {
     private readonly urlShortenerService: UrlShortenerService,
     private readonly appointmentNotificationService: AppointmentNotificationService,
     private readonly redisService: RedisService,
+    private readonly discountsService: DiscountsService,
   ) {}
 
   public async checkConflictingAppointmentsBeforeCreate(
@@ -463,6 +473,27 @@ export class AppointmentSharedService {
     }
 
     return adminInfoIds;
+  }
+
+  public async extendBusinessEndTime(manager: EntityManager, context: IAuthorizationPaymentContext): Promise<void> {
+    const { appointment, additionalBlockDuration, prices } = context;
+    const cacheKey = `live-appointment-data:${appointment.id}`;
+
+    const baseTime = appointment.businessEndTime ?? appointment.internalEstimatedEndTime;
+    const newBusinessEndTime = addMinutes(baseTime, additionalBlockDuration);
+
+    await manager
+      .getRepository(Appointment)
+      .update(
+        { id: appointment.id, clientId: appointment.clientId, status: EAppointmentStatus.LIVE },
+        { businessEndTime: newBusinessEndTime },
+      );
+
+    await this.redisService.del(cacheKey);
+
+    if (prices && prices.discountRate) {
+      await this.discountsService.applyDiscountsForExtension(manager, appointment, prices.discountRate);
+    }
   }
 
   public async deleteAppointmentReminder(appointmentId: string): Promise<void> {

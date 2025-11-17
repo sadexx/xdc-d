@@ -7,6 +7,8 @@ import { InterpreterProfile } from "src/modules/interpreters/profile/entities";
  ** Type
  */
 
+export type TTriggerLaunchSearchForAppointment = Pick<Appointment, "id" | "isGroupAppointment" | "appointmentsGroupId">;
+
 export type TCancelOnDemandCallsAppointmentOrder = Pick<
   AppointmentOrder,
   "id" | "platformId" | "matchedInterpreterIds"

@@ -5,7 +5,7 @@ import { ActivationTrackingModule } from "src/modules/activation-tracking/activa
 import { MembershipsModule } from "src/modules/memberships/memberships.module";
 import { QueueModule } from "src/modules/queues/queues.module";
 import { NotificationModule } from "src/modules/notifications/notification.module";
-import { OldPayment, OldPaymentItem } from "src/modules/payments/entities";
+import { Payment, PaymentItem } from "src/modules/payments/entities";
 import { AwsS3Module } from "src/modules/aws/s3/aws-s3.module";
 import { Company } from "src/modules/companies/entities";
 import {
@@ -25,8 +25,8 @@ import { MockModule } from "src/modules/mock/mock.module";
   imports: [
     TypeOrmModule.forFeature([
       PaymentInformation,
-      OldPayment,
-      OldPaymentItem,
+      Payment,
+      PaymentItem,
       Company,
       DocusignContract,
       SumSubCheck,

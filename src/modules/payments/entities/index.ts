@@ -1,3 +1,3 @@
-export * from "src/modules/payments/entities/old-payment.entity";
-export * from "src/modules/payments/entities/old-payment-item.entity";
-export * from "src/modules/payments/entities/old-payment-wait-list.entity";
+export * from "src/modules/payments/entities/payment.entity";
+export * from "src/modules/payments/entities/payment-item.entity";
+export * from "src/modules/payments/entities/payment-wait-list.entity";

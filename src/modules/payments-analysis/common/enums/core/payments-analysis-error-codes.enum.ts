@@ -1,0 +1,3 @@
+export const enum EPaymentsAnalysisErrorCodes {
+  ADDITIONAL_DATA_REQUIRED = "PAYMENT_ANALYSIS.ADDITIONAL_DATA_REQUIRED",
+}

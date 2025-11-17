@@ -43,7 +43,8 @@ export class RateStepService {
         return await this.calculateSingleBlock(config);
       case ECalculationType.DETAILED_BREAKDOWN:
         return await this.calculateDetailedBreakdown(config);
-      case ECalculationType.APPOINTMENT_START_PRICE || ECalculationType.APPOINTMENT_END_PRICE:
+      case ECalculationType.APPOINTMENT_START_PRICE:
+      case ECalculationType.APPOINTMENT_END_PRICE:
         return await this.calculateAppointmentPrice(config);
       default:
         throw new BadRequestException(ERatesErrorCodes.INVALID_CALCULATION_TYPE);

@@ -20,7 +20,10 @@
     },
 
     "UTILS": {
-      "ENTITY_NOT_FOUND": "Entity not found."
+      "ENTITY_NOT_FOUND": "Entity not found.",
+      "INVALID_DECIMAL_EMPTY_OR_NOT_STRING": "Invalid decimal value: empty or not a string.",
+      "INVALID_DECIMAL_NAN": "Invalid decimal value: NaN.",
+      "INVALID_DECIMAL_NAN_OR_INFINITE": "Invalid decimal value: NaN or Infinite."
     }
   },
 
@@ -156,12 +159,12 @@
     "QUERY": {
       "INTERPRETER_ROLE_ID_REQUIRED": "Interpreter role id is required for this query.",
       "INTERPRETERS_LIST_NOT_FOUND_FOR_APPOINTMENT": "List of ignored and declined interpreters not found for appointment.",
-      "INTERPRETERS_LIST_NOT_FOUND_FOR_GROUP": "List of ignored and declined interpreters not found for appointmentGroupId: {{id}}."
+      "INTERPRETERS_LIST_NOT_FOUND_FOR_GROUP": "List of ignored and declined interpreters not found."
     },
 
     "SCHEDULER": {
       "REPEAT_INTERVAL_NOT_SET": "Repeat Interval is not set for appointment order.",
-      "REMAINING_REPEATS_NOT_SET": "Remaining Repeats is not set for order with id: {{id}}."
+      "REMAINING_REPEATS_NOT_SET": "Remaining Repeats is not set for order."
     }
   },
 
@@ -267,7 +270,7 @@
     "RECORDING": {
       "KEY_NOT_FOUND": "Recording key is not found in appointment admin info.",
       "FILE_RESTORE_IN_PROGRESS": "The requested file has been accepted for restore. It will be available soon. Please try after: {{expirationDate}}.",
-      "FILE_KEY_UNDEFINED": "File key is undefined for: {{folderPath}}.",
+      "FILE_KEY_UNDEFINED": "File key is undefined.",
       "FILE_COUNT_ISSUE": "Issue with the number of files found for this appointment admin info."
     }
   },
@@ -354,7 +357,8 @@
     "SQS": {
       "GET_QUEUE_ATTRIBUTES_FAILED": "Failed to get queue attributes.",
       "RECEIVE_MESSAGES_FAILED": "Failed to receive AWS-SQS messages.",
-      "DELETE_MESSAGES_FAILED": "Failed to delete AWS-SQS messages."
+      "DELETE_MESSAGES_FAILED": "Failed to delete AWS-SQS messages.",
+      "MANUAL_STATUS_CHECKS_NOT_ALLOWED": "Manual status checks can only be run in development or local environments."
     }
   },
 
@@ -544,6 +548,10 @@
     "CONTENT": {
       "NOT_FOUND": "Content management not found."
     }
+  },
+
+  "CSV": {
+    "DOWNLOAD_LIMIT_EXCEEDED": "You exceeded csv download limit."
   },
 
   "DATA_TRANSFER": {
@@ -759,6 +767,10 @@
     }
   },
 
+  "PAYMENT_ANALYSIS": {
+    "ADDITIONAL_DATA_REQUIRED": "Insufficient additional data for {{operation}}."
+  },
+
   "PAYMENT_INFORMATION": {
     "COMMON": {
       "PAYMENT_INFO_NOT_FILLED": "User role payment information not filled.",
@@ -787,44 +799,42 @@
   },
 
   "PAYMENTS": {
-    "COMMON": {
-      "COUNTRY_NOT_FILLED": "Country is not filled.",
-      "COMPANY_NOT_FOUND": "Company was not found.",
-      "USER_ROLE_NOT_EXIST": "User role does not exist.",
-      "PAYMENT_INFO_NOT_FILLED": "Payment information is not filled.",
-      "STRIPE_PAYMENT_INFO_NOT_FILLED": "Stripe payment information is not filled.",
-      "CURRENCY_MISMATCH": "New payment item currency must be the same as other payment items currencies.",
-      "INCORRECT_PAYMENT_SYSTEM": "Incorrect payment system.",
-      "INCORRECT_PAYMENT_DIRECTION": "Incorrect payment direction.",
-      "CLIENT_NOT_EXIST": "Client does not exist.",
-      "CLIENT_PROFILE_NOT_FILLED": "Client profile is not filled.",
-      "CLIENT_CONTACT_EMAIL_NOT_FILLED": "Client contact email is not filled.",
-      "STRIPE_CARD_PAYMENT_INFO_NOT_FILLED": "Stripe card payment information is not filled.",
-      "INCOMING_PAYMENT_NO_ITEMS": "Incoming payment does not have items."
+    "AUTHORIZATION": {
+      "AUTHORIZE_PAYMENT_FAILED": "Failed to authorize payment."
     },
 
-    "GENERAL": {
-      "INCORRECT_DATA": "Incorrect data.",
-      "RECEIPT_NOT_EXIST": "Receipt does not exist.",
-      "CORPORATE_INTERPRETER_NO_COMPANY": "Corporate interpreter does not have a company."
+    "AUTHORIZATION_CANCEL": {
+      "CANCEL_AUTHORIZATION_FAILED": "Failed to cancel payment authorization.",
+      "HANDLE_LATE_CANCELLATION_FAILED": "Failed to handle late client cancellation."
     },
 
-    "INDIVIDUAL": {
-      "PAYMENT_ALREADY_CAPTURED": "Payment has already been captured.",
-      "COUNTRY_NOT_FILLED": "Country is not filled.",
-      "INTERPRETER_NOT_EXIST": "Interpreter does not exist.",
-      "INTERPRETER_PROFILE_NOT_FILLED": "Interpreter profile is not filled.",
-      "INTERPRETER_CONTACT_EMAIL_NOT_FILLED": "Interpreter contact email is not filled.",
-      "OUTCOMING_PAYMENT_ALREADY_EXISTS": "Outcoming payment already exists."
+    "CAPTURE": {
+      "CAPTURE_PAYMENT_FAILED": "Failed to capture payment."
     },
 
-    "CORPORATE": {
-      "INCOMING_PAYMENT_ITEM_INCORRECT_STATUS": "One of the incoming payment items has an incorrect status.",
-      "COMPANY_PAYMENT_INFO_NOT_FOUND": "Company payment information was not found.",
-      "COMMISSION_RATE_NOT_SET": "Commission rate is not set.",
-      "PAYPAL_PAYMENT_INFO_NOT_FILLED": "PayPal payment information is not filled.",
-      "COMPANY_NO_SUPER_ADMIN_ID": "Company does not have a super admin ID.",
-      "SUPER_ADMIN_ROLE_NOT_FOUND": "Super admin role was not found."
+    "CORPORATE_DEPOSIT": {
+      "CHARGE_FROM_DEPOSIT_FAILED": "Failed to charge from deposit."
+    },
+
+    "CORPORATE_COMMISSION": {
+      "PROCESS_SAME_COMPANY_COMMISSION_FAILED": "Failed to process same company commission."
+    },
+
+    "TRANSFER": {
+      "TRANSFER_AND_PAYOUT_FAILED": "Failed to transfer payment.",
+      "MAKE_PAYOUT_RECORD_FAILED": "Failed to make pay out record."
+    },
+
+    "WAIT_LIST": {
+      "REDIRECT_TO_WAIT_LIST_FAILED": "Failed to process redirect to wait list."
+    },
+
+    "VALIDATION": {
+      "VALIDATION_FAILURE_PROCESSING_FAILED": "Failed to process payment validation failure."
+    },
+
+    "QUERY": {
+      "RECEIPT_NOT_EXIST": "Receipt not exist."
     }
   },
 
@@ -944,7 +954,7 @@
     },
 
     "TIME_BOUNDARY": {
-      "UNHANDLED_DUAL_TIMEZONE_SCENARIO": "Unhandled dual timezone scenario: acceptedOvertime={{acceptedOvertime}}, interpreterMode={{interpreterAutoMode}}."
+      "UNHANDLED_DUAL_TIMEZONE_SCENARIO": "Unhandled dual timezone scenario."
     }
   },
 
@@ -1020,12 +1030,14 @@
   },
 
   "STRIPE": {
-    "PAYOUT": {
-      "DESTINATION_NOT_FILLED": "Destination is not filled."
+    "PAYMENTS": {
+      "DOWNLOAD_RECEIPT_FAILED": "Failed to download receipt.",
+      "FETCH_RECEIPT_DATA_FAILED": "Failed to fetch receipt data from external service.",
+      "RECEIPT_DOWNLOAD_REQUEST_FAILED": "External service request failed during receipt download."
     },
 
-    "RECEIPT": {
-      "DOWNLOAD_FAILED": "Failed to download receipt."
+    "CONNECT": {
+      "INSTANT_BALANCE_MISSING": "Required instant available balance or destination is missing for the account."
     }
   },
 

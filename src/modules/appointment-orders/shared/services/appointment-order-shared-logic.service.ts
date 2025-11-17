@@ -4,18 +4,18 @@ import { LokiLogger } from "src/common/logger";
 import { AppointmentOrder, AppointmentOrderGroup } from "src/modules/appointment-orders/appointment-order/entities";
 import { Appointment } from "src/modules/appointments/appointment/entities";
 import { NotificationService } from "src/modules/notifications/services";
-import { Repository } from "typeorm";
+import { EntityManager, Not, Repository } from "typeorm";
 import { AppointmentOrderQueryOptionsService } from "src/modules/appointment-orders/shared/services";
 import { BookingSlotManagementService } from "src/modules/booking-slot-management/services";
 import { ICancelOnDemandInvitationOutput } from "src/modules/appointment-orders/appointment-order/common/outputs";
 import {
   TCancelOnDemandCallsAppointmentOrder,
   TCheckIfInterpreterIsBlocked,
+  TTriggerLaunchSearchForAppointment,
 } from "src/modules/appointment-orders/shared/common/types";
 import { InterpreterProfile } from "src/modules/interpreters/profile/entities";
 import { findOneOrFail } from "src/common/utils";
 import { EAppointmentOrderSharedErrorCodes } from "src/modules/appointment-orders/shared/common/enum";
-import { TLoadAppointmentAuthorizationContext } from "src/modules/payment-analysis/common/types/authorization";
 import { EAppointmentStatus } from "src/modules/appointments/appointment/common/enums";
 
 @Injectable()
@@ -27,8 +27,6 @@ export class AppointmentOrderSharedLogicService {
     private readonly appointmentOrderRepository: Repository<AppointmentOrder>,
     @InjectRepository(AppointmentOrderGroup)
     private readonly appointmentOrderGroupRepository: Repository<AppointmentOrderGroup>,
-    @InjectRepository(Appointment)
-    private readonly appointmentRepository: Repository<Appointment>,
     @InjectRepository(InterpreterProfile)
     private readonly interpreterProfileRepository: Repository<InterpreterProfile>,
     private readonly appointmentOrderQueryOptionsService: AppointmentOrderQueryOptionsService,
@@ -36,16 +34,26 @@ export class AppointmentOrderSharedLogicService {
     private readonly notificationService: NotificationService,
   ) {}
 
-  public async triggerLaunchSearchForAppointment(appointment: TLoadAppointmentAuthorizationContext): Promise<void> {
+  public async triggerLaunchSearchForAppointment(
+    manager: EntityManager,
+    appointment: TTriggerLaunchSearchForAppointment,
+  ): Promise<void> {
+    const appointmentRepository = manager.getRepository(Appointment);
+    const appointmentOrderRepository = manager.getRepository(AppointmentOrder);
+    const appointmentOrderGroupRepository = manager.getRepository(AppointmentOrderGroup);
+
     if (!appointment.isGroupAppointment) {
-      await this.appointmentRepository.update(appointment.id, { status: EAppointmentStatus.PENDING });
-      await this.appointmentOrderRepository.update(appointment.id, { isSearchNeeded: true });
+      await appointmentRepository.update(
+        { id: appointment.id, status: Not(EAppointmentStatus.LIVE) },
+        { status: EAppointmentStatus.PENDING },
+      );
+      await appointmentOrderRepository.update({ appointment: { id: appointment.id } }, { isSearchNeeded: true });
     } else if (appointment.appointmentsGroupId) {
-      await this.appointmentRepository.update(
+      await appointmentRepository.update(
         { appointmentsGroupId: appointment.appointmentsGroupId },
         { status: EAppointmentStatus.PENDING },
       );
-      await this.appointmentOrderGroupRepository.update(appointment.id, { isSearchNeeded: true });
+      await appointmentOrderGroupRepository.update(appointment.id, { isSearchNeeded: true });
     }
   }
 

@@ -44,7 +44,6 @@ import { InterpreterQuestionnaireModule } from "src/modules/interpreters/questio
 import { ChimeMessagingConfigurationModule } from "src/modules/chime-messaging-configuration/chime-messaging-configuration.module";
 import { StatisticsModule } from "src/modules/statistics/statistics.module";
 import { StripeModule } from "src/modules/stripe/stripe.module";
-import { OldPaymentsModule } from "src/modules/payments/old-payments.module";
 import { UserAvatarsModule } from "src/modules/user-avatars/user-avatars.module";
 import { PaypalModule } from "src/modules/paypal/paypal.module";
 import { ToolboxModule } from "src/modules/toolbox/toolbox.module";
@@ -74,11 +73,10 @@ import { HttpClientModule } from "src/modules/http-client/http-client.module";
 import { DataTransferModule } from "src/modules/data-transfer/data-transfer.module";
 import { UrlShortenerModule } from "src/modules/url-shortener/url-shortener.module";
 import { AccessControlModule } from "src/modules/access-control/access-control.module";
-import { OldRatesModule } from "src/modules/rates-old/old-rates.module";
 import { SettingsModule } from "src/modules/settings/settings.module";
-import { PaymentAnalysisModule } from "src/modules/payment-analysis/payment-analysis.module";
-import { PaymentsModule } from "src/modules/payments-new/payments.module";
-import { PdfModuleNew } from "src/modules/pdf-new/pdf.module";
+import { PaymentAnalysisModule } from "src/modules/payments-analysis/payments-analysis.module";
+import { PaymentsModule } from "src/modules/payments/payments.module";
+import { PdfModule } from "src/modules/pdf/pdf.module";
 
 const configModuleOptions: ConfigModuleOptions = {
   envFilePath: [".env"],
@@ -137,7 +135,6 @@ const configModuleOptions: ConfigModuleOptions = {
     StatisticsModule,
     NotificationModule,
     StripeModule,
-    OldPaymentsModule,
     UserAvatarsModule,
     PaypalModule,
     ToolboxModule,
@@ -158,10 +155,9 @@ const configModuleOptions: ConfigModuleOptions = {
     WebhookProcessorModule,
     DataTransferModule,
     UrlShortenerModule,
-    OldRatesModule,
     PaymentAnalysisModule,
     PaymentsModule,
-    PdfModuleNew,
+    PdfModule,
   ],
   providers: [
     {

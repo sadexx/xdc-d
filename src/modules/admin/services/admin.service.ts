@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { In, Repository } from "typeorm";
+import { DataSource, EntityManager, In, Repository } from "typeorm";
 import { User } from "src/modules/users/entities";
 import { UserRole } from "src/modules/users/entities";
 import {
@@ -22,15 +22,23 @@ import {
 } from "src/modules/admin/common/output";
 import { ITokenUserData } from "src/modules/tokens/common/interfaces";
 import { DUE_PAYMENT_STATUSES } from "src/common/constants";
-import { OldPayment, OldPaymentItem } from "src/modules/payments/entities";
-import { findOneOrFailTyped, round2 } from "src/common/utils";
+import {
+  findManyAndCountQueryBuilderTyped,
+  findOneOrFailTyped,
+  formatDecimalString,
+  parseDecimalNumber,
+  round2,
+} from "src/common/utils";
 import { format } from "date-fns";
 import { IGetUserPayment } from "src/modules/admin/common/interfaces";
-import { OldEPaymentStatus, OldEReceiptType } from "src/modules/payments/common/enums";
 import { IAccountRequiredStepsDataOutput } from "src/modules/account-activation/common/outputs";
 import { AccessControlService } from "src/modules/access-control/services";
 import { Appointment } from "src/modules/appointments/appointment/entities";
 import { EAdminErrorCodes } from "src/modules/admin/common/enums";
+import { TGetUserPayments, TLoadPaymentForStatusChange, TPaymentForStatusChange } from "src/modules/admin/common/types";
+import { Payment } from "src/modules/payments/entities";
+import { EPaymentReceiptType, EPaymentStatus } from "src/modules/payments/common/enums/core";
+import { PaymentsManagementService } from "src/modules/payments/services";
 
 @Injectable()
 export class AdminService {
@@ -41,15 +49,13 @@ export class AdminService {
     private readonly userRoleRepository: Repository<UserRole>,
     @InjectRepository(InterpreterProfile)
     private readonly interpreterProfileRepository: Repository<InterpreterProfile>,
-    @InjectRepository(OldPayment)
-    private readonly paymentRepository: Repository<OldPayment>,
-    @InjectRepository(OldPaymentItem)
-    private readonly paymentItemRepository: Repository<OldPaymentItem>,
-    @InjectRepository(Appointment)
-    private readonly appointmentRepository: Repository<Appointment>,
+    @InjectRepository(Payment)
+    private readonly paymentRepository: Repository<Payment>,
     private readonly adminQueryOptionsService: AdminQueryOptionsService,
     private readonly accountActivationService: AccountActivationService,
     private readonly accessControlService: AccessControlService,
+    private readonly paymentsManagementService: PaymentsManagementService,
+    private readonly dataSource: DataSource,
   ) {}
 
   public async getUsers(dto: GetUsersDto): Promise<GetUsersOutput> {
@@ -96,7 +102,7 @@ export class AdminService {
   public async getUserPayments(dto: GetUserPaymentsDto): Promise<IGetUserPaymentResponseOutput> {
     const queryBuilder = this.paymentRepository.createQueryBuilder("payment");
     this.adminQueryOptionsService.getUserPaymentsOptions(queryBuilder, dto);
-    const [payments, totalCount] = await queryBuilder.getManyAndCount();
+    const [payments, totalCount] = await findManyAndCountQueryBuilderTyped<TGetUserPayments[]>(queryBuilder);
 
     const result: IGetUserPayment[] = [];
 
@@ -104,9 +110,8 @@ export class AdminService {
       let amount = payment.totalFullAmount;
       let appointmentDate: string | null = null;
       let dueDate: string | null = null;
-      let invoiceNumber: string | undefined = payment?.appointment?.platformId;
 
-      if (dto.receiptType && dto.receiptType === OldEReceiptType.TAX_INVOICE) {
+      if (dto.receiptType && dto.receiptType === EPaymentReceiptType.TAX_INVOICE) {
         amount = payment.totalGstAmount;
       }
 
@@ -118,21 +123,13 @@ export class AdminService {
         dueDate = format(payment.items[0].updatingDate, "dd MMM yyyy");
       }
 
-      if (payment.membershipId && payment.fromClient) {
-        invoiceNumber = `${payment.fromClient.user.platformId}-${payment.platformId}`;
-      }
-
-      if (payment.isDepositCharge && payment.company) {
-        invoiceNumber = `${payment.company.platformId}-${payment.platformId}`;
-      }
-
       const firstItem = payment.items.sort(
         (a, b) => new Date(b.updatingDate).getTime() - new Date(a.updatingDate).getTime(),
       )[0];
 
       result.push({
         id: payment.id,
-        invoiceNumber,
+        invoiceNumber: payment.platformId,
         appointmentDate,
         dueDate,
         amount: `${round2(Number(amount))} ${payment.currency}`,
@@ -149,19 +146,10 @@ export class AdminService {
   }
 
   public async updatePaymentStatus(paymentId: string, dto: UpdatePaymentStatusDto): Promise<void> {
-    const payment = await findOneOrFailTyped<OldPayment>(paymentId, this.paymentRepository, {
-      select: {
-        id: true,
-        items: { id: true, amount: true, gstAmount: true, fullAmount: true, status: true },
-        appointment: { id: true },
-      },
-      where: { id: paymentId },
-      relations: { items: true, appointment: true },
-    });
+    const payment = await this.loadPaymentForStatusChange(paymentId);
 
     const failedItems = payment.items.filter(
-      (item) =>
-        item.status === OldEPaymentStatus.AUTHORIZATION_FAILED || item.status === OldEPaymentStatus.CAPTURE_FAILED,
+      (item) => item.status === EPaymentStatus.AUTHORIZATION_FAILED || item.status === EPaymentStatus.CAPTURE_FAILED,
     );
 
     if (failedItems.length === 0) {
@@ -169,43 +157,79 @@ export class AdminService {
     }
 
     const failedItemIds = failedItems.map((item) => item.id);
-
-    await this.paymentItemRepository.update(
-      { id: In(failedItemIds) },
-      { status: dto.status, note: `Manually changed from failed to ${dto.status} by admin.` },
-    );
-
-    const capturedOrAuthorized = payment.items.filter(
+    const successfulItems = payment.items.filter(
       (item) =>
-        item.status === OldEPaymentStatus.CAPTURED ||
-        item.status === OldEPaymentStatus.AUTHORIZED ||
+        item.status === EPaymentStatus.CAPTURED ||
+        item.status === EPaymentStatus.AUTHORIZED ||
         failedItemIds.includes(item.id),
     );
 
+    await this.dataSource.transaction(async (manager) => {
+      await this.updateFailedPaymentItems(manager, failedItemIds, dto.status);
+      await this.updatePaymentTotals(manager, payment, successfulItems);
+    });
+  }
+
+  private async loadPaymentForStatusChange(paymentId: string): Promise<TPaymentForStatusChange> {
+    const queryOptions = this.adminQueryOptionsService.loadPaymentForStatusChangeOptions(paymentId);
+    const payment = await findOneOrFailTyped<TLoadPaymentForStatusChange>(
+      paymentId,
+      this.paymentRepository,
+      queryOptions,
+    );
+
+    return {
+      ...payment,
+      items: payment.items.map((item) => ({
+        ...item,
+        amount: parseDecimalNumber(item.amount),
+        gstAmount: parseDecimalNumber(item.gstAmount),
+        fullAmount: parseDecimalNumber(item.fullAmount),
+      })),
+    };
+  }
+
+  private async updateFailedPaymentItems(
+    manager: EntityManager,
+    itemIds: string[],
+    newStatus: EPaymentStatus,
+  ): Promise<void> {
+    await this.paymentsManagementService.updatePaymentItem(
+      manager,
+      { id: In(itemIds) },
+      { status: newStatus, note: `Manually changed from failed to ${newStatus} by admin.` },
+    );
+  }
+
+  private async updatePaymentTotals(
+    manager: EntityManager,
+    payment: TPaymentForStatusChange,
+    successfulItems: TPaymentForStatusChange["items"],
+  ): Promise<void> {
     let totalAmount = 0;
     let totalGstAmount = 0;
     let totalFullAmount = 0;
 
-    for (const item of capturedOrAuthorized) {
-      totalAmount += Number(item.amount);
-      totalGstAmount += Number(item.gstAmount);
-      totalFullAmount += Number(item.fullAmount);
+    for (const item of successfulItems) {
+      totalAmount += item.amount;
+      totalGstAmount += item.gstAmount;
+      totalFullAmount += item.fullAmount;
     }
 
-    await this.paymentRepository.update(
+    await this.paymentsManagementService.updatePayment(
+      manager,
       { id: payment.id },
       {
-        totalAmount: round2(totalAmount),
-        totalGstAmount: round2(totalGstAmount),
-        totalFullAmount: round2(totalFullAmount),
+        totalAmount: formatDecimalString(totalAmount),
+        totalGstAmount: formatDecimalString(totalGstAmount),
+        totalFullAmount: formatDecimalString(totalFullAmount),
       },
     );
 
     if (payment.appointment) {
-      await this.appointmentRepository.update(
-        { id: payment.appointment.id },
-        { paidByClient: round2(totalFullAmount) },
-      );
+      await manager
+        .getRepository(Appointment)
+        .update({ id: payment.appointment.id }, { paidByClient: formatDecimalString(totalFullAmount) });
     }
   }
 }

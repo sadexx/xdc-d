@@ -1,7 +1,7 @@
 import { IsIn } from "class-validator";
-import { OldEPaymentStatus } from "src/modules/payments/common/enums";
+import { EPaymentStatus } from "src/modules/payments/common/enums/core";
 
 export class UpdatePaymentStatusDto {
-  @IsIn([OldEPaymentStatus.SUCCESS])
-  status: OldEPaymentStatus;
+  @IsIn([EPaymentStatus.SUCCESS])
+  status: EPaymentStatus;
 }

@@ -256,6 +256,7 @@ export class DocusignCorporateService {
     const checkContractCriteriaResult = this.companyActivationService.checkActivationCriteria(
       companyActivationSteps,
       false,
+      false,
     );
 
     if (checkContractCriteriaResult.failed.length > 0) {

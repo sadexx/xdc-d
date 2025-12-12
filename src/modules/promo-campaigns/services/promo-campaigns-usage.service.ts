@@ -13,6 +13,7 @@ import {
 import { PromoCampaignQueryOptionsService } from "src/modules/promo-campaigns/services";
 import { findOneOrFailTyped } from "src/common/utils";
 import { TApplyDiscountsForExtension } from "src/modules/discounts/common/types";
+import { ICompanyAuthorizationContext } from "src/modules/payments-analysis/common/interfaces/authorization";
 
 @Injectable()
 export class PromoCampaignsUsageService {
@@ -60,16 +61,17 @@ export class PromoCampaignsUsageService {
     manager: EntityManager,
     appointment: TApplyDiscountsForExtension,
     minutesToApply: number | null,
+    companyContext: ICompanyAuthorizationContext | null,
   ): Promise<void> {
     if (!appointment.clientId) {
       return;
     }
 
-    const queryOptions = this.promoCampaignQueryOptionsService.applyPromoCampaignUsageForExtensionOptions(
-      appointment.clientId,
-    );
+    const discountHolderId = companyContext ? companyContext.company.id : appointment.clientId;
+    const queryOptions =
+      this.promoCampaignQueryOptionsService.applyPromoCampaignUsageForExtensionOptions(discountHolderId);
     const promoCampaignAssignment = await findOneOrFailTyped<TApplyPromoCampaignUsageForExtension>(
-      appointment.clientId,
+      discountHolderId,
       manager.getRepository(PromoCampaignAssignment),
       queryOptions,
     );

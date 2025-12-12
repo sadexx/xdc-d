@@ -5,3 +5,4 @@ export * from "src/modules/companies/common/enums/company-type.enum";
 export * from "src/modules/companies/common/enums/company-sub-status.enum";
 export * from "src/modules/companies/common/enums/company-document-status.enum";
 export * from "src/modules/companies/common/enums/companies-error-codes.enum";
+export * from "src/modules/companies/common/enums/company-funding-source.enum";

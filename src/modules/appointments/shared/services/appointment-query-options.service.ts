@@ -12,6 +12,7 @@ import {
   LessThan,
   LessThanOrEqual,
   MoreThan,
+  MoreThanOrEqual,
   Not,
   SelectQueryBuilder,
 } from "typeorm";
@@ -1438,6 +1439,23 @@ export class AppointmentQueryOptionsService {
       order: {
         scheduledStartTime: ESortOrder.ASC,
       },
+    };
+  }
+
+  public getUsersPendingOnDemandAppointmentsOptions(
+    userRoleIds: string[],
+    statusesToBroadcast: EAppointmentStatus[],
+    thresholdTime: Date,
+  ): FindManyOptions<Appointment> {
+    return {
+      select: { id: true, clientId: true, status: true },
+      where: {
+        clientId: In(userRoleIds),
+        status: In(statusesToBroadcast),
+        schedulingType: EAppointmentSchedulingType.ON_DEMAND,
+        creationDate: MoreThanOrEqual(thresholdTime),
+      },
+      order: { creationDate: ESortOrder.DESC },
     };
   }
 

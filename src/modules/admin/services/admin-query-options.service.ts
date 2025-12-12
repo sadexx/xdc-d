@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { GetUserDocumentsDto, GetUserPaymentsDto, GetUsersDto } from "src/modules/admin/common/dto";
-import { Brackets, FindOneOptions, SelectQueryBuilder } from "typeorm";
+import { Brackets, FindManyOptions, FindOneOptions, In, SelectQueryBuilder } from "typeorm";
 import { User } from "src/modules/users/entities";
 import { generateCaseForEnumOrder } from "src/common/utils";
 import {
@@ -19,7 +19,15 @@ import {
   paymentMethodFilterMap,
   paymentStatusOrder,
 } from "src/modules/payments/common/enums/core";
-import { LoadPaymentForStatusChangeQuery } from "src/modules/admin/common/types";
+import {
+  GenerateCorporatePostPaymentReceiptCompanyQuery,
+  GenerateCorporatePostPaymentReceiptQuery,
+  LoadPaymentForStatusChangeQuery,
+  MarkPaymentsInvoicedCompanyQuery,
+  MarkPaymentsInvoicedQuery,
+} from "src/modules/admin/common/types";
+import { Company } from "src/modules/companies/entities";
+import { ESortOrder } from "src/common/enums";
 
 @Injectable()
 export class AdminQueryOptionsService {
@@ -449,7 +457,8 @@ export class AdminQueryOptionsService {
         "item.note",
         "item.creationDate",
         "item.updatingDate",
-      ]);
+      ])
+      .orderBy("item.updatingDate", ESortOrder.ASC);
 
     this.applyFiltersForUserPayments(queryBuilder, dto);
     this.applyOrderingForUserPayments(queryBuilder, dto);
@@ -463,7 +472,7 @@ export class AdminQueryOptionsService {
     }
 
     if (dto.userRoleId) {
-      queryBuilder.andWhere("payment.fromClientId = :userRoleId OR payment.toInterpreterId = :userRoleId", {
+      queryBuilder.andWhere("payment.from_client_id = :userRoleId OR payment.to_interpreter_id = :userRoleId", {
         userRoleId: dto.userRoleId,
       });
     } else if (dto.companyId) {
@@ -588,6 +597,41 @@ export class AdminQueryOptionsService {
       select: LoadPaymentForStatusChangeQuery.select,
       where: { id: paymentId },
       relations: LoadPaymentForStatusChangeQuery.relations,
+    };
+  }
+
+  public markPaymentsInvoicedOptions(
+    paymentIds: string[],
+    companyId: string,
+  ): { payments: FindManyOptions<Payment>; company: FindOneOptions<Company> } {
+    return {
+      payments: {
+        select: MarkPaymentsInvoicedQuery.select,
+        where: { id: In(paymentIds), company: { id: companyId } },
+        relations: MarkPaymentsInvoicedQuery.relations,
+      },
+      company: {
+        select: MarkPaymentsInvoicedCompanyQuery.select,
+        where: { id: companyId },
+      },
+    };
+  }
+
+  public generateCorporatePostPaymentReceiptOptions(
+    paymentIds: string[],
+    companyId: string,
+  ): { payments: FindManyOptions<Payment>; company: FindOneOptions<Company> } {
+    return {
+      payments: {
+        select: GenerateCorporatePostPaymentReceiptQuery.select,
+        where: { id: In(paymentIds), company: { id: companyId } },
+        relations: GenerateCorporatePostPaymentReceiptQuery.relations,
+      },
+      company: {
+        select: GenerateCorporatePostPaymentReceiptCompanyQuery.select,
+        where: { id: companyId },
+        relations: GenerateCorporatePostPaymentReceiptCompanyQuery.relations,
+      },
     };
   }
 }

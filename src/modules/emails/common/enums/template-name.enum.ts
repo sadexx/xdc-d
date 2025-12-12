@@ -50,4 +50,5 @@ export const enum EEmailTemplateName {
   APPOINTMENT_CANCELLATION_NOTICE_BY_INTERPRETER = "appointment-cancellation-notice-by-interpreter",
   ATTENDEE_INVITATION = "attendee-invitation",
   APPOINTMENT_CANCELLATION_NOTICE_EXTRA_PARTICIPANT = "appointment-cancellation-notice-extra-participant",
+  POST_PAYMENT_CORPORATE_RECEIPT = "post-payment-corporate-receipt",
 }

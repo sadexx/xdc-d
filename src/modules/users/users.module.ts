@@ -27,6 +27,7 @@ import { ChimeMessagingConfigurationModule } from "src/modules/chime-messaging-c
 import { DataTransferModule } from "src/modules/data-transfer/data-transfer.module";
 import { TokensModule } from "src/modules/tokens/tokens.module";
 import { DiscountsModule } from "src/modules/discounts/discounts.module";
+import { RedisModule } from "src/modules/redis/redis.module";
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { DiscountsModule } from "src/modules/discounts/discounts.module";
     DataTransferModule,
     TokensModule,
     DiscountsModule,
+    RedisModule,
   ],
   providers: [
     UsersService,

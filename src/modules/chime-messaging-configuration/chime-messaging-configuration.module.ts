@@ -17,6 +17,7 @@ import { ActiveChannelStorageService } from "src/modules/web-socket-gateway/comm
 import { UserRole } from "src/modules/users/entities";
 import { AccessControlModule } from "src/modules/access-control/access-control.module";
 import { Appointment } from "src/modules/appointments/appointment/entities";
+import { RedisModule } from "src/modules/redis/redis.module";
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { Appointment } from "src/modules/appointments/appointment/entities";
     FileManagementModule,
     AwsS3Module,
     AccessControlModule,
+    RedisModule,
   ],
   controllers: [ChimeMessagingConfigurationController],
   providers: [

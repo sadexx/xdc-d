@@ -15,7 +15,7 @@ import { EUserConcessionCardStatus } from "src/modules/concession-card/common/en
 import { EUserRoleName } from "src/modules/users/common/enums";
 import { AUSTRALIA_AND_COUNTRIES_WITH_SIMILAR_RULES } from "src/modules/addresses/common/constants/constants";
 import { Company, CompanyDocument } from "src/modules/companies/entities";
-import { ECompanyDocumentStatus, ECompanyType } from "src/modules/companies/common/enums";
+import { ECompanyDocumentStatus, ECompanyFundingSource, ECompanyType } from "src/modules/companies/common/enums";
 import { EOnboardingStatus } from "src/modules/stripe/common/enums";
 import { UNDEFINED_VALUE } from "src/common/constants";
 import {
@@ -620,7 +620,13 @@ export class StepInfoService {
       },
       paymentInformationFulfilled: {
         index: 3,
-        status: this.mapPaymentInformationStatus(UNDEFINED_VALUE, company.paymentInformation, company.companyType),
+        status: this.mapPaymentInformationStatus(
+          UNDEFINED_VALUE,
+          company.paymentInformation,
+          company.companyType,
+          company.fundingSource,
+          company.depositDefaultChargeAmount,
+        ),
         canSkip: false,
         isBlockAccountActivation: true,
       },
@@ -649,7 +655,13 @@ export class StepInfoService {
       },
       paymentInformationFulfilled: {
         index: 2,
-        status: this.mapPaymentInformationStatus(UNDEFINED_VALUE, company.paymentInformation, company.companyType),
+        status: this.mapPaymentInformationStatus(
+          UNDEFINED_VALUE,
+          company.paymentInformation,
+          company.companyType,
+          company.fundingSource,
+          company.depositDefaultChargeAmount,
+        ),
         canSkip: false,
         isBlockAccountActivation: true,
       },
@@ -684,7 +696,13 @@ export class StepInfoService {
       },
       paymentInformationFulfilled: {
         index: 3,
-        status: this.mapPaymentInformationStatus(UNDEFINED_VALUE, company.paymentInformation, company.companyType),
+        status: this.mapPaymentInformationStatus(
+          UNDEFINED_VALUE,
+          company.paymentInformation,
+          company.companyType,
+          company.fundingSource,
+          company.depositDefaultChargeAmount,
+        ),
         canSkip: false,
         isBlockAccountActivation: true,
       },
@@ -713,7 +731,13 @@ export class StepInfoService {
       },
       paymentInformationFulfilled: {
         index: 2,
-        status: this.mapPaymentInformationStatus(UNDEFINED_VALUE, company.paymentInformation, company.companyType),
+        status: this.mapPaymentInformationStatus(
+          UNDEFINED_VALUE,
+          company.paymentInformation,
+          company.companyType,
+          company.fundingSource,
+          company.depositDefaultChargeAmount,
+        ),
         canSkip: false,
         isBlockAccountActivation: true,
       },
@@ -982,8 +1006,10 @@ export class StepInfoService {
     userRoleName: EUserRoleName | undefined,
     paymentInformation: TMapPaymentInformationStatus | null,
     companyType?: ECompanyType,
+    fundingSource?: ECompanyFundingSource | null,
+    depositDefaultChargeAmount?: string | null,
   ): EStepStatus {
-    if (userRoleName && userRoleName === EUserRoleName.IND_CLIENT) {
+    if (userRoleName === EUserRoleName.IND_CLIENT) {
       if (
         paymentInformation &&
         paymentInformation.stripeClientPaymentMethodId &&
@@ -997,78 +1023,101 @@ export class StepInfoService {
     }
 
     if (
-      userRoleName &&
-      (userRoleName === EUserRoleName.IND_PROFESSIONAL_INTERPRETER ||
-        userRoleName === EUserRoleName.IND_LANGUAGE_BUDDY_INTERPRETER)
+      userRoleName === EUserRoleName.IND_PROFESSIONAL_INTERPRETER ||
+      userRoleName === EUserRoleName.IND_LANGUAGE_BUDDY_INTERPRETER
     ) {
-      if (paymentInformation) {
-        if (paymentInformation.paypalPayerId) {
-          return EStepStatus.SUCCESS;
-        }
-
-        if (paymentInformation.stripeInterpreterOnboardingStatus === EOnboardingStatus.ONBOARDING_SUCCESS) {
-          return EStepStatus.SUCCESS;
-        }
-
-        if (paymentInformation.stripeInterpreterOnboardingStatus === EOnboardingStatus.DOCUMENTS_PENDING) {
-          return EStepStatus.PENDING;
-        }
-
-        if (
-          paymentInformation.stripeInterpreterOnboardingStatus === EOnboardingStatus.ACCOUNT_CREATED ||
-          paymentInformation.stripeInterpreterOnboardingStatus === EOnboardingStatus.ONBOARDING_STARTED ||
-          paymentInformation.stripeInterpreterOnboardingStatus === EOnboardingStatus.NEED_DOCUMENTS
-        ) {
-          return EStepStatus.INITIAL;
-        }
-
-        if (paymentInformation.stripeInterpreterOnboardingStatus === EOnboardingStatus.INCORRECT_COUNTRY) {
-          return EStepStatus.FAILED;
-        }
+      if (!paymentInformation) {
+        return EStepStatus.NOT_STARTED;
       }
 
-      return EStepStatus.NOT_STARTED;
-    }
-
-    if (companyType && companyType === ECompanyType.CORPORATE_CLIENTS) {
-      if (
-        paymentInformation &&
-        paymentInformation.stripeClientPaymentMethodId &&
-        paymentInformation.stripeClientAccountId &&
-        paymentInformation.stripeClientLastFour
-      ) {
+      if (paymentInformation.paypalPayerId) {
         return EStepStatus.SUCCESS;
       }
 
+      if (paymentInformation.stripeInterpreterOnboardingStatus === EOnboardingStatus.ONBOARDING_SUCCESS) {
+        return EStepStatus.SUCCESS;
+      }
+
+      if (paymentInformation.stripeInterpreterOnboardingStatus === EOnboardingStatus.DOCUMENTS_PENDING) {
+        return EStepStatus.PENDING;
+      }
+
+      if (
+        paymentInformation.stripeInterpreterOnboardingStatus === EOnboardingStatus.ACCOUNT_CREATED ||
+        paymentInformation.stripeInterpreterOnboardingStatus === EOnboardingStatus.ONBOARDING_STARTED ||
+        paymentInformation.stripeInterpreterOnboardingStatus === EOnboardingStatus.NEED_DOCUMENTS
+      ) {
+        return EStepStatus.INITIAL;
+      }
+
+      if (paymentInformation.stripeInterpreterOnboardingStatus === EOnboardingStatus.INCORRECT_COUNTRY) {
+        return EStepStatus.FAILED;
+      }
+
       return EStepStatus.NOT_STARTED;
     }
 
-    if (companyType && companyType === ECompanyType.CORPORATE_INTERPRETING_PROVIDERS) {
-      let status = EStepStatus.NOT_STARTED;
+    if (companyType === ECompanyType.CORPORATE_CLIENTS) {
+      if (fundingSource === ECompanyFundingSource.POST_PAYMENT) {
+        if (depositDefaultChargeAmount) {
+          return EStepStatus.SUCCESS;
+        }
 
-      if (
-        paymentInformation &&
-        ((paymentInformation.stripeClientPaymentMethodId &&
+        return EStepStatus.INITIAL;
+      }
+
+      if (fundingSource === ECompanyFundingSource.DEPOSIT) {
+        const hasCard =
+          paymentInformation &&
+          paymentInformation.stripeClientPaymentMethodId &&
           paymentInformation.stripeClientAccountId &&
-          paymentInformation.stripeClientLastFour) ||
-          paymentInformation.paypalPayerId ||
-          paymentInformation.stripeInterpreterOnboardingStatus === EOnboardingStatus.ONBOARDING_SUCCESS)
-      ) {
-        status = EStepStatus.INITIAL;
+          paymentInformation.stripeClientLastFour;
+
+        const hasDeposit = !!depositDefaultChargeAmount;
+
+        if (hasCard && hasDeposit) {
+          return EStepStatus.SUCCESS;
+        }
+
+        return EStepStatus.INITIAL;
       }
 
-      if (
+      return EStepStatus.NOT_STARTED;
+    }
+
+    if (companyType === ECompanyType.CORPORATE_INTERPRETING_PROVIDERS) {
+      const hasInterpreterPayout =
         paymentInformation &&
-        paymentInformation.stripeClientPaymentMethodId &&
-        paymentInformation.stripeClientAccountId &&
-        paymentInformation.stripeClientLastFour &&
         (paymentInformation.paypalPayerId ||
-          paymentInformation.stripeInterpreterOnboardingStatus === EOnboardingStatus.ONBOARDING_SUCCESS)
-      ) {
-        status = EStepStatus.SUCCESS;
+          paymentInformation.stripeInterpreterOnboardingStatus === EOnboardingStatus.ONBOARDING_SUCCESS);
+
+      if (fundingSource === ECompanyFundingSource.POST_PAYMENT) {
+        const hasDeposit = !!depositDefaultChargeAmount;
+
+        if (hasInterpreterPayout && hasDeposit) {
+          return EStepStatus.SUCCESS;
+        }
+
+        return EStepStatus.INITIAL;
       }
 
-      return status;
+      if (fundingSource === ECompanyFundingSource.DEPOSIT) {
+        const hasClientCard =
+          paymentInformation &&
+          paymentInformation.stripeClientPaymentMethodId &&
+          paymentInformation.stripeClientAccountId &&
+          paymentInformation.stripeClientLastFour;
+
+        const hasDeposit = !!depositDefaultChargeAmount;
+
+        if (hasClientCard && hasInterpreterPayout && hasDeposit) {
+          return EStepStatus.SUCCESS;
+        }
+
+        return EStepStatus.INITIAL;
+      }
+
+      return EStepStatus.NOT_STARTED;
     }
 
     return EStepStatus.NOT_STARTED;

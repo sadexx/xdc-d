@@ -10,6 +10,7 @@ import {
 } from "src/modules/payments/common/enums/core";
 import { Payment } from "src/modules/payments/entities";
 import { GetIndividualPaymentsDto } from "src/modules/payments/common/dto";
+import { ESortOrder } from "src/common/enums";
 
 @Injectable()
 export class PaymentsQueryOptionsService {
@@ -59,7 +60,8 @@ export class PaymentsQueryOptionsService {
         "item.receipt",
         "item.creationDate",
         "item.updatingDate",
-      ]);
+      ])
+      .orderBy("item.updatingDate", ESortOrder.ASC);
 
     if (operatedByCompanyId) {
       queryBuilder.andWhere("company.id = :companyId", { companyId: operatedByCompanyId });

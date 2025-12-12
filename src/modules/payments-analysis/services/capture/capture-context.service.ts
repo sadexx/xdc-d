@@ -54,7 +54,6 @@ export class CaptureContextService {
     isSecondAttempt: boolean,
   ): Promise<ICapturePaymentContext> {
     const appointment = await this.loadAppointmentContext(appointmentId);
-
     const payment = await this.loadPaymentContext(appointmentId);
 
     const isClientCorporate = this.determineIfClientCorporate(appointment.client);

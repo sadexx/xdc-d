@@ -4,9 +4,10 @@ import { Method } from "src/modules/permissions/entities";
 import { PermissionsService } from "src/modules/permissions/services";
 import { PermissionsController } from "src/modules/permissions/controllers";
 import { Role } from "src/modules/users/entities";
+import { RedisModule } from "src/modules/redis/redis.module";
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Method, Role])],
+  imports: [TypeOrmModule.forFeature([Method, Role]), RedisModule],
   providers: [PermissionsService],
   controllers: [PermissionsController],
   exports: [PermissionsService],

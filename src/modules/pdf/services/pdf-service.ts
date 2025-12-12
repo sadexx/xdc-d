@@ -6,6 +6,7 @@ import PdfPrinter from "pdfmake";
 import { PdfBuilderService, PdfTemplatesService } from "src/modules/pdf/services";
 import {
   IGenerateCorporatePayOutReceipt,
+  IGenerateCorporatePostPaymentReceipt,
   IGenerateCorporateTaxInvoiceReceipt,
   IGenerateInterpreterBadge,
   IGenerateMembershipInvoice,
@@ -234,9 +235,28 @@ export class PdfService {
     await this.awsS3Service.uploadObject(receiptKey, pdfStream, "application/pdf");
 
     const paymentIds = payments.map((payment) => payment.id);
-
     await this.paymentRepository.update({ id: In(paymentIds) }, { taxInvoice: receiptKey });
 
     await this.emailsService.sendTaxInvoiceCorporatePaymentReceipt(company.contactEmail, receiptLink, receiptData);
+  }
+
+  public async generateCorporatePostPaymentReceipt(data: IGenerateCorporatePostPaymentReceipt): Promise<void> {
+    const { payments, company } = data;
+
+    const receiptData = await this.pdfBuilderService.buildCorporatePostPaymentReceipt(data);
+
+    const docDefinition = this.pdfTemplatesService.postPaymentReceiptTemplate(receiptData);
+
+    const pdfStream = await this.generatePdf(docDefinition);
+
+    const receiptKey = `payments/lfh-receipts/${randomUUID()}.pdf`;
+    const receiptLink = `${this.BACK_END_URL}/v1/payments/download-receipt?receiptKey=${receiptKey}`;
+
+    await this.awsS3Service.uploadObject(receiptKey, pdfStream, "application/pdf");
+
+    const paymentIds = payments.map((payment) => payment.id);
+    await this.paymentRepository.update({ id: In(paymentIds) }, { taxInvoice: receiptKey });
+
+    await this.emailsService.sendPostPaymentCorporateReceipt(company.contactEmail, receiptLink, receiptData);
   }
 }

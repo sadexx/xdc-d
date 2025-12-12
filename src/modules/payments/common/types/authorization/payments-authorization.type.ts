@@ -5,12 +5,12 @@ import { IAuthorizationPaymentContext } from "src/modules/payments-analysis/comm
  ** Type
  */
 
-export type TCreateAuthorizationPaymentRecord = NonNullableProperties<IAuthorizationPaymentContext, "prices"> & {
+export type TAuthorizePaymentContext = NonNullableProperties<IAuthorizationPaymentContext, "prices"> & {
   appointment: IAuthorizationPaymentContext["appointment"] & {
     client: NonNullableProperties<IAuthorizationPaymentContext["appointment"]["client"], "paymentInformation"> & {
       paymentInformation: NonNullableProperties<
         NonNullable<IAuthorizationPaymentContext["appointment"]["client"]["paymentInformation"]>,
-        "stripeClientLastFour"
+        "stripeClientLastFour" | "stripeClientAccountId" | "stripeClientPaymentMethodId"
       >;
     };
   };

@@ -1,12 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { LokiLogger } from "src/common/logger";
-import { MINIMUM_DEPOSIT_CHARGE_AMOUNT } from "src/modules/companies-deposit-charge/common/constants";
 import { EPaymentFailedReason } from "src/modules/payments/common/enums/core";
-import {
-  TChargeCompaniesDeposit,
-  TChargeCompaniesDepositSuperAdmin,
-  TChargeCompaniesDepositValidatedCompany,
-} from "src/modules/companies-deposit-charge/common/types";
+import { TChargeCompaniesDeposit } from "src/modules/companies-deposit-charge/common/types";
 import { EUserRoleName } from "src/modules/users/common/enums";
 import { EmailsService } from "src/modules/emails/services";
 import { NotificationService } from "src/modules/notifications/services";
@@ -19,25 +14,6 @@ export class CompaniesDepositChargeNotificationService {
     private readonly notificationService: NotificationService,
     private readonly emailsService: EmailsService,
   ) {}
-
-  public async sendDepositLowBalanceNotification(
-    company: TChargeCompaniesDepositValidatedCompany,
-    superAdminRole: TChargeCompaniesDepositSuperAdmin,
-  ): Promise<void> {
-    this.emailsService
-      .sendDepositLowBalanceNotification(company.contactEmail, {
-        adminName: superAdminRole.profile.preferredName || superAdminRole.profile.firstName || "",
-        platformId: company.platformId,
-        currentBalance: company.depositAmount,
-        minimumRequiredBalance: MINIMUM_DEPOSIT_CHARGE_AMOUNT,
-      })
-      .catch((error: Error) => {
-        this.lokiLogger.error(
-          `Failed to send deposit low balance notification for email: ${company.contactEmail}`,
-          error.stack,
-        );
-      });
-  }
 
   public async sendEarlyFailureNotification(
     company: TChargeCompaniesDeposit["company"],

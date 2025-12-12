@@ -176,6 +176,7 @@ export class CompanyActivationService {
   public checkActivationCriteria(
     companyActivationSteps: ICompanyActivationStepsDataOutput,
     isContractNeed: boolean = true,
+    strictPaymentCheck: boolean = true,
   ): {
     passed: string[];
     failed: string[];
@@ -190,17 +191,33 @@ export class CompanyActivationService {
     Object.keys(companyActivationSteps).forEach((stepName) => {
       const step = (companyActivationSteps as unknown as Record<string, IStepInformation>)[stepName];
 
-      if (step.isBlockAccountActivation) {
-        if (step.status === EStepStatus.SUCCESS) {
-          passed.push(stepName);
-        }
-
-        if (step.status !== EStepStatus.SUCCESS) {
-          failed.push(stepName);
-        }
+      if (!step.isBlockAccountActivation) {
+        return;
       }
 
-      if (companyActivationSteps.documentsFulfilled?.status === EStepStatus.PENDING) {
+      if (step === companyActivationSteps.paymentInformationFulfilled) {
+        const isPaymentValid = strictPaymentCheck
+          ? step.status === EStepStatus.SUCCESS
+          : step.status === EStepStatus.SUCCESS || step.status === EStepStatus.INITIAL;
+
+        if (isPaymentValid) {
+          passed.push(stepName);
+        } else {
+          failed.push(stepName);
+        }
+
+        return;
+      }
+
+      if (step === companyActivationSteps.documentsFulfilled && step.status === EStepStatus.PENDING) {
+        failed.push(stepName);
+
+        return;
+      }
+
+      if (step.status === EStepStatus.SUCCESS) {
+        passed.push(stepName);
+      } else {
         failed.push(stepName);
       }
     });

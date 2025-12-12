@@ -56,7 +56,7 @@ export class CaptureContextValidationService {
       errors.push("Invalid context state for corporate capture.");
     }
 
-    if (payment.system !== EPaymentSystem.DEPOSIT) {
+    if (payment.system !== EPaymentSystem.DEPOSIT && payment.system !== EPaymentSystem.POST_PAYMENT) {
       errors.push("Incorrect payment system.");
     }
 

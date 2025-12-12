@@ -58,6 +58,12 @@ import { QueueModule } from "src/modules/queues/queues.module";
     AppointmentOrderNotificationService,
     AppointmentOrderInterpreterAdditionService,
   ],
-  exports: [AppointmentOrderQueryService, OrderSchedulerService],
+  exports: [
+    AppointmentOrderQueryService,
+    OrderSchedulerService,
+
+    // TODO: SCRIPT:REMOVE
+    AppointmentOrderCommandService,
+  ],
 })
 export class AppointmentOrdersModule {}

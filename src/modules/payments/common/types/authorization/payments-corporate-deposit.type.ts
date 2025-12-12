@@ -5,12 +5,12 @@ import { IAuthorizationPaymentContext } from "src/modules/payments-analysis/comm
  ** Type
  */
 
-export type TChargeFromCompanyDeposit = NonNullableProperties<
+export type TChargeFromDepositContext = NonNullableProperties<
   IAuthorizationPaymentContext,
-  "companyContext" | "depositChargeContext"
->;
-
-export type TCreateDepositChargePaymentRecord = NonNullableProperties<
-  IAuthorizationPaymentContext,
-  "prices" | "companyContext"
->;
+  "companyContext" | "prices"
+> & {
+  companyAdditionalDataContext: NonNullableProperties<
+    NonNullable<IAuthorizationPaymentContext["companyAdditionalDataContext"]>,
+    "depositChargeContext"
+  >;
+};

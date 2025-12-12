@@ -15,6 +15,7 @@ import {
   ICalculateFinalPaymentPriceData,
   IPaymentCalculationResult,
 } from "src/modules/payments/common/interfaces/pricing";
+import { ECompanyFundingSource } from "src/modules/companies/common/enums";
 
 @Injectable()
 export class PaymentsPriceRecalculationService {
@@ -53,7 +54,7 @@ export class PaymentsPriceRecalculationService {
       await this.updatePaymentTotals(manager, payment.id);
 
       if (isClientCorporate && payment.company) {
-        await this.updateCompanyDeposit(
+        await this.updateCompanyBalance(
           manager,
           payment.company,
           mainPaymentItem.fullAmount,
@@ -161,7 +162,7 @@ export class PaymentsPriceRecalculationService {
     };
   }
 
-  private async updateCompanyDeposit(
+  private async updateCompanyBalance(
     manager: EntityManager,
     company: TCalculateFinalPaymentPriceCompany,
     oldFullAmount: number,
@@ -171,8 +172,14 @@ export class PaymentsPriceRecalculationService {
       return;
     }
 
-    const difference = oldFullAmount - newFullAmount;
-    const newDepositAmount = company.depositAmount + difference;
+    const difference = Number(oldFullAmount) - Number(newFullAmount);
+    let newDepositAmount: number;
+
+    if (company.fundingSource === ECompanyFundingSource.DEPOSIT) {
+      newDepositAmount = Number(company.depositAmount) + difference;
+    } else {
+      newDepositAmount = Number(company.depositAmount) - difference;
+    }
 
     await manager
       .getRepository(Company)

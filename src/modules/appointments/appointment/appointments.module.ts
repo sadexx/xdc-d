@@ -41,6 +41,7 @@ import { HelperModule } from "src/modules/helper/helper.module";
 import { PromoCampaignsModule } from "src/modules/promo-campaigns/promo-campaigns.module";
 import { Rate } from "src/modules/rates/entities";
 import { QueueModule } from "src/modules/queues/queues.module";
+import { RedisModule } from "src/modules/redis/redis.module";
 
 @Module({
   imports: [
@@ -68,6 +69,7 @@ import { QueueModule } from "src/modules/queues/queues.module";
     MembershipsModule,
     HelperModule,
     PromoCampaignsModule,
+    RedisModule,
   ],
   controllers: [AppointmentsCommandController, AppointmentsQueryController],
   providers: [
@@ -92,6 +94,9 @@ import { QueueModule } from "src/modules/queues/queues.module";
     AppointmentExtensionService,
     AppointmentEndService,
     AppointmentExternalSessionService,
+
+    // TODO: SCRIPT:REMOVE
+    AppointmentCreateService,
   ],
 })
 export class AppointmentsModule {}

@@ -1,8 +1,9 @@
 import { Injectable } from "@nestjs/common";
 import { IAuthorizationPaymentContext } from "src/modules/payments-analysis/common/interfaces/authorization";
-import { EPaymentCurrency, EPaymentStatus } from "src/modules/payments/common/enums/core";
-import { TExistingPaymentAuthorizationContext } from "src/modules/payments-analysis/common/types/authorization";
+import { ECompanyFundingSource } from "src/modules/companies/common/enums";
 import { IPaymentValidationResult } from "src/modules/payments/common/interfaces/payment-failed";
+import { TExistingPaymentAuthorizationContext } from "src/modules/payments-analysis/common/types/authorization";
+import { EPaymentCurrency, EPaymentStatus } from "src/modules/payments/common/enums/core";
 
 @Injectable()
 export class AuthorizationContextValidationService {
@@ -10,7 +11,6 @@ export class AuthorizationContextValidationService {
    * Validates the authorization payment context based on client type and wait list status.
    *
    * Performs validation checks appropriate to the context type:
-   * - Wait list contexts: validates no unexpected fields are present
    * - Corporate contexts: validates company data, prices, and deposit information
    * - Individual contexts: validates pricing and Stripe payment information
    *
@@ -18,11 +18,7 @@ export class AuthorizationContextValidationService {
    * @returns Validation result indicating success or failure with error messages
    */
   public validateAuthorizationContext(context: IAuthorizationPaymentContext): IPaymentValidationResult {
-    const { waitListContext, isClientCorporate } = context;
-
-    if (waitListContext.shouldRedirectToWaitList) {
-      return this.validateWaitListAuthorizationContext(context);
-    }
+    const { isClientCorporate } = context;
 
     if (isClientCorporate) {
       return this.validateCorporateAuthorizationContext(context);
@@ -31,25 +27,25 @@ export class AuthorizationContextValidationService {
     }
   }
 
-  private validateWaitListAuthorizationContext(context: IAuthorizationPaymentContext): IPaymentValidationResult {
-    const errors: string[] = [];
-    const { companyContext, existingPayment, prices, depositChargeContext } = context;
-    const unexpectedFields = [companyContext, existingPayment, prices, depositChargeContext].filter(Boolean);
-
-    if (unexpectedFields.length > 0) {
-      errors.push("Invalid context state for wait list redirect.");
-    }
-
-    return this.buildValidationResult(errors);
-  }
-
   private validateCorporateAuthorizationContext(context: IAuthorizationPaymentContext): IPaymentValidationResult {
     const errors: string[] = [];
-    const { companyContext, depositChargeContext, prices, existingPayment, currency } = context;
-    const missingFields = [companyContext, prices, depositChargeContext].filter((value) => !value);
+    const { companyContext, companyAdditionalDataContext, prices, existingPayment, currency } = context;
+    const missingFields = [companyContext, prices, companyAdditionalDataContext].filter((value) => !value);
 
     if (missingFields.length > 0) {
       errors.push("Invalid context state for corporate authorization.");
+    }
+
+    if (companyContext?.company.fundingSource === ECompanyFundingSource.DEPOSIT) {
+      if (!companyAdditionalDataContext?.depositChargeContext) {
+        errors.push("Invalid context state for deposit charge.");
+      }
+    }
+
+    if (companyContext?.company.fundingSource === ECompanyFundingSource.POST_PAYMENT) {
+      if (!companyAdditionalDataContext?.postPaymentAuthorizationContext) {
+        errors.push("Invalid context state for deposit charge.");
+      }
     }
 
     if (existingPayment) {

@@ -5,8 +5,7 @@ import {
   TLoadAppointmentAuthorizationCancelContext,
 } from "src/modules/payments-analysis/common/types/authorization-cancel";
 import { EPaymentCurrency, EPaymentStatus } from "src/modules/payments/common/enums/core";
-import { denormalizedAmountToNormalized } from "src/common/utils";
-import { TAttemptStripeAuthorization } from "src/modules/payments/common/types/management";
+import { denormalizedAmountToNormalized, formatDecimalString } from "src/common/utils";
 import { UNDEFINED_VALUE } from "src/common/constants";
 import { PaypalSdkService } from "src/modules/paypal/services";
 import {
@@ -16,6 +15,7 @@ import {
 import { TPaymentItemCaptureContextItem } from "src/modules/payments-analysis/common/types/capture";
 import { ICancelAuthorizationContext } from "src/modules/payments/common/interfaces/authorization";
 import { IPaymentExternalOperationResult } from "src/modules/payments/common/interfaces/management";
+import { TAuthorizePaymentContext } from "src/modules/payments/common/types/authorization";
 
 @Injectable()
 export class PaymentsExternalOperationsService {
@@ -34,9 +34,7 @@ export class PaymentsExternalOperationsService {
    * @param context - Authorization context with pricing, currency, and client payment details
    * @returns Operation result with status (AUTHORIZED or AUTHORIZATION_FAILED) and payment intent ID
    */
-  public async attemptStripeAuthorization(
-    context: TAttemptStripeAuthorization,
-  ): Promise<IPaymentExternalOperationResult> {
+  public async attemptStripeAuthorization(context: TAuthorizePaymentContext): Promise<IPaymentExternalOperationResult> {
     const { prices, currency, appointment } = context;
     const idempotencyKey = this.generateAuthorizationIdempotencyKey(context);
     const normalizedAmount = denormalizedAmountToNormalized(prices.clientFullAmount);
@@ -62,7 +60,7 @@ export class PaymentsExternalOperationsService {
     }
   }
 
-  private generateAuthorizationIdempotencyKey(context: TAttemptStripeAuthorization): string {
+  private generateAuthorizationIdempotencyKey(context: TAuthorizePaymentContext): string {
     const { appointment, additionalBlockDuration } = context;
 
     if (additionalBlockDuration) {
@@ -254,7 +252,7 @@ export class PaymentsExternalOperationsService {
     try {
       const transfer = await this.paypalSdkService.makeTransfer({
         payerId: paypalPayerId,
-        fullAmount: String(fullAmount),
+        fullAmount: formatDecimalString(fullAmount),
         platformId,
         currency,
         idempotencyKey,

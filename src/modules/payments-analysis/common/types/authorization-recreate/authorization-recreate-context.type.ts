@@ -90,6 +90,7 @@ export const LoadCompanyAuthorizationRecreateContextQuery = {
     id: true,
     country: true,
     depositAmount: true,
+    fundingSource: true,
   } as const satisfies FindOptionsSelect<Company>,
 };
 export type TLoadCompanyAuthorizationRecreateContext = QueryResultType<

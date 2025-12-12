@@ -12,6 +12,7 @@ import { ITokenUserData } from "src/modules/tokens/common/interfaces";
 import { EPaymentOperation } from "src/modules/payments-analysis/common/enums/core";
 import {
   IGenerateCorporatePayOutReceipt,
+  IGenerateCorporatePostPaymentReceipt,
   IGenerateCorporateTaxInvoiceReceipt,
   IGenerateInterpreterBadge,
   IGenerateMembershipInvoice,
@@ -355,6 +356,22 @@ export class QueueInitializeService {
 
     await this.queueManagementService.addJob(jobData, {
       jobId: `pdf-generation:${EJobType.PROCESS_CORPORATE_TAX_INVOICE_RECEIPT_PDF_GENERATION}:${data.company.id}`,
+    });
+  }
+
+  public async addProcessCorporatePostPaymentReceiptGenerationQueue(
+    data: IGenerateCorporatePostPaymentReceipt,
+  ): Promise<void> {
+    const jobData: IQueueData = {
+      queueEnum: EQueueType.PDF_GENERATION_QUEUE,
+      jobItem: {
+        jobName: EJobType.PROCESS_CORPORATE_POST_PAYMENT_RECEIPT_PDF_GENERATION,
+        payload: data,
+      },
+    };
+
+    await this.queueManagementService.addJob(jobData, {
+      jobId: `pdf-generation:${EJobType.PROCESS_CORPORATE_POST_PAYMENT_RECEIPT_PDF_GENERATION}:${data.company.id}`,
     });
   }
 }

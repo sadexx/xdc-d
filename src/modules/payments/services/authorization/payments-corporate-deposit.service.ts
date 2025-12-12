@@ -1,5 +1,4 @@
 import { Injectable, InternalServerErrorException } from "@nestjs/common";
-import { IAuthorizationPaymentContext } from "src/modules/payments-analysis/common/interfaces/authorization";
 import { Company } from "src/modules/companies/entities";
 import { EntityManager } from "typeorm";
 import { formatDecimalString } from "src/common/utils";
@@ -17,10 +16,7 @@ import { LokiLogger } from "src/common/logger";
 import { UNDEFINED_VALUE } from "src/common/constants";
 import { AppointmentFailedPaymentCancelService } from "src/modules/appointments/failed-payment-cancel/services";
 import { IPaymentOperationResult } from "src/modules/payments/common/interfaces/core";
-import {
-  TChargeFromCompanyDeposit,
-  TCreateDepositChargePaymentRecord,
-} from "src/modules/payments/common/types/authorization";
+import { TChargeFromDepositContext } from "src/modules/payments/common/types/authorization";
 
 @Injectable()
 export class PaymentsCorporateDepositService {
@@ -46,19 +42,15 @@ export class PaymentsCorporateDepositService {
    */
   public async chargeFromDeposit(
     manager: EntityManager,
-    context: IAuthorizationPaymentContext,
+    context: TChargeFromDepositContext,
   ): Promise<IPaymentOperationResult> {
     const { appointment } = context;
     try {
-      const paymentStatus = await this.chargeFromCompanyDeposit(manager, context as TChargeFromCompanyDeposit);
-      await this.createDepositChargePaymentRecord(manager, context as TCreateDepositChargePaymentRecord, paymentStatus);
+      const paymentStatus = await this.chargeFromCompanyDeposit(manager, context);
+      await this.createDepositChargePaymentRecord(manager, context, paymentStatus);
 
       return { success: paymentStatus === EPaymentStatus.AUTHORIZED };
     } catch (error) {
-      await this.paymentsNotificationService.sendAuthorizationPaymentFailedNotification(
-        context.appointment,
-        EPaymentFailedReason.AUTH_FAILED,
-      );
       this.lokiLogger.error(
         `Failed to charge from deposit for appointmentId: ${appointment.id}`,
         (error as Error).stack,
@@ -77,7 +69,7 @@ export class PaymentsCorporateDepositService {
    */
   public async createDepositChargePaymentRecord(
     manager: EntityManager,
-    context: TCreateDepositChargePaymentRecord,
+    context: TChargeFromDepositContext,
     paymentStatus: EPaymentStatus,
   ): Promise<void> {
     const { currency, prices, appointment, companyContext, existingPayment } = context;
@@ -103,9 +95,10 @@ export class PaymentsCorporateDepositService {
 
   private async chargeFromCompanyDeposit(
     manager: EntityManager,
-    context: TChargeFromCompanyDeposit,
+    context: TChargeFromDepositContext,
   ): Promise<EPaymentStatus> {
-    const { companyContext, depositChargeContext, appointment } = context;
+    const { companyContext, companyAdditionalDataContext, appointment } = context;
+    const { depositChargeContext } = companyAdditionalDataContext;
 
     if (depositChargeContext.isInsufficientFunds) {
       return await this.handleBalanceInsufficientFunds(manager, context);
@@ -128,7 +121,7 @@ export class PaymentsCorporateDepositService {
 
   private async handleBalanceInsufficientFunds(
     manager: EntityManager,
-    context: TChargeFromCompanyDeposit,
+    context: TChargeFromDepositContext,
   ): Promise<EPaymentStatus> {
     const { companyContext } = context;
     await this.appointmentFailedPaymentCancelService.cancelAppointmentPaymentFailed(manager, context.appointment.id);
@@ -150,18 +143,21 @@ export class PaymentsCorporateDepositService {
 
   private async handleBalanceBelowTenPercent(
     manager: EntityManager,
-    context: TChargeFromCompanyDeposit,
+    context: TChargeFromDepositContext,
   ): Promise<void> {
-    const { companyContext, depositChargeContext } = context;
+    const { companyContext, companyAdditionalDataContext } = context;
+    const { depositChargeContext } = companyAdditionalDataContext;
     await this.companiesDepositChargeManagementService.createOrUpdateDepositCharge(
       manager,
       companyContext.company,
       depositChargeContext.depositDefaultChargeAmount,
+      depositChargeContext.balanceAfterCharge,
     );
   }
 
-  private async handleBalanceBelowFifteenPercent(context: TChargeFromCompanyDeposit): Promise<void> {
-    const { companyContext, depositChargeContext } = context;
+  private async handleBalanceBelowFifteenPercent(context: TChargeFromDepositContext): Promise<void> {
+    const { companyContext, companyAdditionalDataContext } = context;
+    const { depositChargeContext } = companyAdditionalDataContext;
 
     if (companyContext.superAdminRole) {
       await this.paymentsNotificationService.sendDepositLowBalanceNotification(

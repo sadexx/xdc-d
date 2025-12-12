@@ -11,6 +11,7 @@ export * from "src/modules/payments/services/capture/payments-capture.service";
 export * from "src/modules/payments/services/transfer/payments-transfer.service";
 export * from "src/modules/payments/services/capture/payments-corporate-same-company-commission.service";
 export * from "src/modules/payments/services/pricing/payments-price-recalculation.service";
+export * from "src/modules/payments/services/authorization/payments-corporate-post-payment.service";
 export * from "src/modules/payments/services/core/payments-execution.service";
 export * from "src/modules/payments/services/transfer/payments-corporate-pay-out.service";
 export * from "src/modules/payments/services/core/payments-query-options.service";

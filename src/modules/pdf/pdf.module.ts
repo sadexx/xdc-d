@@ -11,9 +11,10 @@ import { Payment } from "src/modules/payments/entities";
 import { AwsS3Module } from "src/modules/aws/s3/aws-s3.module";
 import { EmailsModule } from "src/modules/emails/emails.module";
 import { InterpreterProfile } from "src/modules/interpreters/profile/entities";
+import { RedisModule } from "src/modules/redis/redis.module";
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Payment, Company, InterpreterProfile]), AwsS3Module, EmailsModule],
+  imports: [TypeOrmModule.forFeature([Payment, Company, InterpreterProfile]), AwsS3Module, EmailsModule, RedisModule],
   providers: [PdfService, PdfBuilderService, PdfTemplatesService, PdfBase64ImageConverterService],
   exports: [PdfService],
 })

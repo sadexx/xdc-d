@@ -15,6 +15,7 @@ import { NotificationModule } from "src/modules/notifications/notification.modul
 import { HelperModule } from "src/modules/helper/helper.module";
 import { EmailsModule } from "src/modules/emails/emails.module";
 import { AppointmentAdminInfo } from "src/modules/appointments/appointment/entities";
+import { RedisModule } from "src/modules/redis/redis.module";
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { AppointmentAdminInfo } from "src/modules/appointments/appointment/entit
     NotificationModule,
     HelperModule,
     EmailsModule,
+    RedisModule,
   ],
   controllers: [],
   providers: [

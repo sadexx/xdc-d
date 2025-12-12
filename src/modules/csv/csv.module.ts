@@ -9,9 +9,14 @@ import { Company } from "src/modules/companies/entities";
 import { UserRole } from "src/modules/users/entities";
 import { CsvQueueStorageService } from "src/modules/csv/common/storages";
 import { AccessControlModule } from "src/modules/access-control/access-control.module";
+import { RedisModule } from "src/modules/redis/redis.module";
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Appointment, User, DraftAppointment, Company, UserRole]), AccessControlModule],
+  imports: [
+    TypeOrmModule.forFeature([Appointment, User, DraftAppointment, Company, UserRole]),
+    AccessControlModule,
+    RedisModule,
+  ],
   controllers: [CsvController],
   providers: [CsvService, CsvBuilderService, CsvQueryOptionsService, CsvQueueStorageService],
   exports: [CsvService],

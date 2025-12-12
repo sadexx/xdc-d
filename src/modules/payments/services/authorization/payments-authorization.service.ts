@@ -1,6 +1,5 @@
 import { Injectable, InternalServerErrorException } from "@nestjs/common";
 import { IAuthorizationPaymentContext } from "src/modules/payments-analysis/common/interfaces/authorization";
-import { TCreateAuthorizationPaymentRecord } from "src/modules/payments/common/types/authorization";
 import {
   EPaymentCustomerType,
   EPaymentDirection,
@@ -24,7 +23,7 @@ import { EPaymentOperation } from "src/modules/payments-analysis/common/enums/co
 import { IRedirectToPaymentWaitListOptions } from "src/modules/payments/common/interfaces/authorization";
 import { IPaymentOperationResult } from "src/modules/payments/common/interfaces/core";
 import { IPaymentExternalOperationResult } from "src/modules/payments/common/interfaces/management";
-import { TAttemptStripeAuthorization } from "src/modules/payments/common/types/management";
+import { TAuthorizePaymentContext } from "src/modules/payments/common/types/authorization";
 
 @Injectable()
 export class PaymentsAuthorizationService {
@@ -53,18 +52,12 @@ export class PaymentsAuthorizationService {
    */
   public async authorizePayment(
     manager: EntityManager,
-    context: IAuthorizationPaymentContext,
+    context: TAuthorizePaymentContext,
   ): Promise<IPaymentOperationResult> {
     const { appointment } = context;
     try {
-      const externalOperationResult = await this.paymentsExternalOperationsService.attemptStripeAuthorization(
-        context as TAttemptStripeAuthorization,
-      );
-      await this.createAuthorizationPaymentRecord(
-        manager,
-        context as TCreateAuthorizationPaymentRecord,
-        externalOperationResult,
-      );
+      const externalOperationResult = await this.paymentsExternalOperationsService.attemptStripeAuthorization(context);
+      await this.createAuthorizationPaymentRecord(manager, context, externalOperationResult);
 
       if (externalOperationResult.status === EPaymentStatus.AUTHORIZED) {
         return await this.handleSuccessfulAuthorization(context);
@@ -72,10 +65,6 @@ export class PaymentsAuthorizationService {
         return await this.handleAuthorizationFailure(manager, context);
       }
     } catch (error) {
-      await this.paymentsNotificationService.sendAuthorizationPaymentFailedNotification(
-        context.appointment,
-        EPaymentFailedReason.AUTH_FAILED,
-      );
       this.lokiLogger.error(`Failed to authorize payment for appointmentId: ${appointment.id}`, (error as Error).stack);
       throw new InternalServerErrorException(EPaymentsErrorCodes.AUTHORIZE_PAYMENT_FAILED);
     }
@@ -132,7 +121,7 @@ export class PaymentsAuthorizationService {
    */
   public async createAuthorizationPaymentRecord(
     manager: EntityManager,
-    context: TCreateAuthorizationPaymentRecord,
+    context: TAuthorizePaymentContext,
     externalOperationResult: IPaymentExternalOperationResult,
   ): Promise<void> {
     const { currency, prices, appointment, existingPayment, paymentMethodInfo } = context;

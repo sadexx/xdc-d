@@ -59,4 +59,14 @@ export const admin: IMethodSeed = {
     },
     isNotEditableForOtherRoles: true,
   },
+  "PATCH /v1/admin/payments/invoiced": {
+    description: "08. Mark payments invoiced",
+    roles: allLfhAdminRoles,
+    isNotEditableForOtherRoles: true,
+  },
+  "POST /v1/admin/payments/corporate-receipt": {
+    description: "09. Generate corporate post payment receipt",
+    roles: allLfhAdminRoles,
+    isNotEditableForOtherRoles: true,
+  },
 };

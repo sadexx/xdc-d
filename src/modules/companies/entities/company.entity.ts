@@ -13,6 +13,7 @@ import {
 import {
   ECompanyActivitySphere,
   ECompanyEmployeesNumber,
+  ECompanyFundingSource,
   ECompanyStatus,
   ECompanySubStatus,
   ECompanyType,
@@ -72,6 +73,14 @@ export class Company {
     name: "employees_number",
   })
   employeesNumber: ECompanyEmployeesNumber;
+
+  @Column({
+    type: "enum",
+    enum: ECompanyFundingSource,
+    name: "funding_source",
+    nullable: true,
+  })
+  fundingSource: ECompanyFundingSource | null;
 
   @Column({ type: "enum", enum: ECompanyStatus, default: ECompanyStatus.NEW_REQUEST, name: "status" })
   status: ECompanyStatus;

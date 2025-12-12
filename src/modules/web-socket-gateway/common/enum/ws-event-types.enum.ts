@@ -14,4 +14,5 @@ export const enum EWebSocketEventTypes {
   NEW_SUPPORT_CHANNELS = "new-support-channels",
   UPDATE_INTERPRETER_LOCATION = "update-interpreter-location",
   SIDEBAR_MESSAGES = "sidebar-messages",
+  ON_DEMAND_APPOINTMENT_STATUS_UPDATE = "on-demand-appointment-status-update",
 }

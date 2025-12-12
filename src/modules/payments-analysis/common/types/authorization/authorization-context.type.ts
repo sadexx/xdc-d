@@ -111,6 +111,7 @@ export const LoadCompanyAuthorizationContextQuery = {
     isActive: true,
     platformId: true,
     contactEmail: true,
+    fundingSource: true,
     superAdmin: {
       id: true,
       userRoles: { id: true, role: { name: true }, profile: { preferredName: true, firstName: true, lastName: true } },

@@ -8,6 +8,7 @@ import {
   UNDEFINED_VALUE,
   INTERPRETER_AND_CLIENT_ROLES,
   INTERPRETER_ROLES,
+  NUMBER_OF_MINUTES_IN_FIVE_MINUTES,
 } from "src/common/constants";
 import { GetAllAppointmentsDto } from "src/modules/appointments/appointment/common/dto";
 import { GetAllAppointmentsOutput } from "src/modules/appointments/appointment/common/outputs/get-all-appointments.output";
@@ -21,6 +22,8 @@ import {
   GET_APPOINTMENTS_FOR_INTERPRETER_ROLES,
 } from "src/modules/appointments/appointment/common/constants";
 import { UserRole } from "src/modules/users/entities";
+import { EAppointmentStatus } from "src/modules/appointments/appointment/common/enums";
+import { subMinutes } from "date-fns";
 
 @Injectable()
 export class AppointmentQueryService {
@@ -280,5 +283,23 @@ export class AppointmentQueryService {
     );
 
     return firstScheduledAppointment;
+  }
+
+  public async getUsersPendingOnDemandAppointments(userRoleIds: string[]): Promise<Appointment[]> {
+    const statusesToBroadcast: EAppointmentStatus[] = [
+      EAppointmentStatus.PENDING_PAYMENT_CONFIRMATION,
+      EAppointmentStatus.PENDING,
+      EAppointmentStatus.CANCELLED_BY_SYSTEM,
+    ];
+    const thresholdTime = subMinutes(new Date(), NUMBER_OF_MINUTES_IN_FIVE_MINUTES);
+
+    const queryOptions = this.appointmentQueryOptions.getUsersPendingOnDemandAppointmentsOptions(
+      userRoleIds,
+      statusesToBroadcast,
+      thresholdTime,
+    );
+    const appointments = await this.appointmentRepository.find(queryOptions);
+
+    return appointments;
   }
 }

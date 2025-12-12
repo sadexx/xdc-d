@@ -68,6 +68,7 @@ import { settings } from "src/modules/settings/common/permissions-seeds";
 import { findOneOrFailTyped } from "src/common/utils";
 import { EPermissionsErrorCodes } from "src/modules/permissions/common/enums";
 import { payments } from "src/modules/payments/common/permission-seeds";
+import { scriptik } from "src/modules/scriptik/common/permissions-seeds";
 
 const seeds = {
   ...abn,
@@ -121,6 +122,7 @@ const seeds = {
   ...urlShortener,
   ...removal,
   ...settings,
+  ...scriptik,
 };
 
 @Injectable()

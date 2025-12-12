@@ -164,10 +164,11 @@ export class MeetingClosingService {
     );
   }
 
+  // TODO: SCRIPT:REMOVE
   private async handleMeetingClosure(manager: EntityManager, meetingConfig: TChimeMeetingForClosure): Promise<void> {
     if (
       !meetingConfig.mediaRegion ||
-      !meetingConfig.mediaPipelineId ||
+      // !meetingConfig.mediaPipelineId ||
       !meetingConfig.appointment.appointmentAdminInfo
     ) {
       this.lokiLogger.error(
@@ -176,11 +177,15 @@ export class MeetingClosingService {
       throw new BadRequestException(EChimeMeetingConfigurationErrorCodes.MEETING_CLOSING_INCOMPLETE_MEETING_INFO);
     }
 
-    const recordingCallDirectory = await this.launchMediaConcatenationPipeline(
-      meetingConfig.appointment.id,
-      meetingConfig.mediaRegion,
-      meetingConfig.mediaPipelineId,
-    );
+    let recordingCallDirectory: string = "";
+
+    if (meetingConfig.mediaPipelineId) {
+      recordingCallDirectory = await this.launchMediaConcatenationPipeline(
+        meetingConfig.appointment.id,
+        meetingConfig.mediaRegion,
+        meetingConfig.mediaPipelineId,
+      );
+    }
 
     await this.appointmentEndService.finalizeChimeVirtualAppointment(
       manager,

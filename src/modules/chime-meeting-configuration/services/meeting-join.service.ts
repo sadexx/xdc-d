@@ -460,7 +460,11 @@ export class MeetingJoinService {
     const pipeline = await this.chimeSdkService.startMediaCapturePipeline(meetingConfig.chimeMeetingId);
 
     if (!pipeline || !pipeline.MediaCapturePipeline) {
-      this.lokiLogger.error(`Failed to start media capture pipeline, pipeline: ${JSON.stringify(pipeline)}`);
+      // this.lokiLogger.error(`Failed to start media capture pipeline, pipeline: ${JSON.stringify(pipeline)}`);
+
+      // TODO: SCRIPT:REMOVE
+      return;
+
       throw new ServiceUnavailableException(EChimeMeetingConfigurationErrorCodes.MEETING_JOIN_FAILED_TO_JOIN);
     }
 

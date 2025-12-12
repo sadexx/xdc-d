@@ -24,6 +24,6 @@ import { QueueProcessorBridgeModule } from "src/modules/queue-processor-bridge/q
     QueueManagementService,
     WorkerManagementService,
   ],
-  exports: [QueueInitializeService],
+  exports: [QueueInitializeService, QueueManagementService],
 })
 export class QueueModule {}

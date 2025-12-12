@@ -5,8 +5,7 @@ import { IncomingPaymentWaitList } from "src/modules/payments/entities";
 import { Between, DataSource, EntityManager, FindOptionsWhere, Repository } from "typeorm";
 import { AppointmentFailedPaymentCancelService } from "src/modules/appointments/failed-payment-cancel/services";
 import { Appointment } from "src/modules/appointments/appointment/entities";
-import { PaymentsNotificationService } from "src/modules/payments/services";
-import { EPaymentFailedReason, EPaymentsErrorCodes } from "src/modules/payments/common/enums/core";
+import { EPaymentsErrorCodes } from "src/modules/payments/common/enums/core";
 import { LokiLogger } from "src/common/logger";
 import {
   PAYMENT_AUTHORIZATION_CUTOFF_MINUTES,
@@ -32,7 +31,6 @@ export class PaymentsWaitListService {
   constructor(
     @InjectRepository(IncomingPaymentWaitList)
     private readonly incomingPaymentWaitListRepository: Repository<IncomingPaymentWaitList>,
-    private readonly paymentsNotificationService: PaymentsNotificationService,
     private readonly appointmentFailedPaymentCancelService: AppointmentFailedPaymentCancelService,
     private readonly queueInitializeService: QueueInitializeService,
     private readonly dataSource: DataSource,
@@ -71,10 +69,6 @@ export class PaymentsWaitListService {
 
       return { success: true };
     } catch (error) {
-      await this.paymentsNotificationService.sendAuthorizationPaymentFailedNotification(
-        context.appointment,
-        EPaymentFailedReason.AUTH_FAILED,
-      );
       this.lokiLogger.error(
         `Failed to process redirect to wait list for appointmentId: ${appointment.id}`,
         (error as Error).stack,

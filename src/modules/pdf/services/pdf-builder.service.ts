@@ -6,10 +6,13 @@ import { findOneOrFailTyped, getDifferenceInHHMMSS } from "src/common/utils";
 import {
   ICorporatePayOutReceipt,
   ICorporatePayOutReceiptPayment,
+  ICorporatePostPaymentReceipt,
+  ICorporatePostPaymentReceiptPayment,
   ICorporateTaxInvoiceReceipt,
   ICorporateTaxInvoiceReceiptPayment,
   IDepositChargeReceipt,
   IGenerateCorporatePayOutReceipt,
+  IGenerateCorporatePostPaymentReceipt,
   IGenerateCorporateTaxInvoiceReceipt,
   IGenerateInterpreterBadge,
   IGenerateMembershipInvoice,
@@ -225,6 +228,40 @@ export class PdfBuilderService {
     for (const payment of payments) {
       const { appointment } = payment;
       const appointmentDate = this.getAppointmentDate(appointment, appointment.interpreter.timezone);
+      const appointmentServiceType = this.getAppointmentServiceType(appointment);
+      const appointmentDescription = `${appointment.communicationType} interpreting ${appointment.schedulingType} (${appointment.topic})`;
+
+      paymentsData.push({
+        payment,
+        appointmentDate,
+        appointmentServiceType,
+        appointmentDescription,
+        totalDuration: getDifferenceInHHMMSS(
+          new Date(appointment.businessStartTime),
+          new Date(appointment.businessEndTime),
+        ),
+      });
+    }
+
+    return {
+      lfhCompanyData,
+      recipientData,
+      issueDate: format(new Date(), "dd/MM/yyyy"),
+      paymentsData,
+    };
+  }
+
+  public async buildCorporatePostPaymentReceipt(
+    data: IGenerateCorporatePostPaymentReceipt,
+  ): Promise<ICorporatePostPaymentReceipt> {
+    const { payments, company } = data;
+    const lfhCompanyData = await this.loadLfhCompanyPdfData();
+    const recipientData = this.loadRecipientPdfData(company, null);
+
+    const paymentsData: ICorporatePostPaymentReceiptPayment[] = [];
+    for (const payment of payments) {
+      const { appointment } = payment;
+      const appointmentDate = this.getAppointmentDate(appointment, appointment.client.timezone);
       const appointmentServiceType = this.getAppointmentServiceType(appointment);
       const appointmentDescription = `${appointment.communicationType} interpreting ${appointment.schedulingType} (${appointment.topic})`;
 

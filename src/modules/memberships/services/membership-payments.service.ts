@@ -94,7 +94,7 @@ export class MembershipPaymentsService {
     const { paymentInformation } = userRole;
 
     if (!paymentInformation || !paymentInformation.stripeClientAccountId) {
-      throw new BadRequestException(EMembershipErrorCodes.PAYMENTS_PAYMENT_INFO_NOT_FOUND);
+      throw new BadRequestException(EMembershipErrorCodes.PAYMENTS_PAYMENT_INFO_MISSING);
     }
 
     await this.stripeSubscriptionsService.cancelSubscriptionByCustomerId(paymentInformation.stripeClientAccountId);

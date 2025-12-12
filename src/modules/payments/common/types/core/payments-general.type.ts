@@ -8,7 +8,7 @@ import { NonNullableProperties } from "src/common/types";
  ** Type
  */
 
-export type TGetIndividualPaymentsQueryBuilder = NonNullableProperties<
+export type TGetIndividualPayments = NonNullableProperties<
   Pick<
     Payment,
     | "id"

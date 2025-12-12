@@ -21,9 +21,10 @@ export type TCalculateFinalPaymentPricePaymentItem = StrictOmit<
   fullAmount: number;
 };
 
-export type TCalculateFinalPaymentPriceCompany = StrictOmit<Pick<Company, "id" | "depositAmount">, "depositAmount"> & {
-  depositAmount: number | null;
-};
+export type TCalculateFinalPaymentPriceCompany = StrictOmit<
+  Pick<Company, "id" | "depositAmount" | "fundingSource">,
+  "depositAmount"
+> & { depositAmount: number | null };
 
 /**
  ** Query types

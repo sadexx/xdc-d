@@ -12,6 +12,7 @@ import { formatDecimalString } from "src/common/utils";
 import { ICancelAuthorizationContext } from "src/modules/payments/common/interfaces/authorization";
 import { IPaymentOperationResult, IValidatePaymentItem } from "src/modules/payments/common/interfaces/core";
 import { IPaymentExternalOperationResult } from "src/modules/payments/common/interfaces/management";
+import { ECompanyFundingSource } from "src/modules/companies/common/enums";
 
 @Injectable()
 export class PaymentsAuthorizationCancelService {
@@ -110,7 +111,7 @@ export class PaymentsAuthorizationCancelService {
 
     if (validationResult.valid) {
       if (customerType === EPaymentCustomerType.CORPORATE) {
-        result = await this.returnCompanyDeposit(manager, context as TReturnCompanyDepositContext, paymentItem);
+        result = await this.updateCompanyBalance(manager, context as TReturnCompanyDepositContext, paymentItem);
       } else {
         result = await this.paymentsExternalOperationsService.attemptStripeAuthorizationCancel(context, paymentItem);
       }
@@ -141,7 +142,7 @@ export class PaymentsAuthorizationCancelService {
     return { valid: true };
   }
 
-  private async returnCompanyDeposit(
+  private async updateCompanyBalance(
     manager: EntityManager,
     context: TReturnCompanyDepositContext,
     paymentItem: TPaymentItemAuthorizationCancelContext,
@@ -153,7 +154,14 @@ export class PaymentsAuthorizationCancelService {
     }
 
     const currentDeposit = company.depositAmount ?? 0;
-    const newDepositAmount = currentDeposit + paymentItem.fullAmount;
+    let newDepositAmount: number;
+
+    if (company.fundingSource === ECompanyFundingSource.DEPOSIT) {
+      newDepositAmount = currentDeposit + paymentItem.fullAmount;
+    } else {
+      newDepositAmount = currentDeposit - paymentItem.fullAmount;
+    }
+
     await manager
       .getRepository(Company)
       .update({ id: company.id }, { depositAmount: formatDecimalString(newDepositAmount) });

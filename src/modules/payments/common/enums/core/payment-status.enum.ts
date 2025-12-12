@@ -34,10 +34,9 @@ export const EPaymentStatus = {
    * CORPORATE STATUSES
    */
   REFUND: "refund",
-  /*
-   * CORPORATE PAYOUT WAITING STATUSES
-   */
   WAITING_FOR_PAYOUT: "payment-waiting-for-payout",
+  PENDING_PAYMENT: "pending-payment",
+  INVOICED: "invoiced",
 } as const;
 
 export type EPaymentStatus = ValuesOf<typeof EPaymentStatus>;
@@ -65,4 +64,6 @@ export const paymentStatusOrder = {
   [EPaymentStatus.PAYMENT_REQUEST_SUCCEEDED]: 20,
   [EPaymentStatus.REFUND]: 21,
   [EPaymentStatus.WAITING_FOR_PAYOUT]: 22,
+  [EPaymentStatus.PENDING_PAYMENT]: 23,
+  [EPaymentStatus.INVOICED]: 24,
 } as const satisfies Record<EPaymentStatus, number>;

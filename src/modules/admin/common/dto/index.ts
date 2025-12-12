@@ -4,3 +4,4 @@ export * from "src/modules/admin/common/dto/get-user-steps.dto";
 export * from "src/modules/admin/common/dto/get-user-interpreter-profile.dto";
 export * from "src/modules/admin/common/dto/get-user-payments.dto";
 export * from "src/modules/admin/common/dto/update-payment-status.dto";
+export * from "src/modules/admin/common/dto/mark-payments-invoiced.dto";

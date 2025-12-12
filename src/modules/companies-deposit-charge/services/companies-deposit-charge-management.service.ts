@@ -1,6 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { DataSource, EntityManager } from "typeorm";
-import { TEN_PERCENT_MULTIPLIER } from "src/common/constants";
 import { AccessControlService } from "src/modules/access-control/services";
 import { CompanyIdOptionalDto } from "src/modules/companies/common/dto";
 import { Company } from "src/modules/companies/entities";
@@ -10,6 +9,7 @@ import { IDepositCharge } from "src/modules/companies-deposit-charge/common/inte
 import { TCreateChargeRequest, TCreateOrUpdateDepositCharge } from "src/modules/companies-deposit-charge/common/types";
 import { CompanyDepositCharge } from "src/modules/companies-deposit-charge/entities";
 import { formatDecimalString, parseDecimalNumber } from "src/common/utils";
+import { ECompanyFundingSource } from "src/modules/companies/common/enums";
 
 @Injectable()
 export class CompaniesDepositChargeManagementService {
@@ -33,10 +33,12 @@ export class CompaniesDepositChargeManagementService {
     const transformedCompany = this.validateAndTransformCompany(company);
 
     await this.dataSource.transaction(async (manager) => {
+      const depositAmount = transformedCompany.depositAmount ?? 0;
       await this.createOrUpdateDepositCharge(
         manager,
         transformedCompany,
         transformedCompany.depositDefaultChargeAmount,
+        depositAmount,
       );
     });
   }
@@ -50,14 +52,12 @@ export class CompaniesDepositChargeManagementService {
       throw new BadRequestException(ECompaniesDepositChargeErrorCodes.COMPANY_NOT_ACTIVE);
     }
 
-    if (!company.depositDefaultChargeAmount) {
-      throw new BadRequestException(ECompaniesDepositChargeErrorCodes.CHARGE_DEFAULT_AMOUNT_NOT_FILLED);
+    if (company.fundingSource === ECompanyFundingSource.POST_PAYMENT) {
+      throw new BadRequestException(ECompaniesDepositChargeErrorCodes.DEPOSIT_CHARGE_NOT_AVAILABLE_FOR_POST_PAYMENT);
     }
 
-    const tenPercentThreshold = parseDecimalNumber(company.depositDefaultChargeAmount) * TEN_PERCENT_MULTIPLIER;
-
-    if (company.depositAmount && parseDecimalNumber(company.depositAmount) >= tenPercentThreshold) {
-      throw new BadRequestException(ECompaniesDepositChargeErrorCodes.CHARGE_AMOUNT_ABOVE_MINIMUM);
+    if (!company.depositDefaultChargeAmount) {
+      throw new BadRequestException(ECompaniesDepositChargeErrorCodes.CHARGE_DEFAULT_AMOUNT_NOT_FILLED);
     }
 
     return this.transformCompanyToNumbers(company, company.depositDefaultChargeAmount);
@@ -70,6 +70,7 @@ export class CompaniesDepositChargeManagementService {
    * @param manager - Transaction manager for DB operations.
    * @param company - Company entity with deposit details.
    * @param depositDefaultChargeAmount - Default charge amount for calculation.
+   * @param depositAmount - Current company deposit amount.
    * @returns Promise<void> - Resolves on successful creation/update.
    * @throws BadRequestException - If charge cannot be changed before execution or invalid amount (<=0).
    */
@@ -77,6 +78,7 @@ export class CompaniesDepositChargeManagementService {
     manager: EntityManager,
     company: TCreateOrUpdateDepositCharge,
     depositDefaultChargeAmount: number,
+    depositAmount: number,
   ): Promise<void> {
     const companyDepositChargeRepository = manager.getRepository(CompanyDepositCharge);
 
@@ -84,7 +86,7 @@ export class CompaniesDepositChargeManagementService {
       where: { company: { id: company.id } },
     });
 
-    const chargeAmount = this.calculateChargeAmount(company, depositDefaultChargeAmount);
+    const chargeAmount = depositDefaultChargeAmount - depositAmount;
 
     if (chargeAmount <= 0) {
       return;
@@ -95,16 +97,6 @@ export class CompaniesDepositChargeManagementService {
     } else {
       await this.constructAndCreateDepositCharge(manager, company, chargeAmount, depositDefaultChargeAmount);
     }
-  }
-
-  private calculateChargeAmount(company: TCreateOrUpdateDepositCharge, depositDefaultChargeAmount: number): number {
-    let chargeAmount: number = depositDefaultChargeAmount;
-
-    if (company.depositAmount && company.depositAmount > 0) {
-      chargeAmount = depositDefaultChargeAmount - company.depositAmount;
-    }
-
-    return chargeAmount;
   }
 
   private async updateDepositCharge(

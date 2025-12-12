@@ -2,3 +2,4 @@ export * from "src/modules/payments/common/interfaces/authorization/cancel-autho
 export * from "src/modules/payments/common/interfaces/authorization/fetch-payment-frame-interval.interface";
 export * from "src/modules/payments/common/interfaces/authorization/payment-wait-list.interface";
 export * from "src/modules/payments/common/interfaces/authorization/redirect-to-payment-wait-list-options.interface";
+export * from "src/modules/payments/common/interfaces/authorization/handle-post-payment-authorization.interface";

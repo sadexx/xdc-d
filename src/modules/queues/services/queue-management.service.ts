@@ -278,4 +278,33 @@ export class QueueManagementService implements OnModuleInit, OnModuleDestroy {
 
     await queueObject.queue.addBulk(jobs);
   }
+
+  /**
+   * Removes a job from the specified queue by its job ID.
+   *
+   * This method retrieves a job by its ID and removes it from the queue.
+   * If the job is currently being processed, it will complete but won't be retried.
+   * Use this to cancel pending retry jobs or scheduled jobs.
+   *
+   * @param queueEnum - The queue type to remove the job from
+   * @param jobId - The unique identifier of the job to remove
+   * @returns true if job was found and removed, false otherwise
+   */
+  public async removeJob(queueEnum: EQueueType, jobId: string): Promise<void> {
+    const queueObject = this.queueMap.get(queueEnum);
+
+    if (!queueObject) {
+      this.queueNotFound(queueEnum);
+
+      return;
+    }
+
+    const job = await queueObject.queue.getJob(jobId);
+
+    if (!job) {
+      return;
+    }
+
+    await job.remove();
+  }
 }

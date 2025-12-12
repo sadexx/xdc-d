@@ -76,6 +76,7 @@ export class PaymentsNotificationService {
     superAdminRole: TSendDepositLowBalanceNotificationSuperAdmin,
   ): Promise<void> {
     const { profile } = superAdminRole;
+
     this.emailsService
       .sendDepositBalanceInsufficientFundNotification(company.contactEmail, {
         adminName: profile.preferredName || profile.firstName,

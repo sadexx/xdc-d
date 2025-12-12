@@ -451,10 +451,13 @@ export class PromoCampaignQueryOptionsService {
    ** PromoCampaignsUsageService
    */
 
-  public applyPromoCampaignUsageForExtensionOptions(userRoleId: string): FindOneOptions<PromoCampaignAssignment> {
+  public applyPromoCampaignUsageForExtensionOptions(discountHolderId: string): FindOneOptions<PromoCampaignAssignment> {
     return {
       select: ApplyPromoCampaignUsageForExtensionQuery.select,
-      where: { discountHolder: { userRole: { id: userRoleId } } },
+      where: [
+        { discountHolder: { userRole: { id: discountHolderId } } },
+        { discountHolder: { company: { id: discountHolderId } } },
+      ],
       relations: ApplyPromoCampaignUsageForExtensionQuery.relations,
     };
   }

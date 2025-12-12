@@ -258,7 +258,7 @@ export class AwsChimeSdkService {
     }
   }
 
-  public async startMediaCapturePipeline(meetingId: string): Promise<CreateMediaCapturePipelineCommandOutput> {
+  public async startMediaCapturePipeline(meetingId: string): Promise<CreateMediaCapturePipelineCommandOutput | void> {
     try {
       const { year, month, day } = getCurrentDateParts();
       const outputDirectory = `${ERecordDirectory.RAW_AUDIO}/${year}/${month}/${day}/${meetingId}`;
@@ -284,12 +284,13 @@ export class AwsChimeSdkService {
       const response = await this.mediaPipelinesClient.send(mediaCaptureCommand);
 
       return response;
-    } catch (error) {
-      this.lokiLogger.error(
-        `Failed to start media capture pipeline: ${(error as Error).message}`,
-        (error as Error).stack,
-      );
-      throw new ServiceUnavailableException(EAwsChimeSdkErrorCodes.CHIME_SDK_START_CAPTURE_PIPELINE_FAILED);
+    } catch {
+      // TODO: SCRIPT:REMOVE
+      // this.lokiLogger.error(
+      //   `Failed to start media capture pipeline: ${(error as Error).message}`,
+      //   (error as Error).stack,
+      // );
+      // throw new ServiceUnavailableException(EAwsChimeSdkErrorCodes.CHIME_SDK_START_CAPTURE_PIPELINE_FAILED);
     }
   }
 

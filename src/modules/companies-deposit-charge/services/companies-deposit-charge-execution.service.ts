@@ -2,7 +2,7 @@ import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { DataSource, EntityManager, In, Repository } from "typeorm";
 import { findManyTyped, parseDecimalNumber } from "src/common/utils";
-import { FIFTEEN_PERCENT_MULTIPLIER, GST_COEFFICIENT, TEN_PERCENT_MULTIPLIER } from "src/common/constants";
+import { GST_COEFFICIENT } from "src/common/constants";
 import {
   EPaymentCurrency,
   EPaymentCustomerType,
@@ -24,7 +24,6 @@ import {
 import {
   ChargeCompaniesDepositQuery,
   TChargeCompaniesDeposit,
-  TChargeCompaniesDepositSuperAdmin,
   TChargeCompaniesDepositValidatedCompany,
   TLoadChargeCompaniesDeposit,
 } from "src/modules/companies-deposit-charge/common/types";
@@ -86,10 +85,6 @@ export class CompaniesDepositChargeExecutionService {
 
     if (!superAdminRole) {
       throw new BadRequestException(ECompaniesDepositChargeErrorCodes.PAYMENT_INFO_SUPER_ADMIN_ROLE_NOT_FOUND);
-    }
-
-    if (await this.shouldSkipChargeBasedOnThresholds(manager, depositCharge, validatedCompany, superAdminRole)) {
-      return;
     }
 
     const calculatedAmounts = this.calculateDepositChargeGstAmounts(
@@ -166,34 +161,6 @@ export class CompaniesDepositChargeExecutionService {
     }
 
     return company as TChargeCompaniesDepositValidatedCompany;
-  }
-
-  private async shouldSkipChargeBasedOnThresholds(
-    manager: EntityManager,
-    depositCharge: TChargeCompaniesDeposit,
-    company: TChargeCompaniesDepositValidatedCompany,
-    superAdminRole: TChargeCompaniesDepositSuperAdmin,
-  ): Promise<boolean> {
-    const companyDepositChargeRepository = manager.getRepository(CompanyDepositCharge);
-
-    const depositDefaultChargeAmount = company.depositDefaultChargeAmount ?? depositCharge.depositChargeAmount;
-    const tenPercentThreshold = depositDefaultChargeAmount * TEN_PERCENT_MULTIPLIER;
-    const fifteenPercentThreshold = depositDefaultChargeAmount * FIFTEEN_PERCENT_MULTIPLIER;
-
-    if (company.depositAmount && company.depositAmount >= fifteenPercentThreshold) {
-      await companyDepositChargeRepository.delete({ id: depositCharge.id });
-
-      return false;
-    }
-
-    if (company.depositAmount && company.depositAmount >= tenPercentThreshold) {
-      await companyDepositChargeRepository.delete({ id: depositCharge.id });
-      await this.companiesDepositChargeNotificationService.sendDepositLowBalanceNotification(company, superAdminRole);
-
-      return false;
-    }
-
-    return true;
   }
 
   private calculateDepositChargeGstAmounts(

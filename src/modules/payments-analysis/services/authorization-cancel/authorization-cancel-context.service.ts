@@ -8,7 +8,7 @@ import {
   TPaymentAuthorizationCancelContext,
 } from "src/modules/payments-analysis/common/types/authorization-cancel";
 import { AuthorizationCancelContextQueryOptionsService } from "src/modules/payments-analysis/services/authorization-cancel";
-import { findOneOrFailTyped, isInRoles, parseDecimalNumber } from "src/common/utils";
+import { findOneOrFailTyped, findOneTyped, isInRoles, parseDecimalNumber } from "src/common/utils";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Appointment } from "src/modules/appointments/appointment/entities";
 import { Repository } from "typeorm";
@@ -19,9 +19,11 @@ import { Payment } from "src/modules/payments/entities";
 import { IAuthorizationCancelPaymentContext } from "src/modules/payments-analysis/common/interfaces/authorization-cancel";
 import { EPaymentOperation } from "src/modules/payments-analysis/common/enums/core";
 import { AppointmentSharedService } from "src/modules/appointments/shared/services";
+import { LokiLogger } from "src/common/logger";
 
 @Injectable()
 export class AuthorizationCancelContextService {
+  private readonly lokiLogger = new LokiLogger(AuthorizationCancelContextService.name);
   constructor(
     @InjectRepository(Appointment)
     private readonly appointmentRepository: Repository<Appointment>,
@@ -46,16 +48,22 @@ export class AuthorizationCancelContextService {
   public async loadPaymentContextForAuthorizationCancel(
     appointmentId: string,
     isCancelledByClient: boolean,
-  ): Promise<IAuthorizationCancelPaymentContext> {
+  ): Promise<IAuthorizationCancelPaymentContext | null> {
     const appointment = await this.loadAppointmentContext(appointmentId);
+
+    const payment = await this.loadPaymentContext(appointmentId);
+
+    if (!payment) {
+      this.lokiLogger.warn(`Appointment with id ${appointment.id} does not have payment to cancel authorization.`);
+
+      return null;
+    }
 
     const isClientCorporate = this.determineIfClientCorporate(appointment.client);
 
     const isRestricted = isCancelledByClient
       ? this.appointmentSharedService.isAppointmentCancellationRestrictedByTimeLimits(appointment)
       : false;
-
-    const payment = await this.loadPaymentContext(appointmentId);
 
     const company = isClientCorporate ? await this.loadCompanyContext(appointment.client) : null;
 
@@ -82,15 +90,15 @@ export class AuthorizationCancelContextService {
     );
   }
 
-  private async loadPaymentContext(appointmentId: string): Promise<TPaymentAuthorizationCancelContext> {
+  private async loadPaymentContext(appointmentId: string): Promise<TPaymentAuthorizationCancelContext | null> {
     const queryOptions =
       this.authorizationCancelContextQueryOptionsService.loadPaymentAuthorizationCancelContextOptions(appointmentId);
 
-    const payment = await findOneOrFailTyped<TLoadPaymentAuthorizationCancelContext>(
-      appointmentId,
-      this.paymentRepository,
-      queryOptions,
-    );
+    const payment = await findOneTyped<TLoadPaymentAuthorizationCancelContext>(this.paymentRepository, queryOptions);
+
+    if (!payment) {
+      return null;
+    }
 
     return {
       ...payment,

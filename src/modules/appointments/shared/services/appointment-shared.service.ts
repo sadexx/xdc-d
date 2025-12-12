@@ -476,7 +476,7 @@ export class AppointmentSharedService {
   }
 
   public async extendBusinessEndTime(manager: EntityManager, context: IAuthorizationPaymentContext): Promise<void> {
-    const { appointment, additionalBlockDuration, prices } = context;
+    const { appointment, additionalBlockDuration, prices, companyContext } = context;
     const cacheKey = `live-appointment-data:${appointment.id}`;
 
     const baseTime = appointment.businessEndTime ?? appointment.internalEstimatedEndTime;
@@ -492,7 +492,7 @@ export class AppointmentSharedService {
     await this.redisService.del(cacheKey);
 
     if (prices && prices.discountRate) {
-      await this.discountsService.applyDiscountsForExtension(manager, appointment, prices.discountRate);
+      await this.discountsService.applyDiscountsForExtension(manager, appointment, prices.discountRate, companyContext);
     }
   }
 

@@ -77,6 +77,7 @@ import { SettingsModule } from "src/modules/settings/settings.module";
 import { PaymentAnalysisModule } from "src/modules/payments-analysis/payments-analysis.module";
 import { PaymentsModule } from "src/modules/payments/payments.module";
 import { PdfModule } from "src/modules/pdf/pdf.module";
+import { ScriptikModule } from "src/modules/scriptik/scriptik.module";
 
 const configModuleOptions: ConfigModuleOptions = {
   envFilePath: [".env"],
@@ -158,6 +159,7 @@ const configModuleOptions: ConfigModuleOptions = {
     PaymentAnalysisModule,
     PaymentsModule,
     PdfModule,
+    ScriptikModule,
   ],
   providers: [
     {

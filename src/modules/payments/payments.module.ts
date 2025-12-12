@@ -15,7 +15,6 @@ import { AppointmentsSharedModule } from "src/modules/appointments/shared/appoin
 import { PaymentsController } from "src/modules/payments/controllers";
 import { UserRole } from "src/modules/users/entities";
 import { AwsS3Module } from "src/modules/aws/s3/aws-s3.module";
-import { RedisModule } from "src/modules/redis/redis.module";
 import {
   PaymentsNotificationService,
   PaymentsValidationFailedService,
@@ -35,6 +34,7 @@ import {
   PaymentsPriceRecalculationService,
   PaymentsTransferService,
   PaymentsWaitListService,
+  PaymentsCorporatePostPaymentService,
 } from "src/modules/payments/services";
 
 @Module({
@@ -52,12 +52,12 @@ import {
     PaypalModule,
     AppointmentsSharedModule,
     AwsS3Module,
-    RedisModule,
   ],
   providers: [
     PaymentsAuthorizationService,
     PaymentsAuthorizationCancelService,
     PaymentsCorporateDepositService,
+    PaymentsCorporatePostPaymentService,
     PaymentsCaptureService,
     PaymentsCorporateSameCompanyCommissionService,
     PaymentsManagementService,

@@ -13,7 +13,11 @@ import {
   Min,
   Max,
 } from "class-validator";
-import { ECompanyActivitySphere, ECompanyEmployeesNumber } from "src/modules/companies/common/enums";
+import {
+  ECompanyActivitySphere,
+  ECompanyEmployeesNumber,
+  ECompanyFundingSource,
+} from "src/modules/companies/common/enums";
 import { MINIMUM_DEPOSIT_CHARGE_AMOUNT } from "src/modules/companies-deposit-charge/common/constants";
 import { NoWhitespaces } from "src/common/decorators";
 
@@ -74,4 +78,8 @@ export class UpdateCompanyProfileInformationDto {
   @IsString()
   @IsNotEmpty()
   abnNumber?: string;
+
+  @IsOptional()
+  @IsEnum(ECompanyFundingSource)
+  fundingSource?: ECompanyFundingSource;
 }

@@ -15,3 +15,5 @@ export * from "src/modules/pdf/common/interfaces/generate-corporate-pay-out-rece
 export * from "src/modules/pdf/common/interfaces/corporate-pay-out-receipt.interface";
 export * from "src/modules/pdf/common/interfaces/generate-corporate-tax-invoice-receipt.interface";
 export * from "src/modules/pdf/common/interfaces/corporate-tax-invoice.receipt.interface";
+export * from "src/modules/pdf/common/interfaces/corporate-post-payment-receipt.interface";
+export * from "src/modules/pdf/common/interfaces/generate-corporate-post-payment-receipt.interface";

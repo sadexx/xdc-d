@@ -133,6 +133,7 @@ export const LoadPaymentCaptureContextQuery = {
       platformId: true,
       name: true,
       contactEmail: true,
+      fundingSource: true,
       address: { streetNumber: true, streetName: true, suburb: true, state: true, postcode: true, country: true },
     },
     items: {
@@ -143,6 +144,7 @@ export const LoadPaymentCaptureContextQuery = {
       externalId: true,
       status: true,
       creationDate: true,
+      updatingDate: true,
     },
   } as const satisfies FindOptionsSelect<Payment>,
   relations: { company: { address: true }, items: true } as const satisfies FindOptionsRelations<Payment>,

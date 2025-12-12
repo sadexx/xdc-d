@@ -26,7 +26,7 @@ export class CaptureContextQueryOptionsService {
       select: LoadPaymentCaptureContextQuery.select,
       where: { appointment: { id: appointmentId }, direction: EPaymentDirection.INCOMING },
       relations: LoadPaymentCaptureContextQuery.relations,
-      order: { items: { creationDate: ESortOrder.ASC } },
+      order: { items: { updatingDate: ESortOrder.ASC } },
     };
   }
 

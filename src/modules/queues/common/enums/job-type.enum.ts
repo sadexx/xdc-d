@@ -23,4 +23,5 @@ export const enum EJobType {
   PROCESS_DEPOSIT_CHARGE_PDF_GENERATION = "process-deposit-charge-pdf-generation",
   PROCESS_CORPORATE_PAYOUT_RECEIPT_PDF_GENERATION = "process-corporate-payout-receipt-pdf-generation",
   PROCESS_CORPORATE_TAX_INVOICE_RECEIPT_PDF_GENERATION = "process-corporate-tax-invoice-receipt-pdf-generation",
+  PROCESS_CORPORATE_POST_PAYMENT_RECEIPT_PDF_GENERATION = "process-corporate-post-payment-receipt-pdf-generation",
 }

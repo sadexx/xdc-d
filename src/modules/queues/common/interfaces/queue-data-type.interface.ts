@@ -10,6 +10,7 @@ import { CheckInOutAppointmentDto } from "src/modules/appointments/appointment/c
 import { ITokenUserData } from "src/modules/tokens/common/interfaces";
 import {
   IGenerateCorporatePayOutReceipt,
+  IGenerateCorporatePostPaymentReceipt,
   IGenerateCorporateTaxInvoiceReceipt,
   IGenerateInterpreterBadge,
   IGenerateMembershipInvoice,
@@ -158,6 +159,11 @@ interface IProcessCorporateTaxInvoiceReceiptPdfGenerationData {
   payload: IGenerateCorporateTaxInvoiceReceipt;
 }
 
+interface IProcessCorporatePostPaymentReceiptPdfGenerationData {
+  jobName: EJobType.PROCESS_CORPORATE_POST_PAYMENT_RECEIPT_PDF_GENERATION;
+  payload: IGenerateCorporatePostPaymentReceipt;
+}
+
 export type IQueueJobType =
   | IProcessNotifyMembershipChangesData
   | IProcessStripeCancelSubscriptionsData
@@ -181,4 +187,5 @@ export type IQueueJobType =
   | IProcessInterpreterBadgePdfGenerationData
   | IProcessDepositChargePdfGenerationData
   | IProcessCorporatePayOutReceiptPdfGenerationData
-  | IProcessCorporateTaxInvoiceReceiptPdfGenerationData;
+  | IProcessCorporateTaxInvoiceReceiptPdfGenerationData
+  | IProcessCorporatePostPaymentReceiptPdfGenerationData;

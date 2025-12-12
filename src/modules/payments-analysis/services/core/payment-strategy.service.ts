@@ -12,6 +12,7 @@ import { IAuthorizationCancelPaymentContext } from "src/modules/payments-analysi
 import { IAuthorizationRecreatePaymentContext } from "src/modules/payments-analysis/common/interfaces/authorization-recreate";
 import { EPaymentAuthorizationRecreateStrategy } from "src/modules/payments-analysis/common/enums/authorization-recreate";
 import { IPaymentValidationResult } from "src/modules/payments/common/interfaces/payment-failed";
+import { ECompanyFundingSource } from "src/modules/companies/common/enums";
 
 @Injectable()
 export class PaymentStrategyService {
@@ -49,14 +50,18 @@ export class PaymentStrategyService {
       return EPaymentAuthorizationStrategy.VALIDATION_FAILED;
     }
 
-    const { waitListContext, isClientCorporate } = context;
+    const { waitListContext, isClientCorporate, companyContext } = context;
 
     if (waitListContext.shouldRedirectToWaitList) {
       return EPaymentAuthorizationStrategy.WAIT_LIST_REDIRECT;
     }
 
-    if (isClientCorporate) {
-      return EPaymentAuthorizationStrategy.CORPORATE_DEPOSIT_CHARGE;
+    if (isClientCorporate && companyContext) {
+      if (companyContext.company.fundingSource === ECompanyFundingSource.DEPOSIT) {
+        return EPaymentAuthorizationStrategy.CORPORATE_DEPOSIT_CHARGE;
+      } else {
+        return EPaymentAuthorizationStrategy.CORPORATE_POST_PAYMENT;
+      }
     }
 
     return EPaymentAuthorizationStrategy.INDIVIDUAL_STRIPE_AUTH;

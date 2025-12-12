@@ -170,14 +170,8 @@ export class AppointmentCommandService {
     appointmentOrder: TAcceptAppointmentOrder,
     interpreter: UserRole,
   ): Promise<IMessageOutput | IJoinMeetingOutput> {
-    this.messagingCreationService
-      .createAppointmentChannel(appointmentOrder.appointment, interpreter)
-      .catch((error: Error) => {
-        this.lokiLogger.error(
-          `Error in createAppointmentChannel with appointment platformId: ${appointmentOrder.platformId}`,
-          error.stack,
-        );
-      });
+    // TODO: SCRIPT:REMOVE
+    this.messagingCreationService.createAppointmentChannel(appointmentOrder.appointment, interpreter).catch(() => {});
 
     if (appointmentOrder.schedulingType === EAppointmentSchedulingType.ON_DEMAND) {
       return await this.acceptOnDemandAppointment(appointmentOrder, interpreter);

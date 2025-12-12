@@ -1,11 +1,12 @@
-import { Body, Controller, Get, Param, Patch, Query, UseGuards, UsePipes } from "@nestjs/common";
-import { AdminService } from "src/modules/admin/services";
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards, UsePipes } from "@nestjs/common";
+import { AdminPaymentsService, AdminService } from "src/modules/admin/services";
 import {
   GetUserDocumentsDto,
   GetUserInterpreterProfileDto,
   GetUserPaymentsDto,
   GetUsersDto,
   GetUserStepsDto,
+  MarkPaymentsInvoicedDto,
   UpdatePaymentStatusDto,
 } from "src/modules/admin/common/dto";
 import { InterpreterProfile } from "src/modules/interpreters/profile/entities";
@@ -24,7 +25,10 @@ import { IAccountRequiredStepsDataOutput } from "src/modules/account-activation/
 
 @Controller("admin")
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly adminPaymentsService: AdminPaymentsService,
+  ) {}
 
   @UseGuards(JwtFullAccessGuard, RolesGuard)
   @UsePipes(OrderLimitPipe)
@@ -64,12 +68,24 @@ export class AdminController {
   @UsePipes(OrderLimitPipe)
   @Get("payments")
   async getUserPayments(@Query() dto: GetUserPaymentsDto): Promise<IGetUserPaymentResponseOutput> {
-    return this.adminService.getUserPayments(dto);
+    return this.adminPaymentsService.getUserPayments(dto);
   }
 
   @UseGuards(JwtFullAccessGuard, RolesGuard)
   @Patch("payments/status/:id")
   async updatePaymentStatus(@Param() { id }: UUIDParamDto, @Body() dto: UpdatePaymentStatusDto): Promise<void> {
-    await this.adminService.updatePaymentStatus(id, dto);
+    await this.adminPaymentsService.updatePaymentStatus(id, dto);
+  }
+
+  @UseGuards(JwtFullAccessGuard, RolesGuard)
+  @Patch("payments/invoiced")
+  async markPaymentsInvoiced(@Body() dto: MarkPaymentsInvoicedDto): Promise<void> {
+    await this.adminPaymentsService.markPaymentsInvoiced(dto);
+  }
+
+  @UseGuards(JwtFullAccessGuard, RolesGuard)
+  @Post("payments/corporate-receipt")
+  async generateCorporatePostPaymentReceipt(@Body() dto: MarkPaymentsInvoicedDto): Promise<void> {
+    await this.adminPaymentsService.generateCorporatePostPaymentReceipt(dto);
   }
 }

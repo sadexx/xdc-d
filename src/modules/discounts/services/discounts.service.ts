@@ -19,6 +19,7 @@ import {
 } from "src/modules/discounts/common/types";
 import { MembershipsUsageService } from "src/modules/memberships/services";
 import { PromoCampaignsAssignmentService, PromoCampaignsUsageService } from "src/modules/promo-campaigns/services";
+import { ICompanyAuthorizationContext } from "src/modules/payments-analysis/common/interfaces/authorization";
 
 @Injectable()
 export class DiscountsService {
@@ -90,6 +91,7 @@ export class DiscountsService {
     manager: EntityManager,
     appointment: TApplyDiscountsForExtension,
     discounts: IDiscountRate,
+    companyContext: ICompanyAuthorizationContext | null,
   ): Promise<void> {
     if (discounts.membershipFreeMinutes) {
       await this.membershipsUsageService.deductFreeMinutes(manager, appointment, discounts.membershipFreeMinutes);
@@ -100,6 +102,7 @@ export class DiscountsService {
         manager,
         appointment,
         discounts.promoCampaignDiscountMinutes,
+        companyContext,
       );
     }
 

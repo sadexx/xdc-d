@@ -6,9 +6,16 @@ import { ContentManagement, Promo } from "src/modules/content-management/entitie
 import { ContentManagementService } from "src/modules/content-management/services";
 import { FileManagementModule } from "src/modules/file-management/file-management.module";
 import { ReviewsModule } from "src/modules/reviews/reviews.module";
+import { RedisModule } from "src/modules/redis/redis.module";
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Promo, ContentManagement]), AwsS3Module, FileManagementModule, ReviewsModule],
+  imports: [
+    TypeOrmModule.forFeature([Promo, ContentManagement]),
+    AwsS3Module,
+    FileManagementModule,
+    ReviewsModule,
+    RedisModule,
+  ],
   controllers: [ContentManagementController],
   providers: [ContentManagementService],
   exports: [ContentManagementService],

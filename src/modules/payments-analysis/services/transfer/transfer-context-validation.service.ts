@@ -35,12 +35,7 @@ export class TransferContextValidationService {
       errors.push("Incoming payment has no items.");
     }
 
-    for (const paymentItem of paymentContext.incomingPayment.items) {
-      if (paymentItem.status !== EPaymentStatus.CAPTURED) {
-        errors.push("Some of the incoming payment items has an incorrect status.");
-        break;
-      }
-    }
+    this.validatePaymentItemStatuses(paymentContext.incomingPayment, errors);
 
     if (company && !company.paymentInformation) {
       errors.push(`Company with id ${company.id} does not have payment info.`);
@@ -57,12 +52,7 @@ export class TransferContextValidationService {
       errors.push("Incoming payment has no items.");
     }
 
-    for (const paymentItem of paymentContext.incomingPayment.items) {
-      if (paymentItem.status !== EPaymentStatus.CAPTURED) {
-        errors.push("Some of the incoming payment items has an incorrect status.");
-        break;
-      }
-    }
+    this.validatePaymentItemStatuses(paymentContext.incomingPayment, errors);
 
     if (paymentContext.outcomingPayment && !isSecondAttempt) {
       errors.push("Outcoming payment already exists.");
@@ -85,6 +75,21 @@ export class TransferContextValidationService {
     }
 
     return this.buildValidationResult(errors);
+  }
+
+  private validatePaymentItemStatuses(
+    incomingPayment: ITransferPaymentContext["paymentContext"]["incomingPayment"],
+    errors: string[],
+  ): void {
+    const isPostPayment = incomingPayment.system === EPaymentSystem.POST_PAYMENT;
+    const requiredStatus = isPostPayment ? EPaymentStatus.PENDING_PAYMENT : EPaymentStatus.CAPTURED;
+
+    for (const paymentItem of incomingPayment.items) {
+      if (paymentItem.status !== requiredStatus) {
+        errors.push(`Some of the incoming payment items do not have correct status.`);
+        break;
+      }
+    }
   }
 
   private buildValidationResult(errors: string[]): IPaymentValidationResult {

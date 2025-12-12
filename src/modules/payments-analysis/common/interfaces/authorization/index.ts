@@ -4,3 +4,5 @@ export * from "src/modules/payments-analysis/common/interfaces/authorization/dep
 export * from "src/modules/payments-analysis/common/interfaces/authorization/timing-authorization-context.interface";
 export * from "src/modules/payments-analysis/common/interfaces/authorization/company-authorization-context.interface";
 export * from "src/modules/payments-analysis/common/interfaces/authorization/authorization-context-options.interface";
+export * from "src/modules/payments-analysis/common/interfaces/authorization/post-payment-authorization-context.interface";
+export * from "src/modules/payments-analysis/common/interfaces/authorization/company-additional-data-authorization-context.interface";

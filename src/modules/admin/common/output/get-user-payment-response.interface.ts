@@ -1,6 +1,6 @@
 import { PaginationOutput } from "src/common/outputs";
-import { IGetUserPayment } from "src/modules/admin/common/interfaces/get-user-payment.interface";
+import { TGetUserPayments } from "src/modules/admin/common/types";
 
 export interface IGetUserPaymentResponseOutput extends PaginationOutput {
-  data: IGetUserPayment[];
+  data: TGetUserPayments[];
 }

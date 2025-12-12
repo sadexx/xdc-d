@@ -10,6 +10,7 @@ import { ChannelMembership } from "src/modules/chime-messaging-configuration/ent
 import { Appointment } from "src/modules/appointments/appointment/entities";
 import { Notification } from "src/modules/notifications/entities";
 import { UserRole } from "src/modules/users/entities";
+import { RedisModule } from "src/modules/redis/redis.module";
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { UserRole } from "src/modules/users/entities";
       Notification,
       UserRole,
     ]),
+    RedisModule,
   ],
   controllers: [ToolboxController],
   providers: [ToolboxService, ToolboxQueryOptionsService],

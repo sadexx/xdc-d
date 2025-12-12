@@ -13,9 +13,10 @@ import {
   BlockBuilderService,
   PriceCalculationService,
 } from "src/modules/rates/services";
+import { RedisModule } from "src/modules//redis/redis.module";
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Rate])],
+  imports: [TypeOrmModule.forFeature([Rate]), RedisModule],
   providers: [
     RateBuilderService,
     RatesService,

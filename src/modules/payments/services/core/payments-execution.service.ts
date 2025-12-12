@@ -5,7 +5,6 @@ import { AppointmentOrderSharedLogicService } from "src/modules/appointment-orde
 import { EPaymentCaptureStrategy } from "src/modules/payments-analysis/common/enums/capture";
 import { EPaymentOperation } from "src/modules/payments-analysis/common/enums/core";
 import { QueueInitializeService } from "src/modules/queues/services";
-import { TMakeRecordToPayOutWaitListContext } from "src/modules/payments/common/types/transfer";
 import { EPaymentTransferStrategy } from "src/modules/payments-analysis/common/enums/transfer";
 import { IGeneratePayOutReceipt, IGenerateTaxInvoiceReceipt } from "src/modules/pdf/common/interfaces";
 import { EPaymentAuthorizationCancelStrategy } from "src/modules/payments-analysis/common/enums/authorization-cancel";
@@ -23,6 +22,7 @@ import {
   PaymentsAuthorizationService,
   PaymentsCaptureService,
   PaymentsCorporateDepositService,
+  PaymentsCorporatePostPaymentService,
   PaymentsCorporateSameCompanyCommissionService,
   PaymentsManagementService,
   PaymentsTransferService,
@@ -39,6 +39,12 @@ import {
 } from "src/modules/payments/common/interfaces/core";
 import { ICreatePaymentRecordResult } from "src/modules/payments/common/interfaces/management";
 import { TProcessSameCompanyCommissionContext } from "src/modules/payments/common/types/capture";
+import {
+  TAuthorizeCorporatePostPaymentContext,
+  TAuthorizePaymentContext,
+  TChargeFromDepositContext,
+} from "src/modules/payments/common/types/authorization";
+import { TMakeRecordToPayOutWaitListContext } from "src/modules/payments/common/types/transfer";
 
 @Injectable()
 export class PaymentsExecutionService {
@@ -48,6 +54,7 @@ export class PaymentsExecutionService {
     private readonly paymentsWaitListService: PaymentsWaitListService,
     private readonly paymentsAuthorizationService: PaymentsAuthorizationService,
     private readonly paymentsCorporateDepositService: PaymentsCorporateDepositService,
+    private readonly paymentCorporatePostPaymentService: PaymentsCorporatePostPaymentService,
     private readonly paymentsAuthorizationCancelService: PaymentsAuthorizationCancelService,
     private readonly paymentsCaptureService: PaymentsCaptureService,
     private readonly paymentsCorporateSameCompanyCommissionService: PaymentsCorporateSameCompanyCommissionService,
@@ -83,11 +90,24 @@ export class PaymentsExecutionService {
             break;
           }
           case EPaymentAuthorizationStrategy.INDIVIDUAL_STRIPE_AUTH: {
-            operationResult = await this.paymentsAuthorizationService.authorizePayment(manager, context);
+            operationResult = await this.paymentsAuthorizationService.authorizePayment(
+              manager,
+              context as TAuthorizePaymentContext,
+            );
             break;
           }
           case EPaymentAuthorizationStrategy.CORPORATE_DEPOSIT_CHARGE: {
-            operationResult = await this.paymentsCorporateDepositService.chargeFromDeposit(manager, context);
+            operationResult = await this.paymentsCorporateDepositService.chargeFromDeposit(
+              manager,
+              context as TChargeFromDepositContext,
+            );
+            break;
+          }
+          case EPaymentAuthorizationStrategy.CORPORATE_POST_PAYMENT: {
+            operationResult = await this.paymentCorporatePostPaymentService.authorizeCorporatePostPayment(
+              manager,
+              context as TAuthorizeCorporatePostPaymentContext,
+            );
             break;
           }
           case EPaymentAuthorizationStrategy.VALIDATION_FAILED: {

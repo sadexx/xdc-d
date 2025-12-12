@@ -100,6 +100,7 @@ type TBaseLoadCompanyTransferContext = QueryResultType<Company, typeof LoadCompa
 export const LoadPaymentTransferContextQuery = {
   select: {
     id: true,
+    system: true,
     items: { id: true, status: true },
   } as const satisfies FindOptionsSelect<Payment>,
   relations: { items: true } as const satisfies FindOptionsRelations<Payment>,

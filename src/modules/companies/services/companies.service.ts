@@ -317,6 +317,7 @@ export class CompaniesService {
 
     if (dto.depositDefaultChargeAmount) {
       const depositDefaultChargeAmount = dto.depositDefaultChargeAmount;
+      const depositAmount = 0;
       const company: TCreateOrUpdateDepositCharge = {
         ...newCompany,
         depositAmount: null,
@@ -327,6 +328,7 @@ export class CompaniesService {
           manager,
           company,
           depositDefaultChargeAmount,
+          depositAmount,
         );
       });
     }
@@ -521,6 +523,11 @@ export class CompaniesService {
       company.companyType === ECompanyType.CORPORATE_INTERPRETING_PROVIDER_CORPORATE_CLIENTS
     ) {
       delete dto.profileInformation.depositDefaultChargeAmount;
+      delete dto.profileInformation.fundingSource;
+    }
+
+    if (company.isActive && dto.profileInformation.fundingSource) {
+      throw new BadRequestException(ECompaniesErrorCodes.COMPANIES_FUNDING_SOURCE_IMMUTABLE_AFTER_ACTIVATION);
     }
 
     if (dto.profileInformation?.platformCommissionRate) {
@@ -543,6 +550,8 @@ export class CompaniesService {
         businessRegistrationNumber: dto.profileInformation.businessRegistrationNumber,
         abnNumber: dto.profileInformation.abnNumber,
         platformCommissionRate: dto.profileInformation.platformCommissionRate,
+        depositDefaultChargeAmount: dto.profileInformation.depositDefaultChargeAmount,
+        fundingSource: dto.profileInformation.fundingSource,
       });
     }
 
@@ -568,22 +577,6 @@ export class CompaniesService {
     }
 
     await this.companyRepository.save(company);
-
-    if (user.role === EUserRoleName.SUPER_ADMIN && dto.profileInformation.depositDefaultChargeAmount) {
-      const depositDefaultChargeAmount = dto.profileInformation.depositDefaultChargeAmount;
-      const chargeCompany: TCreateOrUpdateDepositCharge = {
-        ...company,
-        depositAmount: null,
-        depositDefaultChargeAmount,
-      };
-      await this.dataSource.transaction(async (manager) => {
-        await this.companiesDepositChargeManagementService.createOrUpdateDepositCharge(
-          manager,
-          chargeCompany,
-          depositDefaultChargeAmount,
-        );
-      });
-    }
 
     return;
   }

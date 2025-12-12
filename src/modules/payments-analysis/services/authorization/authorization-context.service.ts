@@ -19,13 +19,16 @@ import { EPaymentOperation } from "src/modules/payments-analysis/common/enums/co
 import {
   IAuthorizationContextOptions,
   IAuthorizationPaymentContext,
+  ICompanyAdditionalDataAuthorizationContext,
   ICompanyAuthorizationContext,
   IDepositChargeAuthorizationContext,
+  IPostPaymentAuthorizationContext,
   ITimingAuthorizationContext,
   IWaitListAuthorizationContext,
 } from "src/modules/payments-analysis/common/interfaces/authorization";
 import {
   TClientAuthorizationContext,
+  TCompanyAuthorizationContext,
   TCompanySuperAdminAuthorizationContext,
   TExistingPaymentAuthorizationContext,
   TLoadAppointmentAuthorizationContext,
@@ -39,6 +42,7 @@ import { COMPANY_LFH_ID } from "src/modules/companies/common/constants/constants
 import { PAYMENT_AUTHORIZATION_CUTOFF_MINUTES } from "src/modules/payments/common/constants";
 import { PaymentsPriceCalculationService } from "src/modules/payments/services";
 import { IPaymentCalculationResult } from "src/modules/payments/common/interfaces/pricing";
+import { ECompanyFundingSource } from "src/modules/companies/common/enums";
 
 @Injectable()
 export class AuthorizationContextService {
@@ -99,20 +103,20 @@ export class AuthorizationContextService {
         existingPayment: null,
         companyContext: null,
         prices: null,
-        depositChargeContext: null,
+        companyAdditionalDataContext: null,
       };
     }
 
-    const country = this.determineCountry(appointment.client, isClientCorporate, companyContext);
-
     const existingPayment = await this.loadExistingPaymentContext(appointmentId);
+
+    const country = this.determineCountry(appointment.client, isClientCorporate, companyContext);
 
     const prices = !initialPrices
       ? await this.calculatePaymentPrices(appointment, isClientCorporate, country, options)
       : initialPrices;
 
-    const depositChargeContext =
-      isClientCorporate && companyContext ? this.calculateDepositContext(companyContext, prices) : null;
+    const companyAdditionalDataContext =
+      isClientCorporate && companyContext ? this.calculateCompanyAdditionalDataContext(companyContext, prices) : null;
 
     const paymentOperation = this.determinePaymentOperation(options);
 
@@ -129,7 +133,7 @@ export class AuthorizationContextService {
       existingPayment,
       companyContext,
       prices,
-      depositChargeContext,
+      companyAdditionalDataContext,
     };
   }
 
@@ -277,11 +281,29 @@ export class AuthorizationContextService {
     }
   }
 
-  private calculateDepositContext(
+  private calculateCompanyAdditionalDataContext(
     companyContext: ICompanyAuthorizationContext,
     prices: IPaymentCalculationResult,
-  ): IDepositChargeAuthorizationContext {
+  ): ICompanyAdditionalDataAuthorizationContext {
     const { company } = companyContext;
+
+    if (company.fundingSource === ECompanyFundingSource.DEPOSIT) {
+      return {
+        depositChargeContext: this.calculateDepositContext(company, prices),
+        postPaymentAuthorizationContext: null,
+      };
+    } else {
+      return {
+        postPaymentAuthorizationContext: this.calculatePostPaymentContext(company, prices),
+        depositChargeContext: null,
+      };
+    }
+  }
+
+  private calculateDepositContext(
+    company: TCompanyAuthorizationContext,
+    prices: IPaymentCalculationResult,
+  ): IDepositChargeAuthorizationContext {
     const depositAmount = company.depositAmount ?? 0;
     const depositDefaultChargeAmount = company.depositDefaultChargeAmount ?? 0;
 
@@ -316,6 +338,22 @@ export class AuthorizationContextService {
     };
   }
 
+  private calculatePostPaymentContext(
+    company: TCompanyAuthorizationContext,
+    prices: IPaymentCalculationResult,
+  ): IPostPaymentAuthorizationContext {
+    const currentUsedAmount = company.depositAmount ?? 0;
+    const creditLimit = company.depositDefaultChargeAmount ?? 0;
+
+    const usedAmountAfterCharge = currentUsedAmount + prices.clientFullAmount;
+    const isExceedingCreditLimit = usedAmountAfterCharge > creditLimit;
+
+    return {
+      isExceedingCreditLimit,
+      usedAmountAfterCharge,
+    };
+  }
+
   private determineIfClientCorporate(client: TClientAuthorizationContext): boolean {
     return isInRoles(CORPORATE_CLIENT_ROLES, client.role.name);
   }
@@ -325,14 +363,16 @@ export class AuthorizationContextService {
     companyContext: ICompanyAuthorizationContext | null,
   ): string {
     if (companyContext) {
-      return `Deposit of company ${companyContext.company.platformId}`;
+      const { company } = companyContext;
+
+      if (company.fundingSource === ECompanyFundingSource.DEPOSIT) {
+        return `Deposit of company ${companyContext.company.platformId}`;
+      }
+
+      return `Post Payment of company ${companyContext.company.platformId}`;
     }
 
     return `Credit Card ${client.paymentInformation?.stripeClientLastFour}`;
-  }
-
-  private determineCurrency(): EPaymentCurrency {
-    return EPaymentCurrency.AUD;
   }
 
   private determineCountry(
@@ -351,5 +391,9 @@ export class AuthorizationContextService {
     return additionalBlockDuration
       ? EPaymentOperation.AUTHORIZE_ADDITIONAL_BLOCK_PAYMENT
       : EPaymentOperation.AUTHORIZE_PAYMENT;
+  }
+
+  private determineCurrency(): EPaymentCurrency {
+    return EPaymentCurrency.AUD;
   }
 }

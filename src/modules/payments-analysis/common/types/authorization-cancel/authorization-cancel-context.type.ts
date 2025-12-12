@@ -71,6 +71,7 @@ export const LoadCompanyAuthorizationCancelContextQuery = {
   select: {
     id: true,
     depositAmount: true,
+    fundingSource: true,
   } as const satisfies FindOptionsSelect<Company>,
 };
 export type TLoadCompanyAuthorizationCancelContext = QueryResultType<

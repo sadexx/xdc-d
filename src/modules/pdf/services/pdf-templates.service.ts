@@ -2,6 +2,7 @@
 import { Injectable } from "@nestjs/common";
 import {
   ICorporatePayOutReceipt,
+  ICorporatePostPaymentReceipt,
   ICorporateTaxInvoiceReceipt,
   IDepositChargeReceipt,
   IInterpreterBadge,
@@ -1143,6 +1144,135 @@ export class PdfTemplatesService {
               alignment: "right",
               stack: [
                 { text: "RECIPIENT CREATED TAX INVOICE", fontSize: 19 },
+                { text: ` `, fontSize: 12 },
+                { text: `Dated: ${issueDate}`, fontSize: 12 },
+                { text: ` `, fontSize: 12 },
+                { text: `FROM: ${recipientData.recipientName}`, fontSize: 12, bold: true },
+                { text: `(Company ID ${recipientData.recipientId})`, fontSize: 12 },
+                recipientData.recipientAbnNumber
+                  ? { text: `ABN ${recipientData.recipientAbnNumber}`, fontSize: 12 }
+                  : [],
+                { text: recipientData.recipientAddress, fontSize: 12 },
+                { text: ` `, fontSize: 12 },
+                { text: `TO: ${lfhCompanyData.companyName}`, fontSize: 12, bold: true },
+                { text: `ABN ${lfhCompanyData.abnNumber}`, fontSize: 12 },
+                { text: lfhCompanyData.companyAddress, fontSize: 12 },
+              ],
+            },
+          ],
+        },
+
+        { text: "", margin: [0, 15] },
+
+        {
+          table: {
+            headerRows: 1,
+            widths: ["12%", "10%", "18%", "20%", "10%", "10%", "10%", "10%"],
+            body: [
+              [
+                { text: "Booking ID", fontSize: 10 },
+                { text: "Interpreter ID", fontSize: 10 },
+                { text: "Date and Time Supply", fontSize: 10 },
+                { text: "Description of the Taxable Services", fontSize: 10 },
+                { text: "Duration Charged (mins)", fontSize: 10 },
+                { text: "Value Excl GST", fontSize: 10 },
+                { text: "GST Amount", fontSize: 10 },
+                { text: "Value Including GST", fontSize: 10 },
+              ],
+              ...paymentTables,
+            ],
+          },
+        },
+
+        "\n\n",
+
+        {
+          text: "Written Agreement",
+          bold: true,
+          fontSize: 12,
+        },
+        {
+          text: `The recipient and the supplier declare that this agreement relates to the above supplies. The recipient can issue tax invoices for these supplies. The supplier will not issue tax invoices for these supplies. The supplier acknowledges that it is registered for GST and that it will notify the recipient if it ceases to be registered. The recipient acknowledges that it is registered for GST and that it will notify the supplier if it ceases to be registered. Acceptance of this recipient-created tax invoice (RCTI) constitutes acceptance of the terms of this written agreement. Both parties to this supply agree that they are parties to an RCTI agreement. The supplier must notify the recipient within 21 days of receiving this document if the supplier does not wish to accept the proposed agreement.`,
+          fontSize: 10,
+        },
+        "\n\n",
+        {
+          text: "This form is used for record-keeping purposes only and will not calculate totals for you.",
+          bold: true,
+          fontSize: 10,
+        },
+
+        {
+          columns: [
+            { text: "www.linguafrancahub.com", link: "http://www.linguafrancahub.com", color: "blue" },
+            { text: "payments@lighuafrancahub.com", link: "mailto:payments@lighuafrancahub.com", color: "blue" },
+            { text: "© 2025 Lingua Franca Hub. All rights reserved" },
+          ],
+          style: "footer",
+        },
+      ],
+      styles: {
+        redText: { color: "red" },
+        footer: { fontSize: 10, alignment: "center", margin: [0, 20, 0, 0] },
+      },
+      defaultStyle: {
+        font: "Roboto",
+      },
+      images: {
+        logoLight: LFH_LOGO_LIGHT,
+        logoLabeled: LFH_LOGO_LABELLED,
+      },
+    };
+
+    return docDefinition;
+  }
+
+  public postPaymentReceiptTemplate(data: ICorporatePostPaymentReceipt): TDocumentDefinitions {
+    const { paymentsData, issueDate, recipientData, lfhCompanyData } = data;
+    const paymentTables: TableCell[][] = [];
+    for (const paymentData of paymentsData) {
+      const { payment, appointmentDate, appointmentDescription, totalDuration } = paymentData;
+      paymentTables.push([
+        { text: payment.appointment.platformId, fontSize: 10 },
+        { text: payment.appointment.interpreter.user.platformId, fontSize: 10 },
+        { text: appointmentDate, fontSize: 10 },
+        { text: appointmentDescription, fontSize: 10 },
+        { text: totalDuration, fontSize: 10 },
+        { text: `${payment.currency} ${payment.totalAmount}`, fontSize: 10 },
+        { text: `${payment.currency} ${payment.totalGstAmount}`, fontSize: 10 },
+        { text: `${payment.currency} ${payment.totalFullAmount}`, fontSize: 10 },
+      ]);
+    }
+
+    const docDefinition: TDocumentDefinitions = {
+      content: [
+        {
+          columns: [
+            {
+              text: [
+                { text: "WE MAKE IT CLEAR/ ", style: "header" },
+                { text: "INTERPRETING 24/7", style: ["header", "redText"] },
+              ],
+            },
+            {
+              image: "logoLight",
+              width: 60,
+            },
+          ],
+        },
+
+        { text: "", margin: [0, 15] },
+
+        {
+          columns: [
+            {
+              image: "logoLabeled",
+              width: 150,
+            },
+            {
+              alignment: "right",
+              stack: [
+                { text: "RECIPIENT CREATED INVOICE", fontSize: 19 },
                 { text: ` `, fontSize: 12 },
                 { text: `Dated: ${issueDate}`, fontSize: 12 },
                 { text: ` `, fontSize: 12 },

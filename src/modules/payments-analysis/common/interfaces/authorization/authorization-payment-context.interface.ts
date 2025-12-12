@@ -5,8 +5,8 @@ import {
   TLoadAppointmentAuthorizationContext,
 } from "src/modules/payments-analysis/common/types/authorization";
 import {
+  ICompanyAdditionalDataAuthorizationContext,
   ICompanyAuthorizationContext,
-  IDepositChargeAuthorizationContext,
   ITimingAuthorizationContext,
   IWaitListAuthorizationContext,
 } from "src/modules/payments-analysis/common/interfaces/authorization";
@@ -25,5 +25,5 @@ export interface IAuthorizationPaymentContext {
   existingPayment: TExistingPaymentAuthorizationContext | null;
   companyContext: ICompanyAuthorizationContext | null;
   prices: IPaymentCalculationResult | null;
-  depositChargeContext: IDepositChargeAuthorizationContext | null;
+  companyAdditionalDataContext: ICompanyAdditionalDataAuthorizationContext | null;
 }

@@ -8,6 +8,7 @@ import {
   IDepositChargeReceipt,
   ICorporatePayOutReceipt,
   ICorporateTaxInvoiceReceipt,
+  ICorporatePostPaymentReceipt,
 } from "src/modules/pdf/common/interfaces";
 import { EMembershipType } from "src/modules/memberships/common/enums";
 import { format } from "date-fns";
@@ -669,6 +670,25 @@ export class EmailsService {
     });
 
     return `Tax invoice receipt sent to ${email}`;
+  }
+
+  public async sendPostPaymentCorporateReceipt(
+    email: string,
+    receiptLink: string,
+    data: ICorporatePostPaymentReceipt,
+  ): Promise<string> {
+    await this.mailService.sendMail({
+      to: email,
+      subject: `Invoice`,
+      templateName: EEmailTemplateName.POST_PAYMENT_CORPORATE_RECEIPT,
+      layoutName: EEmailLayoutName.PAYMENTS_BASE,
+      context: {
+        ...data,
+        receiptLink,
+      },
+    });
+
+    return `Invoice receipt sent to ${email}`;
   }
 
   public async sendRedFlagEnabledEmail(

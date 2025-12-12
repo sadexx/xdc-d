@@ -17,8 +17,9 @@ import {
 import { DiscountsService } from "src/modules/discounts/services";
 import { AppointmentOrderSharedLogicService } from "src/modules/appointment-orders/shared/services";
 import { AppointmentSharedService } from "src/modules/appointments/shared/services";
-import { QueueInitializeService } from "src/modules/queues/services";
+import { QueueInitializeService, QueueManagementService } from "src/modules/queues/services";
 import { EPaymentOperation } from "src/modules/payments-analysis/common/enums/core";
+import { EQueueType } from "src/modules/queues/common/enums";
 
 @Injectable()
 export class AppointmentEndService {
@@ -30,6 +31,7 @@ export class AppointmentEndService {
     private readonly messagingResolveService: MessagingResolveService,
     private readonly discountsService: DiscountsService,
     private readonly queueInitializeService: QueueInitializeService,
+    private readonly queueManagementService: QueueManagementService,
   ) {}
 
   public async finalizeExternalAppointment(manager: EntityManager, data: IFinalizeExternalAppointment): Promise<void> {
@@ -121,6 +123,7 @@ export class AppointmentEndService {
     }
 
     await this.processAppointmentCleanupTasks(appointment.id);
+    await this.cancelPendingAuthorizationRetries(appointment.id);
 
     await this.queueInitializeService.addProcessPaymentOperationQueue(
       appointment.id,
@@ -199,5 +202,13 @@ export class AppointmentEndService {
     await manager.getRepository(AppointmentAdminInfo).update(id, {
       callRecordingS3Key: recordingCallDirectory,
     });
+  }
+
+  private async cancelPendingAuthorizationRetries(appointmentId: string): Promise<void> {
+    const analysisJobId = `payment-operation:${EPaymentOperation.AUTHORIZE_PAYMENT}:${appointmentId}`;
+    const executionJobId = `payment-execution:${EPaymentOperation.AUTHORIZE_PAYMENT}:${appointmentId}`;
+
+    await this.queueManagementService.removeJob(EQueueType.PAYMENTS_ANALYSIS_QUEUE, analysisJobId);
+    await this.queueManagementService.removeJob(EQueueType.PAYMENTS_EXECUTION_QUEUE, executionJobId);
   }
 }

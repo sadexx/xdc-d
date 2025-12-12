@@ -1,15 +1,24 @@
 import { Injectable, InternalServerErrorException } from "@nestjs/common";
 import { EntityManager } from "typeorm";
 import { ICapturePaymentContext } from "src/modules/payments-analysis/common/interfaces/capture";
-import { EPaymentCustomerType, EPaymentsErrorCodes, EPaymentStatus } from "src/modules/payments/common/enums/core";
+import {
+  EPaymentCustomerType,
+  EPaymentsErrorCodes,
+  EPaymentStatus,
+  EPaymentSystem,
+} from "src/modules/payments/common/enums/core";
 import { formatDecimalString } from "src/common/utils";
 import { LokiLogger } from "src/common/logger";
 import { Appointment } from "src/modules/appointments/appointment/entities";
 import { PaymentsExternalOperationsService, PaymentsManagementService } from "src/modules/payments/services";
 import { StripePaymentsService } from "src/modules/stripe/services";
-import { TPaymentItemCaptureContextItem } from "src/modules/payments-analysis/common/types/capture";
+import {
+  TPaymentCaptureContext,
+  TPaymentItemCaptureContextItem,
+} from "src/modules/payments-analysis/common/types/capture";
 import { IPaymentOperationResult, IValidatePaymentItem } from "src/modules/payments/common/interfaces/core";
 import { IPaymentExternalOperationResult } from "src/modules/payments/common/interfaces/management";
+import { ICaptureAllItems } from "src/modules/payments/common/interfaces/capture";
 
 @Injectable()
 export class PaymentsCaptureService {
@@ -38,29 +47,10 @@ export class PaymentsCaptureService {
     context: ICapturePaymentContext,
     customerType: EPaymentCustomerType,
   ): Promise<IPaymentOperationResult> {
-    const { payment, prices, appointment, isSecondAttempt } = context;
+    const { appointment } = context;
     try {
-      const captureResults: IPaymentExternalOperationResult[] = [];
-      let totalCapturedAmount: number = 0;
-
-      for (const [i, paymentItem] of payment.items.entries()) {
-        const isMainItem = i === 0;
-        const amountToCapture = isMainItem ? prices.clientFullAmount : paymentItem.fullAmount;
-        const captureResult = await this.captureItem(
-          manager,
-          paymentItem,
-          amountToCapture,
-          customerType,
-          isSecondAttempt,
-        );
-        captureResults.push(captureResult);
-
-        if (this.isCaptureSuccess(captureResult)) {
-          totalCapturedAmount += amountToCapture;
-        }
-      }
-
-      const allCaptured = captureResults.every((result) => this.isCaptureSuccess(result));
+      const { results, totalCapturedAmount } = await this.captureAllItems(manager, context, customerType);
+      const allCaptured = results.every((result) => this.isCaptureSuccess(result));
 
       if (allCaptured) {
         await this.handleCapturedPayment(manager, context, totalCapturedAmount);
@@ -73,21 +63,45 @@ export class PaymentsCaptureService {
     }
   }
 
-  private async captureItem(
+  private async captureAllItems(
     manager: EntityManager,
+    context: ICapturePaymentContext,
+    customerType: EPaymentCustomerType,
+  ): Promise<ICaptureAllItems> {
+    const { payment, prices } = context;
+    let totalCapturedAmount: number = 0;
+
+    const results: IPaymentExternalOperationResult[] = [];
+    for (const [i, paymentItem] of payment.items.entries()) {
+      const isMainItem = i === 0;
+      const amountToCapture = isMainItem ? prices.clientFullAmount : paymentItem.fullAmount;
+      const captureResult = await this.captureSingleItem(manager, context, paymentItem, amountToCapture, customerType);
+      results.push(captureResult);
+
+      if (this.isCaptureSuccess(captureResult)) {
+        totalCapturedAmount += amountToCapture;
+      }
+    }
+
+    return { results, totalCapturedAmount };
+  }
+
+  private async captureSingleItem(
+    manager: EntityManager,
+    context: ICapturePaymentContext,
     paymentItem: TPaymentItemCaptureContextItem,
     amountToCapture: number,
     customerType: EPaymentCustomerType,
-    isSecondAttempt: boolean,
   ): Promise<IPaymentExternalOperationResult> {
-    const validationResult = this.validatePaymentItemForCapture(paymentItem, customerType, isSecondAttempt);
+    const { isSecondAttempt, payment } = context;
+    const validation = this.validatePaymentItemForCapture(paymentItem, customerType, isSecondAttempt);
 
-    if (!validationResult.valid) {
+    if (!validation.valid) {
       const result: IPaymentExternalOperationResult = {
         status: EPaymentStatus.CAPTURE_FAILED,
-        error: validationResult.reason,
+        error: validation.reason,
       };
-      await this.handleFailedCapturePaymentItem(manager, paymentItem, result);
+      await this.updatePaymentItem(manager, paymentItem, result);
 
       return result;
     }
@@ -97,14 +111,10 @@ export class PaymentsCaptureService {
     if (customerType === EPaymentCustomerType.INDIVIDUAL) {
       result = await this.paymentsExternalOperationsService.attemptStripeCapture(paymentItem, amountToCapture);
     } else {
-      result = { status: EPaymentStatus.CAPTURED };
+      result = await this.handleCorporatePaymentCapture(payment);
     }
 
-    if (this.isCaptureSuccess(result)) {
-      await this.handleCapturedPaymentItem(manager, paymentItem, result);
-    } else {
-      await this.handleFailedCapturePaymentItem(manager, paymentItem, result);
-    }
+    await this.updatePaymentItem(manager, paymentItem, result);
 
     return result;
   }
@@ -132,7 +142,17 @@ export class PaymentsCaptureService {
     return { valid: true };
   }
 
-  private async handleCapturedPaymentItem(
+  private async handleCorporatePaymentCapture(
+    payment: TPaymentCaptureContext,
+  ): Promise<IPaymentExternalOperationResult> {
+    if (payment.system === EPaymentSystem.DEPOSIT) {
+      return { status: EPaymentStatus.CAPTURED };
+    } else {
+      return { status: EPaymentStatus.PENDING_PAYMENT };
+    }
+  }
+
+  private async updatePaymentItem(
     manager: EntityManager,
     paymentItem: TPaymentItemCaptureContextItem,
     result: IPaymentExternalOperationResult,
@@ -152,18 +172,6 @@ export class PaymentsCaptureService {
     );
   }
 
-  private async handleFailedCapturePaymentItem(
-    manager: EntityManager,
-    paymentItem: TPaymentItemCaptureContextItem,
-    result: IPaymentExternalOperationResult,
-  ): Promise<void> {
-    await this.paymentsManagementService.updatePaymentItem(
-      manager,
-      { id: paymentItem.id },
-      { status: result.status, note: result.error },
-    );
-  }
-
   private async handleCapturedPayment(
     manager: EntityManager,
     context: ICapturePaymentContext,
@@ -178,6 +186,6 @@ export class PaymentsCaptureService {
   }
 
   private isCaptureSuccess(result: IPaymentExternalOperationResult): boolean {
-    return result.status === EPaymentStatus.CAPTURED;
+    return result.status === EPaymentStatus.CAPTURED || result.status === EPaymentStatus.PENDING_PAYMENT;
   }
 }

@@ -1,103 +1,103 @@
 {
   "COMMON": {
     "ACCESS": {
-      "FORBIDDEN_REQUEST": "Forbidden request."
+      "FORBIDDEN_REQUEST": "Access forbidden"
     },
 
     "VALIDATION": {
-      "FILE_NOT_RECEIVED": "File not received."
+      "FILE_NOT_RECEIVED": "No file submitted"
     },
 
     "PIPES": {
-      "BODY_MUST_BE_NON_EMPTY_OBJECT": "The request body must be a non-empty object.",
-      "VALUE_REQUIRED": "Value is required.",
-      "ONLY_ONE_ORDERING_FIELD_ALLOWED": "Only one ordering field is allowed."
+      "BODY_MUST_BE_NON_EMPTY_OBJECT": "The request body must be a non-empty object",
+      "VALUE_REQUIRED": "Value is required",
+      "ONLY_ONE_ORDERING_FIELD_ALLOWED": "Only one ordering field is allowed"
     },
 
     "FILTERS": {
-      "UNEXPECTED_ERROR": "An unexpected error occurred.",
-      "UNAUTHORIZED": "Unauthorized."
+      "UNEXPECTED_ERROR": "An unexpected error occurred",
+      "UNAUTHORIZED": "Unauthorized"
     },
 
     "UTILS": {
-      "ENTITY_NOT_FOUND": "Entity not found.",
-      "INVALID_DECIMAL_EMPTY_OR_NOT_STRING": "Invalid decimal value: empty or not a string.",
-      "INVALID_DECIMAL_NAN": "Invalid decimal value: NaN.",
-      "INVALID_DECIMAL_NAN_OR_INFINITE": "Invalid decimal value: NaN or Infinite."
+      "ENTITY_NOT_FOUND": "Entity not found",
+      "INVALID_DECIMAL_EMPTY_OR_NOT_STRING": "Invalid decimal value: empty or not a string",
+      "INVALID_DECIMAL_NAN": "Invalid decimal value: NaN",
+      "INVALID_DECIMAL_NAN_OR_INFINITE": "Invalid decimal value: NaN or Infinite"
     }
   },
 
   "ABN": {
     "CHECK": {
-      "NOT_FOUND": "ABN Check not found."
+      "NOT_FOUND": "ABN not found"
     },
 
     "USER": {
-      "NOT_FOUND": "User not found.",
-      "INVALID_STATUS": "User role or profile status does not permit this operation.",
-      "NOT_EXIST": "User does not exist for notification."
+      "NOT_FOUND": "User with this ABN not found",
+      "INVALID_STATUS": "Your ABN is not active",
+      "NOT_EXIST": "No user associated with this ABN"
     },
 
     "COMPANY": {
-      "NOT_FOUND": "Company not found.",
-      "INVALID_STATUS": "Company status does not permit this operation."
+      "NOT_FOUND": "No company associated with this ABN",
+      "INVALID_STATUS": "The company ABN is not active"
     },
 
     "VERIFICATION": {
-      "INVALID_NUMBER": "Not Found. Invalid ABN number provided.",
-      "CANCELLED": "The ABN registration has been cancelled.",
-      "NAME_MISMATCH": "The name from ABN does not match the name entered by the user.",
-      "COMPANY_MISMATCH": "The name from ABN does not match the company name entered by the user.",
-      "SERVICE_UNAVAILABLE": "ABN verification service is temporarily unavailable.",
+      "INVALID_NUMBER": " Invalid ABN number",
+      "CANCELLED": "ABN verification cancelled",
+      "NAME_MISMATCH": "The name doesn't match the ABN record",
+      "COMPANY_MISMATCH": "The ABN belongs to a different company",
+      "SERVICE_UNAVAILABLE": "ABN verification service is currently unavailable",
 
       "PERMISSION": {
-        "CREATE_UPDATE_DENIED": "You don't have permission to use this action."
+        "CREATE_UPDATE_DENIED": "You're not authorised to create or update details for this ABN"
       },
 
       "DELETE": {
-        "NOT_FOUND": "ABN Check not found."
+        "NOT_FOUND": "Delete failed: record not found for this ABN"
       }
     }
   },
 
   "ACCESS_CONTROL": {
     "AUTHORIZATION": {
-      "ADMIN_ROLE_REQUIRED": "Admin role required for this operation.",
-      "INSUFFICIENT_PRIVILEGES": "Insufficient privileges for this operation."
+      "ADMIN_ROLE_REQUIRED": "Action blocked: administrator privileges are required",
+      "INSUFFICIENT_PRIVILEGES": "Permission denied: insufficient privileges"
     },
 
     "COMPANY": {
-      "ID_REQUIRED": "Please, set company id.",
-      "DIFFERENT_COMPANIES_DENIED": "Cannot access data from different companies."
+      "ID_REQUIRED": "Company ID is required",
+      "DIFFERENT_COMPANIES_DENIED": "Action blocked: you lack access rights for this company"
     }
   },
 
   "ACCOUNT_ACTIVATION": {
     "USER": {
-      "NOT_FOUND": "User not found.",
-      "ROLE_NOT_ACTIVE": "This user role is not active."
+      "NOT_FOUND": "Account activation cannot proceed: user does not exist",
+      "ROLE_NOT_ACTIVE": "Activation blocked: the user role is inactive"
     },
 
     "ACCOUNT": {
-      "ALREADY_ACTIVE": "Your account is already active."
+      "ALREADY_ACTIVE": "Your account is already active and ready to use"
     },
 
     "SESSION": {
-      "LAST_SESSION_NOT_EXIST": "Last session does not exist, re-login, please.",
-      "CLIENT_INFO_REQUIRED": "Client IP address and user agent are required.",
-      "PLATFORM_INFO_REQUIRED": "Client platform, device id and device token are required."
+      "LAST_SESSION_NOT_EXIST": "The activation session ended or expired",
+      "CLIENT_INFO_REQUIRED": "Activation blocked: missing user details in the session",
+      "PLATFORM_INFO_REQUIRED": "Activation blocked: missing device details in the session"
     },
 
     "COMPANY": {
-      "NOT_EXIST": "Company with this id doesn`t exist.",
-      "STEPS_NOT_FOUND": "Steps for this company not found.",
-      "NO_SUPER_ADMIN": "Company does not have superAdmin.",
-      "ALREADY_ACTIVE": "This company is already active.",
-      "NOT_ACTIVE": "This company is not active."
+      "NOT_EXIST": "The company with this ID doesn't exist",
+      "STEPS_NOT_FOUND": "Activation cannot proceed: missing company activation steps",
+      "NO_SUPER_ADMIN": "Cannot activate: the company doesn't have a Super Admin",
+      "ALREADY_ACTIVE": "This company is already active",
+      "NOT_ACTIVE": "This company profile is not active"
     },
 
     "VALIDATION": {
-      "REQUIRED_INFO_NOT_PROVIDED": "Required information wasn't provided. Passed steps: {{passedSteps}}. Failed steps: {{failedSteps}}."
+      "REQUIRED_INFO_NOT_PROVIDED": "Required information wasn’t provided. Passed steps: {{passed Steps}}. Failed steps: {{failedSteps}}"
     },
 
     "STEP_NAMES": {
@@ -118,1008 +118,999 @@
 
   "ACTIVATION_TRACKING": {
     "USER": {
-      "ALREADY_ACTIVATED": "User already activated.",
-      "NOT_FOUND": "User not found."
+      "ALREADY_ACTIVATED": "User already activated",
+      "NOT_FOUND": "User not found"
     }
   },
 
   "ADDRESSES": {
     "ADDRESS": {
-      "NOT_ASSOCIATED_WITH_APPOINTMENT": "Address is not associated with an appointment.",
-      "CANNOT_BE_UPDATED": "Address cannot be updated in current state of appointment."
+      "NOT_ASSOCIATED_WITH_APPOINTMENT": "Address doesn't match this appointment",
+      "CANNOT_BE_UPDATED": "The address cannot be updated"
     }
   },
 
   "ADMIN": {
-    "PAYMENT": {
-      "INCORRECT_STATUS": "Incorrect payment status."
+    "PAYMENTS": {
+      "INCORRECT_STATUS": "Incorrect payment status",
+      "POST_PAYMENT_NOT_FOUND": "Some payments were not found or do not belong to specified company",
+      "POST_PAYMENT_WRONG_SYSTEM": "All payments must use post-payment system",
+      "POST_PAYMENT_NO_PENDING_ITEMS": "All payments must have items in PENDING_PAYMENT status"
     }
   },
 
   "APPOINTMENT_ORDER": {
     "COMMAND": {
-      "CLIENT_NOT_FOUND_FOR_ORDER": "Client not found in appointment order.",
-      "CANNOT_ACCEPT_SINGLE_ORDER": "Cannot accept a single order. The entire appointment group must be accepted.",
-      "NO_ORDERS_FOUND_IN_GROUP": "No appointment orders found in Appointment Order Group.",
-      "ON_DEMAND_NOT_REPEATABLE": "The appointment on-demand scheduling type is not repeatable.",
-      "INTERPRETER_NOT_IN_ORDER": "Interpreter not added. Please add interpreter first.",
-      "TIME_ALREADY_RESERVED": "The time you have selected is already reserved."
+      "CLIENT_NOT_FOUND_FOR_ORDER": "Client not found in appointment order",
+      "CANNOT_ACCEPT_SINGLE_ORDER": "This is a multi‑appointment booking and must be accepted as a whole",
+      "NO_ORDERS_FOUND_IN_GROUP": "No appointment orders found in a multi-booking group",
+      "ON_DEMAND_NOT_REPEATABLE": "Repeats aren’t available for on‑demand appointments",
+      "INTERPRETER_NOT_IN_ORDER": "Interpreter not added. Please add the interpreter first",
+      "TIME_ALREADY_RESERVED": "This time is already reserved"
     },
 
     "EXPIRATION": {
-      "CLIENT_NOT_FOUND_FOR_APPOINTMENT": "Client not found for appointment.",
-      "ENTITY_MISSING_FOR_APPOINTMENT": "Failed to cancel appointment. Entity is missing for appointment.",
-      "ENTITIES_NOT_FOUND_FOR_DELETION": "Entities not found for deletion."
+      "CLIENT_NOT_FOUND_FOR_APPOINTMENT": "Client not found for an appointment",
+      "ENTITY_MISSING_FOR_APPOINTMENT": "A required entity is missing for the appointment",
+      "ENTITIES_NOT_FOUND_FOR_DELETION": "Deletion failed: no entities found to delete"
     },
 
     "INTERPRETER_ADDITION": {
-      "ON_DEMAND_NO_INTERPRETER_ADDITION": "The appointment on-demand scheduling type is not permit to add interpreters."
+      "ON_DEMAND_NO_INTERPRETER_ADDITION": "Cannot add an interpreter to an on‑demand order"
     },
 
     "QUERY": {
-      "INTERPRETER_ROLE_ID_REQUIRED": "Interpreter role id is required for this query.",
-      "INTERPRETERS_LIST_NOT_FOUND_FOR_APPOINTMENT": "List of ignored and declined interpreters not found for appointment.",
-      "INTERPRETERS_LIST_NOT_FOUND_FOR_GROUP": "List of ignored and declined interpreters not found."
+      "INTERPRETER_ROLE_ID_REQUIRED": "Interpreter role ID is required",
+      "INTERPRETERS_LIST_NOT_FOUND_FOR_APPOINTMENT": "The list of interpreters who ignored or declined is not available for the appointment",
+      "INTERPRETERS_LIST_NOT_FOUND_FOR_GROUP": "The list of interpreters who ignored or declined the multi-booking appointment is not found for the appointment group"
     },
 
     "SCHEDULER": {
-      "REPEAT_INTERVAL_NOT_SET": "Repeat Interval is not set for appointment order.",
-      "REMAINING_REPEATS_NOT_SET": "Remaining Repeats is not set for order."
+      "REPEAT_INTERVAL_NOT_SET": "Repeat Interval is not set for appointment order",
+      "REMAINING_REPEATS_NOT_SET": "Remaining repeats are not set for appointment order"
     }
   },
 
   "APPOINTMENT_ORDER_SHARED": {
     "SHARED_LOGIC": {
-      "ORDER_MISSING_IN_APPOINTMENT": "Appointment Order cannot be updated because it missing in Appointment.",
-      "GROUP_MISSING_IDS": "Group appointments cannot be updated; missing group IDs.",
-      "ORDER_GROUP_NOT_FOUND": "Appointment order group not found.",
-      "ORDER_NOT_FOUND": "Appointment order not found.",
-      "INTERPRETER_PROFILE_NOT_FOUND": "Interpreter profile not found.",
-      "INTERPRETER_TEMPORARILY_BLOCKED": "This profile is temporarily blocked, please wait when block will be removed."
+      "ORDER_MISSING_IN_APPOINTMENT": "We couldn’t find the booking associated with this appointment",
+      "GROUP_MISSING_IDS": "The multi-bookings group is missing required IDs",
+      "ORDER_GROUP_NOT_FOUND": "The multi-booking appointment group not found",
+      "ORDER_NOT_FOUND": "Appointment order not found",
+      "INTERPRETER_PROFILE_NOT_FOUND": "Interpreter profile not found",
+      "INTERPRETER_TEMPORARILY_BLOCKED": "The interpreter is temporarily blocked"
     },
 
     "SEARCH_TIME_FRAME": {
-      "UNABLE_TO_DETERMINE_TIME_CATEGORY": "Unable to determine time category.",
-      "UNSUPPORTED_TIME_CATEGORY": "Unsupported time category."
+      "UNABLE_TO_DETERMINE_TIME_CATEGORY": "Unable to determine time category",
+      "UNSUPPORTED_TIME_CATEGORY": "Time category is not supported"
     }
   },
 
   "APPOINTMENT_ORDER_WORKFLOW": {
     "CREATION": {
-      "UNABLE_TO_CALCULATE_NEXT_REPEAT_TIME": "Unable to calculate next repeat time for appointment order group."
+      "UNABLE_TO_CALCULATE_NEXT_REPEAT_TIME": "Unable to calculate next repeat time for a multi-booking appointment group"
     },
 
     "RECREATION": {
-      "APPOINTMENT_MISSING_GROUP_ID": "Appointment does not have appointmentsGroupId.",
-      "NO_CLIENT_IN_APPOINTMENT": "No client in recreatedAppointment.",
-      "NO_APPOINTMENTS_FOR_GROUP_RECREATION": "No appointments found for group that needs to be recreated.",
-      "APPOINTMENT_MISSING_GROUP_ID_OR_CLIENT": "Appointment does not have appointmentsGroupId or client."
+      "APPOINTMENT_MISSING_GROUP_ID": "Appointment does not have appointmentsGroupId",
+      "NO_CLIENT_IN_APPOINTMENT": "No client associated with the recreatedAppointment",
+      "NO_APPOINTMENTS_FOR_GROUP_RECREATION": "We can’t recreate this group because it contains no appointments",
+      "APPOINTMENT_MISSING_GROUP_ID_OR_CLIENT": "Appointment does not have an appointment GroupId or a client"
     }
   },
 
   "APPOINTMENTS": {
     "CANCELLATION": {
-      "CANNOT_CANCEL_SINGLE_GROUP_APPOINTMENT": "Cannot cancel a single appointment. The entire appointment group must be cancelled.",
-      "NO_APPOINTMENTS_TO_CANCEL_IN_GROUP": "There are no appointments that can be cancelled in this group.",
-      "NOT_ASSIGNED_TO_GROUP_APPOINTMENTS": "You are not assigned to any appointments in this group."
+      "CANNOT_CANCEL_SINGLE_GROUP_APPOINTMENT": "Cannot cancel a single appointment from a multi-booking appointment group",
+      "NO_APPOINTMENTS_TO_CANCEL_IN_GROUP": "No appointments to cancel in the multi-booking appointment group",
+      "NOT_ASSIGNED_TO_GROUP_APPOINTMENTS": "You are not assigned to any appointment in this group"
     },
 
     "COMMAND": {
-      "CANNOT_BE_DELETED": "The appointment in this state cannot be deleted.",
-      "CANNOT_BE_ARCHIVED": "The appointment cannot be archived in its current state.",
-      "MUST_BE_LIVE_FOR_LATE_NOTIFICATION": "Appointment must be live to send a late notification.",
-      "ADMIN_INFO_NOT_FOUND": "Appointment admin info not found in appointment."
+      "CANNOT_BE_DELETED": "The appointment cannot be deleted",
+      "CANNOT_BE_ARCHIVED": "The appointment cannot be archived",
+      "MUST_BE_LIVE_FOR_LATE_NOTIFICATION": "Appointment must be live to send a late notification",
+      "ADMIN_INFO_NOT_FOUND": "Appointment admin info not found in appointment"
     },
 
     "CREATION": {
-      "SCHEDULING_EXTRA_DAYS_EMPTY": "schedulingExtraDays should not be empty.",
-      "MISSING_TIMEZONE": "Missing timezone. Please update your address.",
-      "CLIENT_NOT_FOUND": "Client not found.",
-      "UNEXPECTED_ERROR_VIRTUAL": "Unexpected error occurred while creating the virtual appointment.",
-      "UNEXPECTED_ERROR_FACE_TO_FACE": "Unexpected error occurred while creating the face to face appointment."
+      "SCHEDULING_EXTRA_DAYS_EMPTY": "Scheduling extra days value is missing",
+      "MISSING_TIMEZONE": "Time zone is missing",
+      "CLIENT_NOT_FOUND": "Client not found",
+      "UNEXPECTED_ERROR_VIRTUAL": "An unexpected error occurred while creating the online appointment",
+      "UNEXPECTED_ERROR_FACE_TO_FACE": "An unexpected error occurred while creating the face-to-face appointment"
     },
 
     "EXTENSION": {
-      "INVALID_DATA": "Invalid data.",
-      "RATE_FOR_BUSINESS_EXTENSION_NOT_FOUND": "Rate for business extension not found.",
-      "STANDARD_OR_AFTER_HOURS_RATE_NOT_FOUND": "Standard or After Hours rate not found.",
-      "INVALID_APPOINTMENT_ID": "Invalid appointment id."
+      "INVALID_DATA": "Invalid extension data. Please review and try again",
+      "RATE_FOR_BUSINESS_EXTENSION_NOT_FOUND": "No appointment extension rate found—configure one to continue",
+      "STANDARD_OR_AFTER_HOURS_RATE_NOT_FOUND": "No standard/after‑hours rates. Configure to continue",
+      "INVALID_APPOINTMENT_ID": "Invalid appointment ID"
     },
 
     "RATING": {
-      "CANNOT_BE_RATED": "Appointment cannot be rated in its current state."
+      "CANNOT_BE_RATED": "This appointment cannot be rated"
     },
 
     "RECREATION": {
-      "FAILED_TO_CONSTRUCT_RECREATE_DTO": "Failed to construct appointment recreate dto."
+      "FAILED_TO_CONSTRUCT_RECREATE_DTO": "Failed to recreate an appointment"
     },
 
     "UPDATE": {
-      "CANNOT_BE_UPDATED": "The appointment cannot be updated in its current state.",
-      "OVERTIME_RATES_ONLY_FOR_PENDING": "You can update acceptOvertimeRates only for pending appointments."
+      "CANNOT_BE_UPDATED": "This appointment cannot be updated",
+      "OVERTIME_RATES_ONLY_FOR_PENDING": "The overtime rate update applies only to pending appointments"
     }
   },
 
   "APPOINTMENT_SHARED": {
     "CREATION_VALIDATION": {
-      "TIME_ALREADY_RESERVED": "The time you have selected is already reserved."
+      "TIME_ALREADY_RESERVED": "The time is already reserved"
     },
 
     "UPDATE_VALIDATION": {
-      "UPDATES_NOT_ALLOWED_WITHIN_TIME_LIMIT": "Updates are not allowed within {{timeLimit}} hours of the appointment."
+      "UPDATES_NOT_ALLOWED_WITHIN_TIME_LIMIT": "Updates are not allowed within {{timeLimit}} hours of the appointment"
     },
 
     "CANCELLATION_VALIDATION": {
-      "INCORRECT_FIELD": "Incorrect field.",
-      "CANNOT_BE_CANCELLED": "The appointment cannot be cancelled in its current state."
+      "INCORRECT_FIELD": "Incorrect field for cancellation",
+      "CANNOT_BE_CANCELLED": "This appointment cannot be cancelled"
     },
 
     "CHECK_IN_OUT_VALIDATION": {
-      "INVALID_COMMUNICATION_TYPE": "Invalid communication type.",
-      "MUST_BE_LIVE_STATUS": "Appointment must be in status live to perform check in/out.",
-      "ALTERNATIVE_END_TIME_ERROR": "Alternative end time cannot be earlier than start time.",
-      "ADMINS_CANNOT_CHECK_IN": "Admins cannot check in an appointment.",
-      "CLIENTS_CANNOT_CHECK_IN_FACE_TO_FACE": "Clients cannot check in face-to-face appointment.",
-      "CLIENTS_CANNOT_CHECK_IN_ALTERNATIVE": "Clients cannot check in alternative platform.",
-      "CLIENTS_CANNOT_CHECK_OUT_FACE_TO_FACE": "Clients cannot check out face-to-face appointment.",
-      "INTERPRETERS_CANNOT_CHECK_OUT_ALTERNATIVE": "Interpreters cannot check out alternative platform."
+      "INVALID_COMMUNICATION_TYPE": "Invalid appointment communication mode type",
+      "MUST_BE_LIVE_STATUS": "Appointment must be live to check in/out",
+      "ALTERNATIVE_END_TIME_ERROR": "Invalid alternative end time",
+      "ADMINS_CANNOT_CHECK_IN": "Administrators are not permitted to check in",
+      "CLIENTS_CANNOT_CHECK_IN_FACE_TO_FACE": "Clients cannot check in for a face-to-face appointment",
+      "CLIENTS_CANNOT_CHECK_IN_ALTERNATIVE": "Clients cannot set an alternative time when the appointment uses a platform other than LFH",
+      "CLIENTS_CANNOT_CHECK_OUT_FACE_TO_FACE": "Clients cannot check out for face‑to‑face appointments",
+      "INTERPRETERS_CANNOT_CHECK_OUT_ALTERNATIVE": "Interpreters cannot set an alternative time when the appointment uses a platform other than LFH"
     }
   },
 
   "ARCHIVE_AUDIO_RECORD": {
     "RECORDING": {
-      "KEY_NOT_FOUND": "Recording key is not found in appointment admin info.",
-      "FILE_RESTORE_IN_PROGRESS": "The requested file has been accepted for restore. It will be available soon. Please try after: {{expirationDate}}.",
-      "FILE_KEY_UNDEFINED": "File key is undefined.",
-      "FILE_COUNT_ISSUE": "Issue with the number of files found for this appointment admin info."
+      "KEY_NOT_FOUND": "The archived recording for the appointment was not found",
+      "FILE_RESTORE_IN_PROGRESS": "File restore is in progress. Please try after: {{expirationDate}}",
+      "FILE_KEY_UNDEFINED": "The archived audio recording file key is not defined",
+      "FILE_COUNT_ISSUE": "Issue with the number of files found for the archived appointment"
     }
   },
 
   "AUTH": {
     "REGISTRATION_LINK": {
-      "ALREADY_SENT": "Registration link already sent.",
-      "ALREADY_FINISHED": "User already finished registration for this role.",
-      "DELETION_NOT_ALLOWED": "User role with such account status cannot be deleted immediately.",
-      "TIME_LIMIT_NOT_REACHED": "Invitation link was sent less than {{timeLimit}} minutes ago."
+      "ALREADY_SENT": "Registration link has already been sent",
+      "ALREADY_FINISHED": "Registration link has already been used",
+      "DELETION_NOT_ALLOWED": "Deletion is not permitted once the registration link has been sent",
+      "TIME_LIMIT_NOT_REACHED": "Invitation link was sent less than {{timeLimit}} minutes ago"
     },
 
     "REGISTRATION": {
-      "EMAIL_NOT_AUTHORIZED": "Email is not authorized for super admin registration.",
-      "EMAIL_ALREADY_EXISTS": "This email is already registered. Log in to your account.",
-      "EMAIL_ALREADY_VERIFIED": "Proceed to phone verification, as your email is already verified.",
-      "PASSWORD_NOT_ALLOWED_OAUTH": "Password creation is not allowed for OAuth users.",
-      "ALREADY_FINISHED": "Registration is already finished.",
-      "EMAIL_NOT_VERIFIED": "Verify your email address.",
-      "PASSWORD_NOT_SET": "Set up a password.",
-      "PHONE_NOT_VERIFIED": "Verify your phone number.",
-      "TERMS_NOT_AGREED": "Please agree to the terms and conditions.",
-      "LINK_EXPIRED": "Registration link has expired."
+      "EMAIL_NOT_AUTHORIZED": "Email is not authorised for registration",
+      "EMAIL_ALREADY_EXISTS": "The email already exists",
+      "EMAIL_ALREADY_VERIFIED": "Email is already verified",
+      "PASSWORD_NOT_ALLOWED_OAUTH": "Password not allowed when using Google or Appleid",
+      "ALREADY_FINISHED": "Registration is already complete",
+      "EMAIL_NOT_VERIFIED": "Verify your email address",
+      "PASSWORD_NOT_SET": "Set up a password",
+      "PHONE_NOT_VERIFIED": "Verify your phone number",
+      "TERMS_NOT_AGREED": "Please agree to the terms and conditions",
+      "LINK_EXPIRED": "Registration link has expired"
     },
 
     "THIRD_PARTY_AUTH": {
-      "ROLE_UNDETERMINED": "Unable to determine user role for registration."
+      "ROLE_UNDETERMINED": "Unable to determine user role from third‑party authentication"
     },
 
     "AUTHORIZATION": {
-      "INVALID_REQUEST": "Invalid request.",
-      "ROLE_ALREADY_ACTIVE": "User is already using this role.",
-      "INVALID_CREDENTIALS": "Incorrect password or email."
+      "INVALID_REQUEST": "Invalid authorisation request",
+      "ROLE_ALREADY_ACTIVE": "The user role is already active",
+      "INVALID_CREDENTIALS": "Invalid credentials"
     },
 
     "STAGING": {
-      "EMAIL_NOT_AUTHORIZED": "Email not authorized for staging environment."
+      "EMAIL_NOT_AUTHORIZED": "Email not authorised for testing environment"
     }
   },
 
   "AWS": {
     "CHIME_SDK": {
-      "CREATE_MEETING_FAILED": "Unable to create meeting.",
-      "GET_MEETING_FAILED": "Unable to get meeting.",
-      "DELETE_MEETING_FAILED": "Unable to delete meeting.",
-      "LIST_ATTENDEES_FAILED": "Unable to list attendees.",
-      "GET_ATTENDEE_FAILED": "Unable to get attendee.",
-      "CREATE_ATTENDEE_FAILED": "Unable to create attendee.",
-      "UPDATE_ATTENDEE_FAILED": "Unable to update attendee.",
-      "UPDATE_ATTENDEES_FAILED": "Unable to update attendees.",
-      "DELETE_ATTENDEE_FAILED": "Unable to delete attendee.",
-      "START_CAPTURE_PIPELINE_FAILED": "Unable to start media capture pipeline.",
-      "CREATE_CONCATENATION_PIPELINE_FAILED": "Unable to create media concatenation pipeline.",
-      "CREATE_SIP_CALL_FAILED": "Unable to create sip media application call."
+      "CREATE_MEETING_FAILED": "Failed to create a meeting",
+      "GET_MEETING_FAILED": "Failed to get a meeting room online",
+      "DELETE_MEETING_FAILED": "Failed to delete meeting",
+      "LIST_ATTENDEES_FAILED": "Failed to load the list of attendees for the Chime Meeting",
+      "GET_ATTENDEE_FAILED": "Failed to create an attendee for the Chime meeting",
+      "CREATE_ATTENDEE_FAILED": "Failed to create an attendee for the Chime meeting",
+      "UPDATE_ATTENDEE_FAILED": "Failed to update the attendee",
+      "UPDATE_ATTENDEES_FAILED": "Failed to update attendees",
+      "DELETE_ATTENDEE_FAILED": "Failed to remove an attendee",
+      "START_CAPTURE_PIPELINE_FAILED": "Failed to start the meeting recording/capture",
+      "CREATE_CONCATENATION_PIPELINE_FAILED": "We couldn’t create the combined recording. Try again later",
+      "CREATE_SIP_CALL_FAILED": "Failed to create SIP/PSTN call (Chime SDK)"
     },
 
     "MESSAGING_SDK": {
-      "CREATE_APP_INSTANCE_FAILED": "Unable to create AppInstance.",
-      "CREATE_APP_INSTANCE_USER_FAILED": "Unable to create AppInstanceUser.",
-      "CREATE_APP_INSTANCE_ADMIN_FAILED": "Unable to create AppInstanceAdmin.",
-      "LIST_CHANNEL_MESSAGES_FAILED": "Unable to list channel messages.",
-      "DELETE_CHANNEL_MESSAGE_FAILED": "Unable to delete channel message.",
-      "CREATE_CHANNEL_FAILED": "Unable to create channel.",
-      "ADD_MEMBER_TO_CHANNEL_FAILED": "Unable to add member to channel.",
-      "DELETE_CHANNEL_FAILED": "Unable to delete channel."
+      "CREATE_APP_INSTANCE_FAILED": "Couldn’t create the messaging workspace(AWS)",
+      "CREATE_APP_INSTANCE_USER_FAILED": "Failed to create AWS Chime SDK messaging app instance",
+      "CREATE_APP_INSTANCE_ADMIN_FAILED": "Messaging app instance admin creation failed (AWS Chime SDK)",
+      "LIST_CHANNEL_MESSAGES_FAILED": "Failed to load messages(Amazon Chime SDK Messaging). Check your connection and retry",
+      "DELETE_CHANNEL_MESSAGE_FAILED": "Failed to delete message (Amazon Chime SDK Messaging)",
+      "CREATE_CHANNEL_FAILED": "Channel creation failed (Amazon Chime SDK Messaging)",
+      "ADD_MEMBER_TO_CHANNEL_FAILED": "Failed to add member to channel (Amazon Chime SDK Messaging)",
+      "DELETE_CHANNEL_FAILED": "Failed to delete channel (AWS Messaging SDK)"
     },
 
     "PINPOINT": {
-      "SEND_PUSH_NOTIFICATION_FAILED": "Failed to send push notification.",
-      "SEND_SMS_FAILED": "Failed to send SMS."
+      "SEND_PUSH_NOTIFICATION_FAILED": "Failed to send push notification",
+      "SEND_SMS_FAILED": "Failed to send SMS"
     },
 
     "S3": {
-      "FILES_NOT_FOUND": "No files found.",
-      "GET_SIGNED_URL_FAILED": "Unable to get signed URL for the file.",
-      "RESTORE_OBJECT_FAILED": "Unable to restore object from DEEP_ARCHIVE.",
-      "UPLOAD_OBJECT_FAILED": "Unable to upload object.",
-      "GET_OBJECT_LIST_FAILED": "Unable to get list of objects.",
-      "DELETE_OBJECT_FAILED": "Unable to delete object.",
-      "DELETE_OBJECTS_FAILED": "Unable to delete objects.",
-      "COPY_OBJECT_FAILED": "Unable to copy object."
+      "FILES_NOT_FOUND": "No files found in the specified folder path",
+      "GET_SIGNED_URL_FAILED": "Failed to generate a signed URL",
+      "RESTORE_OBJECT_FAILED": "Failed to restore the file (S3)",
+      "UPLOAD_OBJECT_FAILED": "Failed to upload the file (S3)",
+      "GET_OBJECT_LIST_FAILED": "S3 list objects failed. See logs for details",
+      "DELETE_OBJECT_FAILED": "File deletion failed (S3)",
+      "DELETE_OBJECTS_FAILED": "Failed to delete the selected files (S3)",
+      "COPY_OBJECT_FAILED": "File copy failed (S3)"
     },
 
     "SQS": {
-      "GET_QUEUE_ATTRIBUTES_FAILED": "Failed to get queue attributes.",
-      "RECEIVE_MESSAGES_FAILED": "Failed to receive AWS-SQS messages.",
-      "DELETE_MESSAGES_FAILED": "Failed to delete AWS-SQS messages.",
-      "MANUAL_STATUS_CHECKS_NOT_ALLOWED": "Manual status checks can only be run in development or local environments."
+      "GET_QUEUE_ATTRIBUTES_FAILED": "Failed to load messaging details (Simple Queue Service - SQS)",
+      "RECEIVE_MESSAGES_FAILED": "Failed to receive messages (Simple Queue Service - SQS)",
+      "DELETE_MESSAGES_FAILED": "Failed to delete messages (Simple Queue Service SQS)",
+      "MANUAL_STATUS_CHECKS_NOT_ALLOWED": "Manual status checks can only be run in development or local environments"
     }
   },
 
   "BACKY_CHECK": {
     "SDK": {
-      "HTTP_ERROR": "HTTP error in Backy Check SDK.",
-      "AUTH_ERROR": "BackyCheck auth error."
+      "HTTP_ERROR": "Failed to connect to the Backy Check service",
+      "AUTH_ERROR": "Backy Check authentication error!"
     },
 
     "SERVICE": {
-      "FILE_UPLOAD_NOT_ALLOWED": "File cannot be uploaded for this request.",
-      "DOCUMENT_NOT_UPLOADED": "Document not uploaded or uploaded with error.",
-      "WWCC_ALREADY_ENDED": "WWCC already successfully ended.",
-      "UPDATE_NOT_POSSIBLE": "Update WWCC request not possible with current status.",
-      "ORDER_EXPIRED": "Order are expired.",
-      "UPDATE_PENDING_REQUEST": "Cannot update a pending or in-progress WWCC request.",
-      "NO_UPLOADED_FILE": "Request does not have uploaded file.",
-      "REQUEST_PENDING": "Request with this id is pending."
+      "FILE_UPLOAD_NOT_ALLOWED": "Backy Check File upload failed",
+      "DOCUMENT_NOT_UPLOADED": "Backy Check Document upload failed. Please retry",
+      "WWCC_ALREADY_ENDED": "Backy Check: Working With Children Check has already expired",
+      "UPDATE_NOT_POSSIBLE": "Backy Check: This WWCC check is finalised and can’t be edited",
+      "ORDER_EXPIRED": "Backy Check: This verification order has expired",
+      "UPDATE_PENDING_REQUEST": "Backy Check: Changes are blocked until the current WWCC verification request is finished",
+      "NO_UPLOADED_FILE": "Backy Check: Missing file. Please upload the document",
+      "REQUEST_PENDING": "Backy Check Request pending"
     }
   },
 
   "BLACKLIST": {
     "SERVICE": {
-      "BLACKLIST_ALREADY_EXISTS": "You have already created a blacklist for this appointment.",
-      "CLIENT_OR_INTERPRETER_MISSING": "Cannot create a blacklist if client or interpreter does not exist.",
-      "BLACKLIST_NOT_FOUND": "Not found any blacklist for this appointment."
+      "BLACKLIST_ALREADY_EXISTS": "The user is already blacklisted",
+      "CLIENT_OR_INTERPRETER_MISSING": "You need to select a client or interpreter before adding to the blocklist",
+      "BLACKLIST_NOT_FOUND": "Blacklist record not found"
     }
   },
 
   "CHIME_MEETING_CONFIGURATION": {
     "ATTENDEE_CREATION": {
-      "INVALID_COMMUNICATION_TYPE": "Invalid communication type for attendee capabilities."
+      "INVALID_COMMUNICATION_TYPE": "The attendee's settings don’t match this meeting’s communication format"
     },
 
     "ATTENDEE_MANAGEMENT": {
-      "NO_ATTENDEES_FOUND": "No attendees found for this meeting.",
-      "MAX_ANONYMOUS_GUESTS": "Maximum {{maxGuests}} anonymous guests allowed.",
-      "CANNOT_DISABLE_ADMIN_CLIENT": "You cannot disable admin or client from the meeting.",
-      "VIDEO_CAPABILITIES_NONE": "Video capabilities must be set to None for a meeting that does not support video.",
-      "CONTENT_CAPABILITIES_NONE": "Content sharing capabilities must be set to None for a meeting that does not support content sharing.",
-      "CANNOT_UPDATE_ADMIN": "You cannot update admin attendee capabilities.",
-      "CANNOT_UPDATE_OWN": "You cannot update your own capabilities.",
-      "CANNOT_DISABLE_ADMIN": "You cannot disable admin attendee.",
-      "CANNOT_DISABLE_CLIENT": "You cannot disable client attendee.",
-      "UNABLE_JOIN_MEETING": "Unable to join meeting."
+      "NO_ATTENDEES_FOUND": "No attendees found for this meeting",
+      "MAX_ANONYMOUS_GUESTS": "Maximum {{maxGuests}} has been reached for guest participants",
+      "CANNOT_DISABLE_ADMIN_CLIENT": "This participant is an admin and can’t be disabled",
+      "VIDEO_CAPABILITIES_NONE": "Your device or meeting settings don’t support video format",
+      "CONTENT_CAPABILITIES_NONE": "Screen/content sharing isn’t available",
+      "CANNOT_UPDATE_ADMIN": "Settings for an admin cannot be changed",
+      "CANNOT_UPDATE_OWN": "You can’t update your own role or permissions",
+      "CANNOT_DISABLE_ADMIN": "This participant is an admin and can’t be disabled",
+      "CANNOT_DISABLE_CLIENT": "This client can’t be disabled",
+      "UNABLE_JOIN_MEETING": "Unable to join the meeting"
     },
 
     "MEETING_CLOSING": {
-      "UPDATE_ATTENDEE_FAILED": "Failed to update attendee status.",
-      "MEETING_NOT_FOUND": "Meeting not found.",
-      "UNABLE_CLOSE_MEETING": "Unable to close the meeting.",
-      "INCOMPLETE_MEETING_INFO": "Meeting does not contain complete information for closing."
+      "UPDATE_ATTENDEE_FAILED": "Update failed—this meeting is closing",
+      "MEETING_NOT_FOUND": "Meeting not found",
+      "UNABLE_CLOSE_MEETING": "Unable to close the meeting",
+      "INCOMPLETE_MEETING_INFO": "The meeting is closing due to incomplete information"
     },
 
     "MEETING_CREATION": {
-      "INVALID_COMMUNICATION_TYPE": "Invalid communication type for meeting configuration."
+      "INVALID_COMMUNICATION_TYPE": "The selected meeting format isn’t supported (audio/video setting is invalid)"
     },
 
     "MEETING_JOIN": {
-      "FAILED_TO_JOIN": "Failed to join meeting.",
-      "MEETING_NOT_ACTIVE": "Meeting is not active.",
-      "NO_PERMISSION": "You do not have permission to join this meeting.",
-      "SAME_DAY_REQUIRED": "Meeting can only be started on the same day as the scheduled start time.",
-      "FIVE_MINUTE_LIMIT": "Meeting can only be started no more than 5 minutes before the scheduled start time.",
-      "UNABLE_CREATE_MEETING": "Unable to create meeting.",
-      "UNABLE_CREATE_ATTENDEE": "Unable to create attendee.",
-      "CHIME_MEETING_ID_NOT_FOUND": "Chime meeting id not found.",
-      "UNABLE_JOIN_MEETING": "Unable to join meeting."
+      "FAILED_TO_JOIN": "Failed to join the meeting",
+      "MEETING_NOT_ACTIVE": "The meeting is not in its active state",
+      "NO_PERMISSION": "You do not have permission to join this meeting",
+      "SAME_DAY_REQUIRED": "The meeting isn’t today. Join on the day it’s scheduled",
+      "FIVE_MINUTE_LIMIT": "You can join only within five minutes of the start time",
+      "UNABLE_CREATE_MEETING": "Unable to create the meeting",
+      "UNABLE_CREATE_ATTENDEE": "We couldn’t add the participant to the meeting",
+      "CHIME_MEETING_ID_NOT_FOUND": "AWS Chime meeting ID not found",
+      "UNABLE_JOIN_MEETING": "Unable to join the meeting"
     },
 
     "SIP_MEDIA": {
-      "MEETING_NOT_STARTED": "Meeting is not started.",
-      "ATTENDEE_IDS_REQUIRED": "inActiveAttendeeIds is required for external participants calls.",
-      "INVALID_CALL_TYPE": "Invalid call type for this role.",
-      "INTERPRETER_INFO_NOT_FOUND": "Interpreter information not found for call.",
-      "CLIENT_INFO_NOT_FOUND": "Client information not found for call.",
-      "MAX_PSTN_CALLS_REACHED": "You have reached the maximum number of PSTN calls."
+      "MEETING_NOT_STARTED": "The meeting has not started",
+      "ATTENDEE_IDS_REQUIRED": "No attendee record was created to initiate a PSTN call",
+      "INVALID_CALL_TYPE": "External (PSTN) call isn’t supported for this meeting",
+      "INTERPRETER_INFO_NOT_FOUND": "Interpreter information not found for an external (PSTN) call",
+      "CLIENT_INFO_NOT_FOUND": "Client meeting information not found",
+      "MAX_PSTN_CALLS_REACHED": "Maximum PSTN calls reached"
     }
   },
 
   "CHIME_MESSAGING_CONFIGURATION": {
     "CREATION": {
-      "RECIPIENT_ID_REQUIRED": "recipientId should not be empty.",
-      "ADMIN_RECIPIENT_SAME": "Admin and recipient cannot be the same.",
-      "ADMIN_OR_USER_PROFILE_NOT_COMPLETED": "Admin or recipient has not completed their profile.",
-      "USER_PROFILE_NOT_COMPLETED": "User has not completed their profile.",
-      "USER_INSTANCE_ARN_NOT_FOUND": "User instance ARN not found."
+      "RECIPIENT_ID_REQUIRED": "Recipient ID is required for this chat",
+      "ADMIN_RECIPIENT_SAME": "Admin and recipient cannot be the same in this messaging channel",
+      "ADMIN_OR_USER_PROFILE_NOT_COMPLETED": "Admin or user profile not completed",
+      "USER_PROFILE_NOT_COMPLETED": "User profile is incomplete",
+      "USER_INSTANCE_ARN_NOT_FOUND": "Required ARN for messaging not found. Verify the AWS Chime messaging instance and user exist and are correctly configured"
     },
 
     "IDENTITY": {
-      "CREATE_APP_INSTANCE_FAILED": "Failed to create AppInstance."
+      "CREATE_APP_INSTANCE_FAILED": "Failed to create the messaging channel for the meeting"
     },
 
     "MANAGEMENT": {
-      "USER_PROFILE_NOT_COMPLETED": "User has not completed their profile.",
-      "USER_ALREADY_MEMBER": "User is already a member of the channel.",
-      "CHANNEL_MAX_PARTICIPANTS": "Channel already has the maximum number of participants.",
-      "CHANNEL_UPDATE_FAILED": "Failed to update channel.",
-      "DELETE_MESSAGE_FAILED": "Failed to delete channel message."
+      "USER_PROFILE_NOT_COMPLETED": "User profile is incomplete",
+      "USER_ALREADY_MEMBER": "The user is already participating in this chat",
+      "CHANNEL_MAX_PARTICIPANTS": "Can’t add more members to this chat",
+      "CHANNEL_UPDATE_FAILED": "Messaging channel update failed",
+      "DELETE_MESSAGE_FAILED": "Couldn’t delete the message"
     },
 
     "QUERY": {
-      "NO_APPOINTMENT_INFO": "No appointment information found for the channel."
+      "NO_APPOINTMENT_INFO": "We couldn’t find appointment details in this messaging channel"
     }
   },
 
   "COMPANIES": {
     "COMMON": {
-      "COMPANY_NOT_FOUND": "Company not found.",
-      "NO_SUPER_ADMIN": "Company does not have superAdmin."
+      "COMPANY_NOT_FOUND": "Company not found",
+      "NO_SUPER_ADMIN": "Company does not have superAdmin"
     },
 
     "EMPLOYEE": {
-      "COMPANY_NOT_ACTIVATED": "Company not activated.",
-      "ROLE_NOT_ALLOWED": "This company does not have this role."
+      "COMPANY_NOT_ACTIVATED": "Company not activated",
+      "ROLE_NOT_ALLOWED": "The role is not allowed for this company"
     },
 
     "QUERY": {
-      "MAIN_COMPANY_NOT_FOUND": "Main company not found."
+      "MAIN_COMPANY_NOT_FOUND": "Head company not found"
     },
 
     "COMPANY": {
-      "ACTIVITY_SPHERE_REQUIRED": "activitySphere is required for corporate clients.",
-      "RESERVED_COMPANY_NAME": "Reserved company name.",
-      "PHONE_NUMBER_EXISTS": "Company with such phone number already exists.",
-      "ADMIN_EMAIL_EXISTS": "Company with this admin email already exist.",
-      "INCORRECT_COMPANY_TYPE": "Incorrect company type.",
-      "PHONE_OR_EMAIL_EXISTS": "Company with such phone number or email already exists.",
-      "OPERATED_BY_COMPANY_ID_REQUIRED": "operatedByMainCompanyId should not be empty for this role.",
-      "CORPORATE_CLIENT_EMAIL_EXISTS": "Corporate client with this email already exist.",
-      "REQUEST_ALREADY_ACCEPTED": "This request already accepted.",
-      "SET_ADMIN_INFO_FIRST": "Please, set admin name and email before sending link.",
-      "COMPANY_ALREADY_REGISTERED": "This company already registered.",
-      "INVITATION_LINK_TIME_LIMIT": "Invitation link was sent less than {{timeLimit}} minutes ago.",
-      "COMMISSION_RATE_RESTRICTION": "Platform commission rate can be set only for corporate interpreting providers company type.",
-      "TIMEZONE_REQUIRED": "Timezone must be provided when country or state or suburb is specified."
+      "ACTIVITY_SPHERE_REQUIRED": "You must choose an industry for this company",
+      "RESERVED_COMPANY_NAME": "This company name is reserved. Please choose a different name",
+      "PHONE_NUMBER_EXISTS": "A company with this phone number already exists",
+      "ADMIN_EMAIL_EXISTS": "Admin email is already in use",
+      "INCORRECT_COMPANY_TYPE": "Incorrect company type selected",
+      "PHONE_OR_EMAIL_EXISTS": "Phone number or email already exists for this company",
+      "OPERATED_BY_COMPANY_ID_REQUIRED": "“Operated by” company ID is required",
+      "CORPORATE_CLIENT_EMAIL_EXISTS": "The corporate client with this email already exists",
+      "REQUEST_ALREADY_ACCEPTED": "This request has already been accepted",
+      "SET_ADMIN_INFO_FIRST": "Admin information is required before proceeding",
+      "COMPANY_ALREADY_REGISTERED": "This company is already registered",
+      "INVITATION_LINK_TIME_LIMIT": "Invitation link has expired",
+      "COMMISSION_RATE_RESTRICTION": "The platform service charges can be set only for a corporate LSP(s) company type",
+      "TIMEZONE_REQUIRED": "Time zone is required",
+      "FUNDING_SOURCE_IMMUTABLE_AFTER_ACTIVATION": "Funding source cannot be modified after company activation"
     }
   },
 
   "COMPANIES_DEPOSIT_CHARGE": {
     "COMPANY": {
-      "NOT_FOUND": "Company not found.",
-      "NOT_ACTIVE": "No charges before Account activation available.",
-      "NO_SUPER_ADMIN": "Company does not have superAdmin."
+      "NOT_FOUND": "No company matches the provided details",
+      "NOT_ACTIVE": "This company account isn’t active—the deposit cannot be processed",
+      "NO_SUPER_ADMIN": "Company does not have superAdmin"
     },
 
     "CHARGE": {
-      "DEFAULT_AMOUNT_NOT_FILLED": "Default deposit charge amount not filled.",
-      "AMOUNT_ABOVE_MINIMUM": "Deposit amount more than minimum limit (10%).",
-      "CANNOT_CHANGE_BEFORE_EXECUTION": "Deposit charge request cannot be changed before execution.",
-      "UNFINISHED_CHARGE_EXISTS": "Unfinished deposit charge exist."
+      "DEFAULT_AMOUNT_NOT_FILLED": "Default amount for the deposit can’t be empty",
+      "AMOUNT_ABOVE_MINIMUM": "Deposit amount must be greater than the minimum allowed",
+      "CANNOT_CHANGE_BEFORE_EXECUTION": "Changing the company will be available after the deposit is approved and processed by the bank",
+      "UNFINISHED_CHARGE_EXISTS": "An unfinished deposit charge already exists",
+      "DEPOSIT_CHARGE_NOT_AVAILABLE_FOR_POST_PAYMENT": "Deposit charging is not available for companies using post-payment funding source."
     },
 
     "PAYMENT_INFO": {
-      "NOT_FILLED": "Payment info not filled.",
-      "STRIPE_NOT_FILLED": "Stripe payment info not filled.",
-      "ADMIN_EMAIL_NOT_FILLED": "Company admin email not filled.",
-      "ADMIN_INFO_NOT_FILLED": "Company admin info not filled.",
-      "SUPER_ADMIN_ROLE_NOT_FOUND": "Super admin role not found."
+      "NOT_FILLED": "Payment information is required",
+      "STRIPE_NOT_FILLED": "Stripe payment info is required",
+      "ADMIN_EMAIL_NOT_FILLED": "Company admin email can’t be empty",
+      "ADMIN_INFO_NOT_FILLED": "Company admin info is required for deposits",
+      "SUPER_ADMIN_ROLE_NOT_FOUND": "Super admin role not found"
     }
   },
 
   "CONCESSION_CARD": {
     "COMMON": {
-      "SET_ONE_CARD_TYPE": "Set one of concession card type.",
-      "REQUEST_PENDING": "Concession card with this id is pending.",
-      "NO_UPLOADED_FILE": "Concession card does not have uploaded file."
+      "SET_ONE_CARD_TYPE": "Please select one card type: Concession or VA",
+      "REQUEST_PENDING": "Concession Card submission is pending",
+      "NO_UPLOADED_FILE": "No file uploaded for the concession/VA card"
     },
 
     "CREATION": {
-      "ALREADY_CREATED": "Concession card already created for this user.",
-      "ALREADY_EXISTS": "Concession card already exist."
+      "ALREADY_CREATED": "Concession/VA card already created for this user",
+      "ALREADY_EXISTS": "Concession card already exists"
     },
 
     "UPLOAD": {
-      "NOT_ALLOWED": "File cannot be uploaded for this request."
+      "NOT_ALLOWED": "Upload not allowed for the concession/VA card"
     }
   },
 
   "CONTENT_MANAGEMENT": {
     "PROMO": {
-      "ENGLISH_RECORD_REQUIRED": "You must create an English record first.",
-      "IMAGE_REQUIRED_FOR_ENGLISH": "You must create an image for English record first.",
-      "DUPLICATE_ORDINAL_AND_LANGUAGE": "The record with this ordinal number and language already exists."
+      "ENGLISH_RECORD_REQUIRED": "A promo is required",
+      "IMAGE_REQUIRED_FOR_ENGLISH": "An image of the promo is required",
+      "DUPLICATE_ORDINAL_AND_LANGUAGE": "A promo with this order and language already exists"
     },
 
     "CONTENT": {
-      "NOT_FOUND": "Content management not found."
+      "NOT_FOUND": "Content not found in Content Management"
     }
   },
 
   "CSV": {
-    "DOWNLOAD_LIMIT_EXCEEDED": "You exceeded csv download limit."
+    "DOWNLOAD_LIMIT_EXCEEDED": "You exceeded csv download limit"
   },
 
   "DATA_TRANSFER": {
     "ADDRESS": {
-      "NOT_FILLED": "Client address not filled."
+      "NOT_FILLED": "Client address is required"
     }
   },
 
   "DOCUSIGN": {
     "COMMON": {
-      "CONTRACT_NOT_AVAILABLE_FOR_ROLE": "Contract is not available for this role.",
-      "ALREADY_SIGNED": "Contract already signed.",
-      "ALREADY_COMPLETED": "Contract already completed.",
-      "NO_DOCUMENTS": "Envelope not contained document."
+      "CONTRACT_NOT_AVAILABLE_FOR_ROLE": "DocuSign: Contract is not available for this role",
+      "ALREADY_SIGNED": "DocuSign: Contract already signed",
+      "ALREADY_COMPLETED": "DocuSign: Contract already completed",
+      "NO_DOCUMENTS": "No documents found in the DocuSign envelope"
     },
 
     "INDIVIDUAL": {
-      "INVALID_USER_STATUS": "User role or profile status does not permit this operation.",
-      "COUNTRY_NOT_DEFINED": "User country is not defined.",
-      "STEPS_NOT_COMPLETED": "Not all steps are completed.",
-      "CONTACT_EMAIL_NOT_SPECIFIED": "Contact email is not specified.",
-      "PROFILE_NOT_DEFINED": "User profile is not defined.",
-      "CONTRACT_NOT_COMPLETED": "Contract not completed.",
-      "CONTRACT_FILE_ERROR": "File of this contract saved with error.",
-      "CONTRACT_NOT_EXIST": "Contract not exist."
+      "INVALID_USER_STATUS": "DocuSign is unavailable for the current user status",
+      "COUNTRY_NOT_DEFINED": "DocuSign: Country for is not defined",
+      "STEPS_NOT_COMPLETED": "DocuSign setup is incomplete",
+      "CONTACT_EMAIL_NOT_SPECIFIED": "DocuSign: Contact email is not specified",
+      "PROFILE_NOT_DEFINED": "DocuSign: User profile is not defined",
+      "CONTRACT_NOT_COMPLETED": "DocuSign: Contract not completed",
+      "CONTRACT_FILE_ERROR": "DocuSign: Contract file error",
+      "CONTRACT_NOT_EXIST": "DocuSign: Contract file error"
     },
 
     "CORPORATE": {
-      "COMPANY_ID_REQUIRED": "Please, set company id.",
-      "COMPANY_NOT_FOUND": "Company not found.",
-      "NO_SUPER_ADMIN_ID": "Company does not have superAdminId.",
-      "NO_SUPER_ADMIN_ROLE": "Company does not have superAdmin role.",
-      "SIGNERS_NOT_FOUND": "Corporate signers not found.",
-      "SIGNERS_NOT_SET": "Set contract signers.",
-      "SIGNERS_NOT_FILLED": "Contract signers not filled.",
-      "AT_LEAST_ONE_SIGNED": "At least one signatory already signed the contract.",
-      "CONTRACT_NOT_EDITABLE": "Contract with this status is not editable."
+      "COMPANY_ID_REQUIRED": "DocuSign: Company ID is required",
+      "COMPANY_NOT_FOUND": "DocuSign: Company not found",
+      "NO_SUPER_ADMIN_ID": "DocuSign requires a SuperAdmin ID for the company",
+      "NO_SUPER_ADMIN_ROLE": "DocuSign requires a company super admin role",
+      "SIGNERS_NOT_FOUND": "No corporate signers found for this DocuSign contract",
+      "SIGNERS_NOT_SET": "Please add corporate signers for this DocuSign contract",
+      "SIGNERS_NOT_FILLED": "DocuSign: Some signer fields are missing",
+      "AT_LEAST_ONE_SIGNED": "DocuSign: One signer has already signed",
+      "CONTRACT_NOT_EDITABLE": "DocuSign: Contract is read-only and not editable"
     },
 
     "SDK": {
-      "CONSENT_REQUIRED": "Please, Open the following URL in your browser to grant consent to the application: {{link}}. After that, all must be OK.",
-      "HTTP_ERROR": "HTTP error in DocuSign SDK.",
-      "AUTH_ERROR": "DocuSign auth error.",
-      "INCORRECT_FILE_FORMAT": "DocuSign answer wrong: incorrect file format."
+      "CONSENT_REQUIRED": "Consent is required to use DocuSign. Please go to: {{link}}",
+      "HTTP_ERROR": "DocuSign Server error!",
+      "AUTH_ERROR": "DocuSign authentication error",
+      "INCORRECT_FILE_FORMAT": "The file format isn’t supported by DocuSign"
     }
   },
 
   "DRAFT_APPOINTMENTS": {
     "APPOINTMENT": {
-      "NOT_FOUND": "Draft Appointment not found."
+      "NOT_FOUND": "We couldn’t find this draft appointment"
     }
   },
 
   "EMAILS": {
     "CUSTOM_MAILER": {
-      "BODY_NOT_FOUND": "Body email template not found.",
-      "LAYOUT_NOT_FOUND": "Layout email template not found."
+      "BODY_NOT_FOUND": "Email content not found",
+      "LAYOUT_NOT_FOUND": "Email layout not found"
     }
   },
 
   "FILE_MANAGEMENT": {
     "UPLOAD": {
-      "FILE_SIZE_EXCEEDED": "File is bigger than limit: {{fileSize}} MB.",
-      "INCORRECT_CONTENT_TYPE": "Incorrect content type."
+      "FILE_SIZE_EXCEEDED": "The file is too large to upload: {{fileSize}} MB!",
+      "INCORRECT_CONTENT_TYPE": "Please upload a file of a supported type"
     },
 
     "VALIDATION": {
-      "ROLE_NOT_ALLOWED": "This role is not allowed to upload files.",
-      "ROLE_NOT_SPECIFIED": "Role not specified.",
-      "ROLE_AND_DOCUMENT_TYPE_REQUIRED": "role and documentType should not be empty.",
-      "UNKNOWN_FILE_TYPE": "Unknown file type."
+      "ROLE_NOT_ALLOWED": "This role isn’t allowed to upload this file",
+      "ROLE_NOT_SPECIFIED": "Please specify a role to continue",
+      "ROLE_AND_DOCUMENT_TYPE_REQUIRED": "Please specify both the role and the document type",
+      "UNKNOWN_FILE_TYPE": "Unknown file type"
     }
   },
 
   "HELPER": {
     "USER_REPOSITORY": {
-      "NO_SUPER_ADMINS_FOUND": "No Super Admins found in the system."
+      "NO_SUPER_ADMINS_FOUND": "There are no users with the super admin role"
     },
 
     "USER_ROLE_REPOSITORY": {
-      "NO_LFH_ADMINS_FOUND": "No Admins found in LFH Company."
+      "NO_LFH_ADMINS_FOUND": "No LFH admins found"
     },
 
     "OTHER": {
-      "USER_DOES_NOT_EXIST": "User does not exist.",
-      "USER_NO_ROLES_ASSIGNED": "User does not have any roles assigned.",
-      "ROLE_NOT_FOUND": "The specified role was not found."
+      "USER_DOES_NOT_EXIST": "User does not exist",
+      "USER_NO_ROLES_ASSIGNED": "User has no roles assigned",
+      "ROLE_NOT_FOUND": "The specified role was not found"
     }
   },
 
   "HTTP_CLIENT": {
     "REQUEST": {
-      "SEND_FAILED": "Failed to send request."
+      "SEND_FAILED": "Failed to send request"
     }
   },
 
   "IELTS": {
     "VERIFICATION": {
-      "NATIVE_LANGUAGE_NOT_SET": "Please, set up your native language.",
-      "INCORRECT_CERTIFICATE_NUMBER": "Incorrect number of certificate.",
-      "NAME_MISMATCH": "FirstName or lastName does not match.",
-      "INSUFFICIENT_SCORE": "Certificate score is not enough.",
-      "INVALID_USER_STATUS": "User role or profile status does not permit this operation.",
-      "OTHER_LANGUAGE_CHECK_EXISTS": "This user already have other language doc check.",
-      "VERIFICATION_EXISTS_FOR_USER": "IELTS verification for this user already exists.",
-      "VERIFICATION_EXISTS_FOR_CERTIFICATE": "IELTS verification for this certificate already exists."
+      "NATIVE_LANGUAGE_NOT_SET": "Please, set up your first language",
+      "INCORRECT_CERTIFICATE_NUMBER": "Incorrect certificate number",
+      "NAME_MISMATCH": "Your name doesn't match the IELTS certificate",
+      "INSUFFICIENT_SCORE": "Your IELTS score is below the required value",
+      "INVALID_USER_STATUS": "User status isn’t eligible for IELTS verification",
+      "OTHER_LANGUAGE_CHECK_EXISTS": "Another language check already exists",
+      "VERIFICATION_EXISTS_FOR_USER": "An IELTS verification already exists for this user",
+      "VERIFICATION_EXISTS_FOR_CERTIFICATE": "An IELTS verification already exists for this certificatу"
     },
 
     "SDK": {
-      "HTTP_ERROR": "HTTP error in IELTS SDK.",
-      "AUTH_ERROR": "IELTS auth error."
+      "HTTP_ERROR": "IELTS server error!",
+      "AUTH_ERROR": "IELTS authentication error!"
     }
   },
 
   "INTERPRETERS_PROFILE": {
     "CANCELLATION_RECORD": {
-      "NOT_FOUND": "Cancellation record not found."
+      "NOT_FOUND": "Cancellation record not found"
     },
 
     "PROFILE": {
-      "AUSTRALIA_NZ_ONLY": "This request is available only for Australia and New Zealand citizens.",
-      "NOT_FOUND": "Interpreter profile not found.",
-      "LOCATION_UPDATE_FAILED": "Failed to update interpreter location.",
-      "INVALID_INTERPRETER_ID": "Invalid interpreter id.",
-      "WWCC_REQUIRED": "Upload your WWCC to be able to get face-to-face appointments."
+      "AUSTRALIA_NZ_ONLY": "Australia/NZ interpreters only",
+      "NOT_FOUND": "Interpreter profile not found",
+      "LOCATION_UPDATE_FAILED": "Failed to update interpreter location",
+      "INVALID_INTERPRETER_ID": "Invalid interpreter id",
+      "WWCC_REQUIRED": "Upload your WWCC to receive face‑to‑face interpreting appointments"
     }
   },
 
   "INTERPRETERS_QUESTIONNAIRE": {
     "COMMON": {
-      "QUESTIONNAIRE_NOT_FOUND": "Can't find questionnaire with such user id and role."
+      "QUESTIONNAIRE_NOT_FOUND": "Interpreters questionnaire not found"
     },
 
     "QUESTIONNAIRE": {
-      "ALREADY_CREATED": "Questionnaire is already created."
+      "ALREADY_CREATED": "The Interpreters questionnaire has already been created"
     },
 
     "RECOMMENDATIONS": {
-      "RECOMMENDATION_NOT_FOUND": "Recommendation not found."
+      "RECOMMENDATION_NOT_FOUND": "Interpreters questionnaire guidance item not found"
     }
   },
 
   "LANGUAGE_DOC_CHECK": {
     "COMMON": {
-      "NO_UPLOADED_FILE": "Language doc check does not have uploaded file.",
-      "STATUS_PENDING": "This language doc check is in status pending."
+      "NO_UPLOADED_FILE": "No file uploaded for the language certificate validation",
+      "STATUS_PENDING": "Pending language language certificate validation"
     },
 
     "UPLOAD": {
-      "UPLOAD_NOT_ALLOWED": "File cannot be uploaded for this request."
+      "UPLOAD_NOT_ALLOWED": "File upload is not allowed for the language document check"
     },
 
     "VALIDATION": {
-      "NATIVE_LANGUAGE_NOT_SET": "User must set up native language.",
-      "SAME_AS_NATIVE_LANGUAGE": "Language doc check language cannot be the same as the user's native language.",
-      "ALREADY_EXISTS_FOR_LANGUAGE": "Language doc check already created for this language.",
-      "IELTS_CHECK_EXISTS": "This user already have success IELTS check.",
-      "PTE_NUMBERS_EXIST": "PTE numbers already exist and are associated with another user."
+      "NATIVE_LANGUAGE_NOT_SET": "Primary language is not set for the language document check",
+      "SAME_AS_NATIVE_LANGUAGE": "Language document check: target and primary languages cannot be the same",
+      "ALREADY_EXISTS_FOR_LANGUAGE": "A language document check already exists for this language",
+      "IELTS_CHECK_EXISTS": "Language document check: an IELTS check result already exists",
+      "PTE_NUMBERS_EXIST": "Language document check: PTE result already exists"
     }
   },
 
   "MEMBERSHIPS": {
     "PAYMENTS": {
-      "PAYMENT_INFO_MISSING": "User payment or membership pricing information is missing.",
-      "PAYMENT_INFO_NOT_FOUND": "User payment information not found.",
-      "INVOICE_NOT_SUBSCRIPTION": "Invoice is not associated with a subscription."
+      "PAYMENT_INFO_MISSING": "Memberships: payment information is missing",
+      "INVOICE_NOT_SUBSCRIPTION": "Memberships: the invoice is not a subscription"
     },
 
     "PRICE": {
-      "NOT_FOUND_FOR_REGION": "Price not found for membership in current region."
+      "NOT_FOUND_FOR_REGION": "Memberships: price not found for current region"
     },
 
     "DEACTIVATION": {
-      "ALREADY_DEACTIVATED": "Membership already deactivated."
+      "ALREADY_DEACTIVATED": "Membership already deactivated"
     }
   },
 
   "MOCK": {
     "SERVICE": {
-      "UNSUPPORTED_TYPE": "Unsupported mock type."
+      "UNSUPPORTED_TYPE": "Unsupported type for the test environment"
     }
   },
 
   "MULTI_WAY_PARTICIPANT": {
     "PARTICIPANT": {
-      "CLIENT_REQUIRED_FOR_ADD": "Cannot add participant to an appointment without a client.",
-      "CLIENT_REQUIRED_FOR_UPDATE": "Cannot update participant without a client."
+      "CLIENT_REQUIRED_FOR_ADD": "Client is required to add a participant for a multi-way session",
+      "CLIENT_REQUIRED_FOR_UPDATE": "Client is required to update a participant for a multi-way session"
     }
   },
 
   "NAATI": {
     "WEB_SCRAPER": {
-      "HTTP_ERROR": "HTTP error in NAATI web scraper.",
-      "NONCE_NOT_FOUND": "Nonce value not found in HTML.",
-      "NONCE_EXTRACTION_FAILED": "Failed to extract nonce value.",
-      "API_ERROR": "NAATI web scraper API error."
+      "HTTP_ERROR": "Failed to fetch data from NAATI due to a server error",
+      "NONCE_NOT_FOUND": "Failed to proceed — NAATI security token is missing",
+      "NONCE_EXTRACTION_FAILED": "Failed to extract a security token for NAATI",
+      "API_ERROR": "Failed to retrieve data from NAATI due to an API error"
     },
 
     "VERIFICATION": {
-      "INVALID_USER_STATUS": "User role or profile status does not permit this operation.",
-      "INTERPRETER_NOT_FOUND": "Interpreter not found.",
-      "PROFILE_NOT_FOUND": "Naati profile not found.",
-      "CPN_ALREADY_SAVED": "Cpn number already saved.",
-      "INVALID_CPN": "The Cpn number is not valid.",
-      "NAME_MISMATCH": "The name from Naati does not match the name entered by the user.",
-      "LANGUAGE_NOT_SUPPORTED": "The language {{language}} is not supported. Please contact support."
+      "INVALID_USER_STATUS": "User status isn’t eligible for NAATI verification",
+      "INTERPRETER_NOT_FOUND": "NAATI Verification: Interpreter not found",
+      "PROFILE_NOT_FOUND": "NAATI verification: profile not found",
+      "CPN_ALREADY_SAVED": "The NAATI CPN has already been saved",
+      "INVALID_CPN": "NAATI Verification: invalid CPN",
+      "NAME_MISMATCH": "NAATI verification: name doesn't match NAATI records",
+      "LANGUAGE_NOT_SUPPORTED": "The selected language {{language}} isn’t available in NAATI’s language list"
     }
   },
 
   "NOTIFICATIONS": {
     "DELIVERY": {
-      "INVITATION_LINK_REQUIRED": "InvitationLink is required for phone call notification."
+      "INVITATION_LINK_REQUIRED": "An invitation link is required"
     }
   },
 
   "PAYMENT_ANALYSIS": {
-    "ADDITIONAL_DATA_REQUIRED": "Insufficient additional data for {{operation}}."
+    "ADDITIONAL_DATA_REQUIRED": "Insufficient additional data for {{operation}}"
   },
 
   "PAYMENT_INFORMATION": {
     "COMMON": {
-      "PAYMENT_INFO_NOT_FILLED": "User role payment information not filled.",
-      "STRIPE_ACCOUNT_NOT_EXIST": "User role stripe account id not exist.",
-      "PAYPAL_PAYER_ID_MISSING": "Paypal profile does not have payer id.",
-      "COMPANY_NOT_FOUND": "Company not found."
+      "PAYMENT_INFO_NOT_FILLED": "Payment information is required",
+      "STRIPE_ACCOUNT_NOT_EXIST": "Stripe account does not exist for this user",
+      "PAYPAL_PAYER_ID_MISSING": "PayPal payer ID is missing",
+      "COMPANY_NOT_FOUND": "Company not found"
     },
 
     "GENERAL": {
-      "INCORRECT_ROLE": "Incorrect role.",
-      "BOTH_SYSTEMS_REQUIRED": "User role don`t have both of paying system.",
-      "CANNOT_DELETE_WITH_APPOINTMENTS": "You cannot delete this payment method because you have upcoming appointments. Please cancel or complete these appointments before deleting the payment method."
+      "INCORRECT_ROLE": "Incorrect role",
+      "BOTH_SYSTEMS_REQUIRED": "Both payment systems are required to complete setup",
+      "CANNOT_DELETE_WITH_APPOINTMENTS": "Cannot delete the payment information—appointments are linked"
     },
 
     "INDIVIDUAL": {
-      "PROFILE_NOT_FILLED": "User profile not filled.",
-      "CONTACT_EMAIL_NOT_FILLED": "User contact email not filled.",
-      "ALREADY_ONBOARDED": "User already onboarded."
+      "PROFILE_NOT_FILLED": "User profile is incomplete",
+      "CONTACT_EMAIL_NOT_FILLED": "Missing User contact email",
+      "ALREADY_ONBOARDED": "User already onboarded"
     },
 
     "CORPORATE": {
-      "PAYMENT_INFO_NOT_FILLED": "Company payment information not filled.",
-      "ALREADY_ONBOARDED": "Company already onboarded.",
-      "CONTACT_EMAIL_NOT_FILLED": "Company contact email not filled."
+      "PAYMENT_INFO_NOT_FILLED": "Company payment information is incomplete",
+      "ALREADY_ONBOARDED": "Company already onboarded",
+      "CONTACT_EMAIL_NOT_FILLED": "Missing Company contact email"
     }
   },
 
   "PAYMENTS": {
     "AUTHORIZATION": {
-      "AUTHORIZE_PAYMENT_FAILED": "Failed to authorize payment."
+      "AUTHORIZE_PAYMENT_FAILED": "Failed to authorize payment"
     },
 
     "AUTHORIZATION_CANCEL": {
-      "CANCEL_AUTHORIZATION_FAILED": "Failed to cancel payment authorization.",
-      "HANDLE_LATE_CANCELLATION_FAILED": "Failed to handle late client cancellation."
+      "CANCEL_AUTHORIZATION_FAILED": "Failed to cancel payment authorization",
+      "HANDLE_LATE_CANCELLATION_FAILED": "Failed to handle late client cancellation"
     },
 
     "CAPTURE": {
-      "CAPTURE_PAYMENT_FAILED": "Failed to capture payment."
+      "CAPTURE_PAYMENT_FAILED": "Failed to capture payment"
     },
 
     "CORPORATE_DEPOSIT": {
-      "CHARGE_FROM_DEPOSIT_FAILED": "Failed to charge from deposit."
+      "CHARGE_FROM_DEPOSIT_FAILED": "Failed to charge from deposit"
+    },
+
+    "CORPORATE_POST_PAYMENT": {
+      "POST_PAYMENT_FAILED": "Failed to authorize corporate post payment."
     },
 
     "CORPORATE_COMMISSION": {
-      "PROCESS_SAME_COMPANY_COMMISSION_FAILED": "Failed to process same company commission."
+      "PROCESS_SAME_COMPANY_COMMISSION_FAILED": "Failed to process same company commission"
     },
 
     "TRANSFER": {
-      "TRANSFER_AND_PAYOUT_FAILED": "Failed to transfer payment.",
-      "MAKE_PAYOUT_RECORD_FAILED": "Failed to make pay out record."
+      "TRANSFER_AND_PAYOUT_FAILED": "Failed to transfer payment",
+      "MAKE_PAYOUT_RECORD_FAILED": "Failed to make pay out record"
     },
 
     "WAIT_LIST": {
-      "REDIRECT_TO_WAIT_LIST_FAILED": "Failed to process redirect to wait list."
+      "REDIRECT_TO_WAIT_LIST_FAILED": "Failed to process redirect to wait list"
     },
 
     "VALIDATION": {
-      "VALIDATION_FAILURE_PROCESSING_FAILED": "Failed to process payment validation failure."
+      "VALIDATION_FAILURE_PROCESSING_FAILED": "Failed to process payment validation failure"
     },
 
     "QUERY": {
-      "RECEIPT_NOT_EXIST": "Receipt not exist."
+      "RECEIPT_NOT_EXIST": "Receipt not exist"
     }
   },
 
   "PAYPAL": {
     "AUTH": {
-      "FAILED": "PayPal authentication failed."
+      "FAILED": "PayPal authorisation failed"
     },
 
     "REQUEST": {
-      "HTTP_ERROR": "HTTP error in Paypal SDK."
+      "HTTP_ERROR": "Paypal Server Error!"
     }
   },
 
   "PDF": {
-    "BUILDER": {
-      "APPOINTMENT_NOT_EXIST": "Appointment does not exist.",
-      "APPOINTMENT_CLIENT_NOT_EXIST": "Appointment client does not exist.",
-      "PAYMENT_COMPANY_NOT_EXIST": "Payment company does not exist.",
-      "PAYMENT_INFO_NOT_FILLED": "Payment information is not filled.",
-      "CLIENT_ADDRESS_NOT_FILLED": "Client address is not filled.",
-      "PAYMENT_NO_APPOINTMENT": "Payment does not have a relation to an appointment.",
-      "APPOINTMENT_INTERPRETER_NOT_FILLED": "Appointment interpreter is not filled.",
-      "INTERPRETER_PROFILE_NOT_FILLED": "Interpreter profile is not filled.",
-      "INTERPRETER_ADDRESS_NOT_FILLED": "Interpreter address is not filled.",
-      "INTERPRETER_ABN_NOT_FILLED": "Interpreter ABN is not filled.",
-      "APPOINTMENT_BUSINESS_END_TIME_NOT_FILLED": "Appointment business end time is not filled.",
-      "COMPANY_LFH_DATA_NOT_SEEDED": "Company LFH data is not seeded.",
-      "INSUFFICIENT_DATA_FOR_BADGE": "Insufficient data to generate interpreter badge.",
-      "COMPANY_CLIENT_NOT_EXIST": "Company of client does not exist."
-    },
-
     "BASE64": {
-      "IMAGE_FETCH_FAILED": "Failed to fetch image.",
-      "IMAGE_CONVERSION_ERROR": "An unexpected error occurred while converting the image."
+      "IMAGE_FETCH_FAILED": "Failed to fetch image",
+      "IMAGE_CONVERSION_ERROR": "The image could not be processed"
     }
   },
 
   "PERMISSIONS": {
     "METHOD": {
-      "NOT_EDITABLE": "Method is not editable.",
-      "INCORRECT_NAME": "Incorrect method name."
+      "NOT_EDITABLE": "User privileges can’t be changed",
+      "INCORRECT_NAME": "Incorrect method name"
     }
   },
 
   "PROMO_CAMPAIGNS": {
     "COMMON": {
-      "NOT_FOUND": "Promo campaign banner was not found."
+      "NOT_FOUND": "Promo campaign banner not found"
     },
 
     "VALIDATION": {
-      "NOT_UPDATABLE": "Promo campaign cannot be updated in its current state.",
-      "CORPORATE_PROVIDER_NOT_ALLOWED": "You can create a promo campaign for corporate clients only.",
-      "COMPANY_ALREADY_ASSIGNED": "This company has already been assigned a promo campaign.",
-      "CORPORATE_FIELDS_NOT_UPDATABLE": "Cannot update the following fields for corporate promo campaigns: {{fields}}.",
-      "RESTRICTED_STATUS_FIELDS": "Only {{fields}} can be updated for ongoing or terminated promo campaigns.",
-      "STATUS_CHANGE_BEFORE_START": "You cannot change the status before the start date.",
-      "NAME_OR_CODE_EXISTS": "A promo campaign with this name or promo code already exists.",
-      "ALL_NEW_PERSONAL_CONFLICT": "Only one all-new-personal campaign can be active for this time period.",
-      "START_DATE_AFTER_END_DATE": "The start date must be before the end date.",
-      "INVALID_PROMO_CODE": "Invalid promo code.",
-      "PERSONAL_ALREADY_ASSIGNED": "Personal promo campaign is already assigned to another user.",
-      "CONDITIONS_URL_TARGET_INVALID": "conditionsUrl can only be created/updated for promo campaigns with targets: {{fields}}.",
-      "BANNER_DISPLAY_WITHOUT_BANNER": "bannerDisplay cannot be true when bannerId is not set.",
-      "BANNER_DISPLAY_TARGET_INVALID": "bannerDisplay can only be set to true for promo campaigns with targets: {{fields}}."
+      "NOT_UPDATABLE": "Not allowed to update this promo model",
+      "CORPORATE_PROVIDER_NOT_ALLOWED": "Corporate givers are not eligible for this promo campaign",
+      "COMPANY_ALREADY_ASSIGNED": "This company is already assigned to the promo campaign",
+      "CORPORATE_FIELDS_NOT_UPDATABLE": "Promo campaign: company fields can’t be updated {{fields}}",
+      "RESTRICTED_STATUS_FIELDS": "Promo campaign — cannot update any fields, except: {{fields}}",
+      "STATUS_CHANGE_BEFORE_START": "You can’t change the promo campaign status before the start date",
+      "NAME_OR_CODE_EXISTS": "A promo campaign with this name or promo code already exists",
+      "ALL_NEW_PERSONAL_CONFLICT": "Promo campaign: this campaign conflicts with all newly created personal promos",
+      "START_DATE_AFTER_END_DATE": "The start date must be before the end date",
+      "INVALID_PROMO_CODE": "Invalid promo code",
+      "PERSONAL_ALREADY_ASSIGNED": "This personal promo is already in use",
+      "CONDITIONS_URL_TARGET_INVALID": "The Terms and Conditions link has invalid fields: {{fields}}",
+      "BANNER_DISPLAY_WITHOUT_BANNER": "Promo campaigns: banner display requires a banner",
+      "BANNER_DISPLAY_TARGET_INVALID": "Promo campaigns: please provide valid fields for the banner link: {{fields}}"
     }
   },
 
   "QUEUE_PROCESSORS": {
     "BRIDGE": {
-      "PROCESSOR_NOT_REGISTERED": "Queue processor not registered. Ensure QueueProcessorsModule is imported in the app."
+      "PROCESSOR_NOT_REGISTERED": "Bridge queue processor isn’t set up or running. Please register and start the processor"
     }
   },
 
   "RATES": {
     "BLOCK_BUILDER": {
-      "ADDITIONAL_PRICES_REQUIRED": "Additional prices and duration are required for extended duration.",
-      "CROSS_BOUNDARY_ADDITIONAL_PRICES_REQUIRED": "Additional prices and duration are required for cross-boundary scenarios."
+      "ADDITIONAL_PRICES_REQUIRED": "Additional charges and a duration are required for extended booking",
+      "CROSS_BOUNDARY_ADDITIONAL_PRICES_REQUIRED": "Additional charges and a duration are required for cross‑boundary scenarios (e.g., after‑hours or across time zones)"
     },
 
     "CONFIG_VALIDATOR": {
-      "INTERPRETER_TYPE_REQUIRED": "Interpreter type is required.",
-      "SCHEDULING_TYPE_REQUIRED": "Scheduling type is required.",
-      "COMMUNICATION_TYPE_REQUIRED": "Communication type is required.",
-      "INTERPRETING_TYPE_REQUIRED": "Interpreting type is required.",
-      "TOPIC_REQUIRED": "Topic is required.",
-      "DURATION_INVALID": "Duration must be greater than 0.",
-      "SCHEDULE_DATETIME_REQUIRED": "Schedule date time is required.",
-      "ESCORT_SIMULTANEOUS_NOT_ALLOWED": "Escort or Simultaneous should not be set in the config.",
-      "EXTRA_DAYS_NOT_ALLOWED_START_PRICE": "Extra days must be undefined for appointment start price calculations.",
-      "CLIENT_GST_PAYER_REQUIRED_PRELIMINARY": "Client is GST payer must be true for preliminary estimate calculations.",
-      "INTERPRETER_TIMEZONE_NOT_ALLOWED_PRELIMINARY": "Interpreter timezone must be undefined for preliminary estimate or appointment start price calculations.",
-      "CLIENT_TIMEZONE_NOT_ALLOWED_PRELIMINARY": "Client timezone must be undefined for preliminary estimate or appointment start price calculations.",
-      "EXTERNAL_INTERPRETER_NOT_ALLOWED_PRELIMINARY": "Is external interpreter must be undefined for preliminary estimate or appointment start price calculations.",
-      "DISCOUNTS_NOT_ALLOWED_PRELIMINARY": "Include discounts must be false for preliminary estimate or appointment start price calculations.",
-      "DISCOUNTS_MUST_BE_UNDEFINED_PRELIMINARY": "Discounts must be undefined for preliminary estimate or appointment start price calculations.",
-      "EXTRA_DAYS_NOT_ALLOWED": "Extra days must be undefined for this calculation type.",
-      "INTERPRETER_TIMEZONE_REQUIRED": "Interpreter timezone is required for this calculation type.",
-      "CLIENT_TIMEZONE_REQUIRED": "Client timezone is required for this calculation type.",
-      "INTERPRETER_TIMEZONE_NOT_ALLOWED_PSTN": "Interpreter timezone is not allowed for PSTN calculation type.",
-      "CLIENT_TIMEZONE_REQUIRED_PSTN": "Client timezone is required for PSTN calls.",
-      "TIME_MODE_TIMEZONE_NOT_ALLOWED": "Time calculation mode or interpreter timezone must be undefined for PSTN calls.",
-      "TIMEZONES_NOT_ALLOWED_WITH_TIME_MODE": "Client and interpreter time zones are not allowed when time calculation mode is specified.",
-      "TIMEZONES_REQUIRED_AUTO_MODE": "Client and interpreter time zones are required when time calculation mode is auto.",
-      "PROMO_DISCOUNT_NEGATIVE": "Promo campaign discount cannot be negative.",
-      "MEMBERSHIP_DISCOUNT_NEGATIVE": "Membership discount cannot be negative.",
-      "MEMBERSHIP_FREE_MINUTES_NEGATIVE": "Membership free minutes cannot be negative.",
-      "PROMO_DISCOUNT_MINUTES_NEGATIVE": "Promo campaign discount minutes cannot be negative."
+      "INTERPRETER_TYPE_REQUIRED": "Interpreter type is required",
+      "SCHEDULING_TYPE_REQUIRED": "Scheduling type is required",
+      "COMMUNICATION_TYPE_REQUIRED": "Appointment type (F2F, Video, Audio) is required",
+      "INTERPRETING_TYPE_REQUIRED": "Mode of interpreting is required",
+      "TOPIC_REQUIRED": "Topic is required",
+      "DURATION_INVALID": "Duration must be greater than 0",
+      "SCHEDULE_DATETIME_REQUIRED": "Schedule date/time is required",
+      "ESCORT_SIMULTANEOUS_NOT_ALLOWED": "Please choose either escort or simultaneous interpreting option, not both",
+      "EXTRA_DAYS_NOT_ALLOWED_START_PRICE": "No Extra Days allowed for generating the price estimate",
+      "CLIENT_GST_PAYER_REQUIRED_PRELIMINARY": "Please set the client’s GST payer status before generating a price estimate",
+      "INTERPRETER_TIMEZONE_NOT_ALLOWED_PRELIMINARY": "For generating the price estimate, leave the interpreter’s time zone empty",
+      "CLIENT_TIMEZONE_NOT_ALLOWED_PRELIMINARY": "For generating the price estimate, leave the client’s time zone empty",
+      "EXTERNAL_INTERPRETER_NOT_ALLOWED_PRELIMINARY": "Price estimate excludes external interpreters",
+      "DISCOUNTS_NOT_ALLOWED_PRELIMINARY": "Discounts are not included in the price estimate",
+      "DISCOUNTS_MUST_BE_UNDEFINED_PRELIMINARY": "Remove any discounts to generate a price estimate",
+      "EXTRA_DAYS_NOT_ALLOWED": "Extra days aren’t allowed for this calculation",
+      "INTERPRETER_TIMEZONE_REQUIRED": "Interpreter's timezone is required for the calculation",
+      "CLIENT_TIMEZONE_REQUIRED": "The client’s timezone is required for this calculation",
+      "INTERPRETER_TIMEZONE_NOT_ALLOWED_PSTN": "The interpreter’s timezone is not allowed for calculating PSTN calls",
+      "CLIENT_TIMEZONE_REQUIRED_PSTN": "The client's timezone is required for PSTN calls",
+      "TIME_MODE_TIMEZONE_NOT_ALLOWED": "Time zone is not supported for this scheduling type",
+      "TIMEZONES_NOT_ALLOWED_WITH_TIME_MODE": "Time zones are not supported for this scheduling type",
+      "TIMEZONES_REQUIRED_AUTO_MODE": "Time zones are required for automatic scheduling",
+      "PROMO_DISCOUNT_NEGATIVE": "Promo discount can’t be a negative value",
+      "MEMBERSHIP_DISCOUNT_NEGATIVE": "Membership discount cannot be a negative value",
+      "MEMBERSHIP_FREE_MINUTES_NEGATIVE": "Free membership minutes can’t be a negative value",
+      "PROMO_DISCOUNT_MINUTES_NEGATIVE": "Promo discount minutes can’t be a negative value"
     },
 
     "RETRIEVER": {
-      "RATE_NOT_FOUND_ESCORT": "Rate not found for escort/simultaneous service for the given parameters.",
-      "RATES_NOT_FOUND": "Not all required rates found for the given parameters."
+      "RATE_NOT_FOUND_ESCORT": "Escort interpreting rate not found",
+      "RATES_NOT_FOUND": "We couldn’t find any rates for this selection"
     },
 
     "STEP": {
-      "INVALID_CALCULATION_TYPE": "Invalid calculation type."
+      "INVALID_CALCULATION_TYPE": "Invalid calculation type"
     },
 
     "TIME_BOUNDARY": {
-      "UNHANDLED_DUAL_TIMEZONE_SCENARIO": "Unhandled dual timezone scenario."
+      "UNHANDLED_DUAL_TIMEZONE_SCENARIO": "Unsupported scenario: two different time zones"
     }
   },
 
   "REMOVAL": {
     "REQUEST": {
-      "EMAIL_NOT_FILLED": "Please fill in the email.",
-      "COMPANY_NOT_FOUND": "Company was not found.",
-      "ADMIN_DATA_NOT_FILLED": "Please fill in admin email and name, or use the user delete request endpoint."
+      "EMAIL_NOT_FILLED": "An email is required",
+      "COMPANY_NOT_FOUND": "We couldn’t remove the company because it wasn’t found",
+      "ADMIN_DATA_NOT_FILLED": "Deletion blocked — admin details are missing"
     },
 
     "SHARED": {
-      "USER_HAS_UNCOMPLETED_APPOINTMENTS": "User has non-completed appointments and cannot be deleted.",
-      "COMPANY_HAS_UNCOMPLETED_APPOINTMENTS": "Company has non-completed appointments and cannot be deleted."
+      "USER_HAS_UNCOMPLETED_APPOINTMENTS": "Deletion blocked — the user has uncompleted appointments",
+      "COMPANY_HAS_UNCOMPLETED_APPOINTMENTS": "Company has non-completed appointments and cannot be deleted"
     },
 
     "RESTORATION": {
-      "INCORRECT_KEY": "Incorrect restoration key.",
-      "COMPANY_NOT_IN_DELETE_WAITING": "Company is not requested for removal."
+      "INCORRECT_KEY": "Recovery blocked — invalid or expired key",
+      "COMPANY_NOT_IN_DELETE_WAITING": "Recovery failed — the company isn’t marked as “awaiting deletion.”"
     }
   },
 
   "REVIEWS": {
     "REVIEW": {
-      "ORDINAL_NUMBER_EXISTS": "The record with this ordinal number already exists."
+      "ORDINAL_NUMBER_EXISTS": "A review with this number already exists"
     }
   },
 
   "RIGHT_TO_WORK_CHECK": {
     "FILE": {
-      "UPLOAD_NOT_ALLOWED": "File cannot be uploaded for this request.",
-      "NOT_UPLOADED": "Right to work check does not have an uploaded file."
+      "UPLOAD_NOT_ALLOWED": "Right to work check: file upload not allowed",
+      "NOT_UPLOADED": "Right to work check: file not uploaded"
     },
 
     "EDIT": {
-      "REQUEST_NOT_EDITABLE": "This request cannot be edited."
+      "REQUEST_NOT_EDITABLE": "Right-to-work check: this request isn’t editable"
     },
 
     "DELETE": {
-      "REQUEST_NOT_DELETABLE": "This request cannot be deleted."
+      "REQUEST_NOT_DELETABLE": "Right-to-work check: this request isn’t deletable"
     }
   },
 
   "SEARCH_ENGINE_LOGIC": {
     "INDIVIDUAL_ORDER": {
-      "FLAGS_NOT_SET": "Failed to start search. Flags are not set."
+      "FLAGS_NOT_SET": "Search failed — required search fields are missing"
     },
 
     "ORDER_GROUP": {
-      "ORDERS_NOT_FOUND": "Failed to start search. Appointment orders were not found."
+      "ORDERS_NOT_FOUND": "No appointments for the selected group"
     }
   },
 
   "SESSIONS": {
     "VERIFICATION": {
-      "TOKEN_OUT_OF_DATE": "Your token is out of date."
+      "TOKEN_OUT_OF_DATE": "This verification link has expired. Request a new one"
     }
   },
 
   "STATISTICS": {
     "STATISTIC": {
-      "STATISTICS_EMPTY": "Statistics is empty.",
-      "DATE_RANGE_TOO_LONG": "Date range is too long.",
-      "INCORRECT_STATISTIC_TYPE": "Incorrect statistic type."
+      "STATISTICS_EMPTY": "No statistics available",
+      "DATE_RANGE_TOO_LONG": "Date range is too long",
+      "INCORRECT_STATISTIC_TYPE": "Incorrect statistic type"
     },
 
     "INDIVIDUAL": {
-      "INCORRECT_ROLE": "Incorrect role."
+      "INCORRECT_ROLE": "Incorrect role"
     },
 
     "COMPANY": {
-      "NOT_FOUND": "Company was not found."
+      "NOT_FOUND": "Company not found"
     }
   },
 
   "STRIPE": {
     "PAYMENTS": {
-      "DOWNLOAD_RECEIPT_FAILED": "Failed to download receipt.",
-      "FETCH_RECEIPT_DATA_FAILED": "Failed to fetch receipt data from external service.",
-      "RECEIPT_DOWNLOAD_REQUEST_FAILED": "External service request failed during receipt download."
+      "DOWNLOAD_RECEIPT_FAILED": "Failed to download receipt",
+      "FETCH_RECEIPT_DATA_FAILED": "Failed to fetch receipt data from external service",
+      "RECEIPT_DOWNLOAD_REQUEST_FAILED": "External service request failed during receipt download"
     },
 
     "CONNECT": {
-      "INSTANT_BALANCE_MISSING": "Required instant available balance or destination is missing for the account."
+      "INSTANT_BALANCE_MISSING": "Required instant available balance or destination is missing for the account"
     }
   },
 
   "SUMSUB": {
     "SDK": {
-      "ERROR": "Error from Sumsub."
+      "ERROR": "Sumsub verification error"
     },
 
     "VALIDATION": {
-      "OPERATION_NOT_PERMITTED": "User role or profile status does not permit this operation."
+      "OPERATION_NOT_PERMITTED": "Sumsub: operation not permitted"
     }
   },
 
   "TOKENS": {
     "APPLE": {
-      "TOKEN_DECODE_FAILED": "Cannot decode token.",
-      "TOKEN_EXPIRED": "Token has expired.",
-      "PUBLIC_KEY_RETRIEVAL_FAILED": "Unable to retrieve the public key.",
-      "KEY_SIGNATURES_MISMATCH": "Key signatures do not match.",
-      "TOKEN_VERIFICATION_FAILED": "Failed to verify token."
+      "TOKEN_DECODE_FAILED": "Apple token decode failed",
+      "TOKEN_EXPIRED": "Apple token expired",
+      "PUBLIC_KEY_RETRIEVAL_FAILED": "Failed to retrieve Apple public keys — your Apple sign-in token can’t be verified",
+      "KEY_SIGNATURES_MISMATCH": "We couldn’t verify your Apple token due to a signature mismatch",
+      "TOKEN_VERIFICATION_FAILED": "Token verification with Apple failed"
     }
   },
 
   "UI_LANGUAGES": {
     "LANGUAGE": {
-      "FILE_NOT_FOUND": "Cannot find JSON file for that language."
+      "FILE_NOT_FOUND": "Language file not found (JSON)"
     }
   },
 
   "URL_SHORTENER": {
     "RESOLUTION": {
-      "NOT_ACTIVE_YET": "This URL is not active yet."
+      "NOT_ACTIVE_YET": "This URL link isn’t active yet"
     },
 
     "ENCODER": {
-      "INVALID_LENGTH": "Length must be a non-negative integer."
+      "INVALID_LENGTH": "The URL is too short"
     }
   },
 
   "USERS": {
     "PROFILE_UPDATE_POLICY": {
-      "NAME_CHANGE_RESTRICTED_VERIFIED_DOCUMENTS": "Cannot edit firstName, middleName, or lastName because the user has a verified Concession card or green SumSub status.",
-      "TIMEZONE_REQUIRED": "Timezone must be provided when country, state, or suburb is specified.",
-      "NAME_CHANGE_RESTRICTED_PROFESSIONAL_DOCUMENTS": "Cannot edit firstName, middleName, or lastName because the user has verified documents.",
-      "EMAIL_CHANGE_RESTRICTED_BACKGROUND_CHECK": "Cannot change contact email while background check is in progress or completed."
+      "NAME_CHANGE_RESTRICTED_VERIFIED_DOCUMENTS": "Name change restricted due to verified documents on file",
+      "TIMEZONE_REQUIRED": "A time zone is required to update your profile",
+      "NAME_CHANGE_RESTRICTED_PROFESSIONAL_DOCUMENTS": "Name change restricted due to the existing documents on file",
+      "EMAIL_CHANGE_RESTRICTED_BACKGROUND_CHECK": "Email change restricted — background check in progress"
     },
 
     "PROFILES": {
-      "PROFILE_ALREADY_EXISTS": "Cannot create a user profile because it already exists."
+      "PROFILE_ALREADY_EXISTS": "User profile already exists"
     },
 
     "PASSWORD": {
-      "PASSWORD_NOT_FOUND_TRY_THIRD_PARTY": "Cannot find password. Try to log in with third party authentication.",
-      "USER_NO_PHONE_NUMBER": "User does not have a phone number associated with their account."
+      "PASSWORD_NOT_FOUND_TRY_THIRD_PARTY": "Password not found — try third‑party sign‑in",
+      "USER_NO_PHONE_NUMBER": "A phone number is required for user password"
     },
 
     "REGISTRATION_STEPS": {
-      "EMAIL_ALREADY_REGISTERED": "This email is already registered. Log in to your account.",
-      "CODE_INCORRECT": "Your code is incorrect.",
-      "UNABLE_ADD_PASSWORD": "Unable to add password to your account.",
-      "PHONE_NUMBER_ALREADY_EXISTS": "User with this phone number already exists.",
-      "PHONE_VERIFICATION_FAILED": "Cannot verify phone number.",
-      "ALREADY_AGREED_TO_TERMS": "You have already agreed to the terms and conditions."
+      "EMAIL_ALREADY_REGISTERED": "This email is already registered",
+      "CODE_INCORRECT": "The code you entered is incorrect",
+      "UNABLE_ADD_PASSWORD": "We couldn’t set your password. Please try again",
+      "PHONE_NUMBER_ALREADY_EXISTS": "This phone number is already registered",
+      "PHONE_VERIFICATION_FAILED": "Phone verification failed. Please try again",
+      "ALREADY_AGREED_TO_TERMS": "You have already agreed to the terms and conditions"
     },
 
     "REGISTRATION": {
-      "USER_ALREADY_REGISTERED_WITH_ROLE": "User is already registered with this role.",
-      "PHONE_NUMBER_MISMATCH": "Phone number doesn't match the existing account. Please use the same phone number."
+      "USER_ALREADY_REGISTERED_WITH_ROLE": "User is already registered with this role",
+      "PHONE_NUMBER_MISMATCH": "This phone number is already in use by another account"
     },
 
     "USER": {
-      "EMAIL_ALREADY_REGISTERED": "This email is already registered.",
-      "PHONE_NUMBER_ALREADY_EXISTS": "User with this phone number already exists.",
-      "PASSWORD_NOT_SET": "User password is not set.",
-      "INCORRECT_CURRENT_PASSWORD": "Incorrect current password.",
-      "NEW_PASSWORD_SAME_AS_CURRENT": "New password cannot be the same as the current password.",
-      "COMPANY_DELETED": "Your company has been deleted. You can restore the company using the link in your email.",
-      "OPERATED_COMPANY_NOT_FOUND": "Operated company was not found.",
-      "COMPANY_DEACTIVATED": "Your company account has been deactivated. Please contact your admin.",
-      "COMPANY_DELETED_CONTACT_ADMIN": "Your company account has been deleted. Please contact your admin.",
-      "ACCOUNT_DELETED_USE_RESTORATION": "Your account has been deleted. Please use the restoration link sent to your email or contact the LFH Support Team.",
-      "ACCOUNT_LOCKED": "Your account has been locked. Please contact the LFH Support Team."
+      "EMAIL_ALREADY_REGISTERED": "This email is already registered",
+      "PHONE_NUMBER_ALREADY_EXISTS": "This phone number already exists in our system",
+      "PASSWORD_NOT_SET": "Your password hasn’t been set yet",
+      "INCORRECT_CURRENT_PASSWORD": "Your current password is incorrect",
+      "NEW_PASSWORD_SAME_AS_CURRENT": "Your new password must be different from your current password",
+      "COMPANY_DELETED": "This company has been deleted",
+      "OPERATED_COMPANY_NOT_FOUND": "The company you operate wasn’t found",
+      "COMPANY_DEACTIVATED": "Your company account has been deactivated. Please contact your admin",
+      "COMPANY_DELETED_CONTACT_ADMIN": "Your company account has been deleted. Please contact your admin",
+      "ACCOUNT_DELETED_USE_RESTORATION": "Your account has been deleted. Please use the recovery link sent to your email or contact the LFH Support Team",
+      "ACCOUNT_LOCKED": "Your account has been locked. Please contact the LFH Support Team"
     }
   }
 }

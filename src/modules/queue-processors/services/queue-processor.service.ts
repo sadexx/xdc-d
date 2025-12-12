@@ -151,6 +151,9 @@ export class QueueProcessorService implements IQueueProcessor {
       case EJobType.PROCESS_CORPORATE_TAX_INVOICE_RECEIPT_PDF_GENERATION: {
         return await this.pdfService.generateCorporateTaxInvoiceReceipt(job.data.payload);
       }
+      case EJobType.PROCESS_CORPORATE_POST_PAYMENT_RECEIPT_PDF_GENERATION: {
+        return await this.pdfService.generateCorporatePostPaymentReceipt(job.data.payload);
+      }
       default:
         return this.handleUnknownJob(job);
     }

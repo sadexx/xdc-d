@@ -31,7 +31,7 @@ export class AuthorizationCancelContextValidationService {
     const errors: string[] = [];
     const { payment } = context;
 
-    if (payment.system !== EPaymentSystem.DEPOSIT) {
+    if (payment.system !== EPaymentSystem.DEPOSIT && payment.system !== EPaymentSystem.POST_PAYMENT) {
       errors.push("Incorrect payment system.");
     }
 

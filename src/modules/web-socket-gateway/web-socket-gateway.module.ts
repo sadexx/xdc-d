@@ -19,11 +19,11 @@ import { ToolboxModule } from "src/modules/toolbox/toolbox.module";
 import { AdminAppointmentsGateway } from "src/modules/web-socket-gateway/ws-gateway/admin-appointments.gateway";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { UserRole } from "src/modules/users/entities";
+import { RedisModule } from "src/modules/redis/redis.module";
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([UserRole]),
-
     AppointmentOrdersModule,
     AppointmentsModule,
     TokensModule,
@@ -32,6 +32,7 @@ import { UserRole } from "src/modules/users/entities";
     NotificationModule,
     InterpreterProfileModule,
     ToolboxModule,
+    RedisModule,
   ],
   providers: [
     OrderGateway,
